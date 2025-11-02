@@ -175,12 +175,16 @@ export default function AdminProducts() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <Link href={`/admin/products/${product.id}`}>
+                        <Button variant="ghost" size="icon">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      <Link href={`/admin/products/${product.id}/edit`}>
+                        <Button variant="ghost" size="icon">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </Link>
                       <Button variant="ghost" size="icon" onClick={() => handleDeleteProduct(product.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>

@@ -5,6 +5,32 @@ type Product = Database['public']['Tables']['products']['Row']
 type ProductInsert = Database['public']['Tables']['products']['Insert']
 type ProductUpdate = Database['public']['Tables']['products']['Update']
 
+// Helper function to verify admin role
+async function verifyAdminRole() {
+  const supabase = getSupabaseBrowserClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('You must be logged in to perform this action')
+  }
+  
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  
+  if (profileError) {
+    throw new Error(`Failed to verify user permissions: ${profileError.message}`)
+  }
+  
+  if (profile?.role !== 'admin') {
+    throw new Error('You must be an administrator to perform this action')
+  }
+  
+  return user
+}
+
 export const productsDb = {
   // Get all products
   async getAll() {
@@ -104,9 +130,19 @@ export const productsDb = {
   async create(product: ProductInsert) {
     try {
       const supabase = getSupabaseBrowserClient()
+      
+      // Verify admin role
+      const user = await verifyAdminRole()
+      
+      // Ensure the product has the correct user_id set to the admin user
+      const productData = {
+        ...product,
+        user_id: user.id // Explicitly set the user_id to the current admin user
+      }
+      
       const { data, error } = await supabase
         .from('products')
-        .insert(product)
+        .insert(productData)
         .select()
         .single()
       
@@ -122,6 +158,10 @@ export const productsDb = {
   async update(id: string, updates: ProductUpdate) {
     try {
       const supabase = getSupabaseBrowserClient()
+      
+      // Verify admin role
+      await verifyAdminRole()
+      
       const { data, error } = await supabase
         .from('products')
         .update(updates)
@@ -141,6 +181,10 @@ export const productsDb = {
   async delete(id: string) {
     try {
       const supabase = getSupabaseBrowserClient()
+      
+      // Verify admin role
+      await verifyAdminRole()
+      
       // Using type assertion to bypass TypeScript error for deleted_at field
       const { error } = await supabase
         .from('products')
