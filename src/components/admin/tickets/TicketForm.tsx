@@ -1,15 +1,16 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { Save, ArrowLeft } from "lucide-react"
+import { Save, ArrowLeft, Upload, X } from "lucide-react"
 import Link from "next/link"
 import { ticketsDb } from "@/lib/db/tickets"
+import { storageService } from "@/lib/storageService"
 import { useRouter } from "next/navigation"
 import { getSupabaseBrowserClient } from '@/server/supabase/client'
 import { useAuth } from '@/contexts/auth-context'
@@ -26,8 +27,11 @@ export default function TicketForm() {
   const [deviceModel, setDeviceModel] = useState("")
   const [issueDescription, setIssueDescription] = useState("")
   const [estimatedCost, setEstimatedCost] = useState("")
+  const [devicePhotos, setDevicePhotos] = useState<File[]>([])
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [csrfToken, setCsrfToken] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
   const router = useRouter()
 
@@ -38,8 +42,8 @@ export default function TicketForm() {
     setCsrfToken(token);
     
     return () => {
-      // Clean up CSRF token on unmount
-      // Note: We don't remove it here because the form might still be submitting
+      // Clean up photo previews
+      photoPreviews.forEach(preview => URL.revokeObjectURL(preview));
     };
   }, []);
 
@@ -51,6 +55,77 @@ export default function TicketForm() {
       }
     }
   }, [user, role, authLoading, router])
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newFiles = Array.from(files);
+    const validFiles = newFiles.filter(file => file.type.startsWith('image/'));
+    
+    if (validFiles.length !== newFiles.length) {
+      toast({
+        title: "Invalid files",
+        description: "Only image files are allowed",
+        variant: "destructive",
+      });
+    }
+
+    // Limit to 5 photos
+    if (devicePhotos.length + validFiles.length > 5) {
+      toast({
+        title: "Too many photos",
+        description: "You can only upload up to 5 photos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file sizes (max 5MB each)
+    const oversizedFiles = validFiles.filter(file => file.size > 5 * 1024 * 1024);
+    if (oversizedFiles.length > 0) {
+      toast({
+        title: "File too large",
+        description: "Each photo must be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDevicePhotos(prev => [...prev, ...validFiles]);
+    
+    // Create previews
+    const newPreviews = validFiles.map(file => URL.createObjectURL(file));
+    setPhotoPreviews(prev => [...prev, ...newPreviews]);
+  }
+
+  const removePhoto = (index: number) => {
+    setDevicePhotos(prev => prev.filter((_, i) => i !== index));
+    setPhotoPreviews(prev => {
+      const newPreviews = [...prev];
+      URL.revokeObjectURL(newPreviews[index]);
+      return newPreviews.filter((_, i) => i !== index);
+    });
+  }
+
+  const uploadPhotosToSupabase = async (files: File[]): Promise<string[]> => {
+    try {
+      const photoUrls: string[] = [];
+      
+      for (const file of files) {
+        // Upload file to Supabase storage using our storage service
+        // For ticket photos, we'll store images in the 'ticket-photos' bucket
+        const publicUrl = await storageService.uploadFile(file, 'ticket-photos');
+        console.log('Uploaded photo URL:', publicUrl); // Debug log
+        photoUrls.push(publicUrl);
+      }
+      
+      return photoUrls;
+    } catch (error: any) {
+      console.error('Error uploading photos:', error);
+      throw error;
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -94,6 +169,12 @@ export default function TicketForm() {
       // Validate estimated cost if provided
       if (estimatedCost && (isNaN(Number(estimatedCost)) || Number(estimatedCost) <= 0)) {
         throw new Error('Estimated cost must be a positive number');
+      }
+
+      // Upload photos if any
+      let photoUrls: string[] = [];
+      if (devicePhotos.length > 0) {
+        photoUrls = await uploadPhotosToSupabase(devicePhotos);
       }
 
       const supabase = getSupabaseBrowserClient()
@@ -178,6 +259,7 @@ export default function TicketForm() {
           device_model: deviceModel.trim(),
           issue_description: issueDescription.trim(),
           estimated_cost: estimatedCost ? Number(estimatedCost) : null,
+          device_photos: photoUrls.length > 0 ? photoUrls : null,
           status: 'received',
           priority: 'normal'
         })
@@ -354,6 +436,65 @@ export default function TicketForm() {
                 onChange={(e) => setIssueDescription(e.target.value)}
                 rows={4}
                 required
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Device Photos</CardTitle>
+            <CardDescription>
+              Upload photos of the device (up to 5 photos, max 5MB each)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex flex-wrap gap-4">
+                {photoPreviews.map((preview, index) => (
+                  <div key={index} className="relative">
+                    <img 
+                      src={preview} 
+                      alt={`Preview ${index + 1}`} 
+                      className="h-32 w-32 object-cover rounded-lg border"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute -top-2 -right-2 rounded-full"
+                      onClick={() => removePhoto(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {photoPreviews.length < 5 && (
+                  <div className="flex flex-col items-center gap-2">
+                    <div 
+                      className="border-2 border-dashed rounded-lg w-32 h-32 flex items-center justify-center cursor-pointer"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Add Photo
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handlePhotoChange}
               />
             </div>
           </CardContent>

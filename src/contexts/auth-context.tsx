@@ -398,6 +398,7 @@ export const useAuth = () => {
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  logger.log('AuthProvider: useAuth hook called');
+  // Removed excessive logging to prevent performance issues
+  // logger.log('AuthProvider: useAuth hook called');
   return context;
 };

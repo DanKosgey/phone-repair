@@ -56,6 +56,10 @@ export default function ViewTicket() {
     try {
       setIsLoading(true)
       const data = await ticketsDb.getById(id as string)
+      console.log('Fetched ticket data:', data); // Debug log
+      if (data && data.device_photos) {
+        console.log('Device photos:', data.device_photos); // Debug log
+      }
       setTicket(data)
     } catch (error: any) {
       toast({
@@ -209,11 +213,45 @@ export default function ViewTicket() {
                 </div>
               </div>
 
+              {ticket.device_photos && ticket.device_photos.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Device Photos</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {ticket.device_photos.map((photoUrl, index) => (
+                        <div key={index} className="aspect-square">
+                          <img 
+                            src={photoUrl} 
+                            alt={`Device photo ${index + 1}`} 
+                            className="w-full h-full object-cover rounded-lg border"
+                            onError={(e) => {
+                              console.error('Error loading image:', photoUrl);
+                              // Set a fallback image or hide the broken image
+                              e.currentTarget.src = '/placeholder-image.png'; // You might want to add a placeholder image
+                              // Or hide the image entirely:
+                              // e.currentTarget.style.display = 'none';
+                            }}
+                            onLoad={(e) => {
+                              console.log('Image loaded successfully:', photoUrl);
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
               <Separator />
 
               <div>
                 <h3 className="text-lg font-semibold mb-2">Issue Description</h3>
-                <p className="text-muted-foreground">{ticket.issue_description}</p>
+                <p className="text-muted-foreground">
+                  {ticket.issue_description ? ticket.issue_description : 'No description provided'}
+                </p>
+                {/* Debug: Show the raw issue description */}
+                {/* <p className="text-xs text-gray-500 mt-2">Raw: {ticket.issue_description}</p> */}
               </div>
 
               {(ticket.notes || ticket.customer_notes) && (
