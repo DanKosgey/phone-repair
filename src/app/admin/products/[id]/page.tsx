@@ -7,19 +7,23 @@ import { useToast } from "@/hooks/use-toast"
 import { ArrowLeft, Edit, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { productsDb } from "@/lib/db/products"
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 
-export default function AdminViewProductPage({ params }: { params: { id: string } }) {
+export default function AdminViewProductPage() {
   const [product, setProduct] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
   const router = useRouter()
+  const { id } = useParams()
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const data = await productsDb.getById(params.id)
-        setProduct(data)
+        // Check if id is available and is a string
+        if (id && typeof id === 'string') {
+          const data = await productsDb.getById(id)
+          setProduct(data)
+        }
       } catch (error: any) {
         toast({
           title: "Error",
@@ -33,16 +37,18 @@ export default function AdminViewProductPage({ params }: { params: { id: string 
     }
 
     fetchProduct()
-  }, [params.id, toast, router])
+  }, [id, toast, router])
 
   const handleDeleteProduct = async () => {
     try {
-      await productsDb.delete(params.id)
-      toast({
-        title: "Success",
-        description: "Product deleted successfully",
-      })
-      router.push('/admin/products')
+      if (id && typeof id === 'string') {
+        await productsDb.delete(id)
+        toast({
+          title: "Success",
+          description: "Product deleted successfully",
+        })
+        router.push('/admin/products')
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -56,6 +62,31 @@ export default function AdminViewProductPage({ params }: { params: { id: string 
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
+  // If we don't have a valid id or product, show an error
+  if (!id || typeof id !== 'string') {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <h2 className="text-xl font-semibold mb-2">Invalid Product ID</h2>
+        <p className="text-muted-foreground mb-4">No valid product ID was provided.</p>
+        <Button onClick={() => router.push('/admin/products')}>
+          Back to Products
+        </Button>
+      </div>
+    )
+  }
+
+  if (!product) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <h2 className="text-xl font-semibold mb-2">Product Not Found</h2>
+        <p className="text-muted-foreground mb-4">The requested product could not be found.</p>
+        <Button onClick={() => router.push('/admin/products')}>
+          Back to Products
+        </Button>
       </div>
     )
   }
@@ -86,7 +117,7 @@ export default function AdminViewProductPage({ params }: { params: { id: string 
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              <Link href={`/admin/products/${params.id}/edit`}>
+              <Link href={`/admin/products/${id}/edit`}>
                 <Button variant="outline" size="icon">
                   <Edit className="h-4 w-4" />
                 </Button>
