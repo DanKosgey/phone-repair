@@ -101,15 +101,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           logger.log('AuthProvider: Setting user from session:', currentSession.user.id);
           setUser(currentSession.user);
           setSession(currentSession);
-          await fetchUserRole(currentSession.user.id);
+          // Add a small delay to ensure role is properly set
+          setTimeout(async () => {
+            await fetchUserRole(currentSession.user.id);
+          }, 100);
         } else {
           logger.log('AuthProvider: No active session found');
         }
       } catch (error: any) {
         logger.error('AuthProvider: Error initializing auth:', error.message);
       } finally {
-        logger.log('AuthProvider: Finished initial loading');
-        setIsLoading(false);
+        // Add a small delay before setting loading to false to ensure role is fetched
+        setTimeout(() => {
+          logger.log('AuthProvider: Finished initial loading');
+          setIsLoading(false);
+        }, 300);
       }
     }
 

@@ -3,7 +3,7 @@
 import { AdminSidebar } from "@/components/layout/AdminSidebar"
 import { useAuth } from '@/contexts/auth-context'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { LogOut } from "lucide-react"
 
@@ -14,6 +14,7 @@ export default function AdminRootLayout({
 }) {
   const { user, role, signOut, isLoading } = useAuth()
   const router = useRouter()
+  const hasRedirected = useRef(false)
 
   useEffect(() => {
     console.log('AdminLayout: Auth state updated in useEffect', { 
@@ -23,13 +24,20 @@ export default function AdminRootLayout({
       shouldRedirect: !isLoading && (!user || role !== 'admin')
     });
     
+    // Prevent multiple redirects
+    if (hasRedirected.current) {
+      return;
+    }
+    
     // If not loading and user is not authenticated or not admin, redirect appropriately
     if (!isLoading) {
       if (!user) {
         console.log('AdminLayout: No user authenticated, redirecting to login');
+        hasRedirected.current = true;
         router.push('/login');
       } else if (user && role !== 'admin') {
         console.log('AdminLayout: User authenticated but not admin, redirecting to home. User role:', role);
+        hasRedirected.current = true;
         router.push('/');
       } else if (user && role === 'admin') {
         console.log('AdminLayout: User authorized, rendering admin layout for user:', user.id);
@@ -73,7 +81,7 @@ export default function AdminRootLayout({
     }
   }
 
-  console.log('AdminLayout: Rendering admin layout for authorized user:', user.id);
+  console.log('AdminLayout: Rendering admin layout for authorized user:', user?.id);
   return (
     <div className="min-h-screen flex w-full bg-background">
       <AdminSidebar />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { signIn, user, role, isLoading: authLoading } = useAuth();
+  const hasRedirected = useRef(false);
 
   useEffect(() => {
     console.log('LoginPage: Auth state updated', { 
@@ -28,18 +29,16 @@ export default function AdminLoginPage() {
       shouldRedirect: !authLoading && user && role === 'admin'
     });
     // If user is already logged in and is admin, redirect to admin dashboard
-    if (!authLoading && user && role === 'admin') {
+    if (!authLoading && user && role === 'admin' && !hasRedirected.current) {
       console.log('LoginPage: User already authenticated as admin, redirecting to admin dashboard');
-      // Add a small delay to ensure session is properly set
-      setTimeout(() => {
-        // Check if there's a redirectTo parameter
-        const redirectTo = searchParams.get('redirectTo');
-        if (redirectTo && redirectTo.startsWith('/admin')) {
-          window.location.href = redirectTo;
-        } else {
-          window.location.href = '/admin';
-        }
-      }, 100);
+      hasRedirected.current = true;
+      // Check if there's a redirectTo parameter
+      const redirectTo = searchParams.get('redirectTo');
+      if (redirectTo && redirectTo.startsWith('/admin')) {
+        router.push(redirectTo);
+      } else {
+        router.push('/admin');
+      }
     } else if (!authLoading && user && role !== 'admin') {
       console.log('LoginPage: User authenticated but not admin, role:', role);
     } else if (!authLoading && !user) {
@@ -65,17 +64,14 @@ export default function AdminLoginPage() {
       await signIn(email, password);
       console.log('LoginPage: Sign in successful, redirecting to admin dashboard');
       
-      // Add a small delay to ensure session is properly set
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
       // Check if there's a redirectTo parameter
       const redirectTo = searchParams.get('redirectTo');
       if (redirectTo && redirectTo.startsWith('/admin')) {
         console.log('LoginPage: Redirecting to:', redirectTo);
-        window.location.href = redirectTo;
+        router.push(redirectTo);
       } else {
         console.log('LoginPage: Redirecting to default admin dashboard');
-        window.location.href = '/admin';
+        router.push('/admin');
       }
     } catch (error: any) {
       console.error('LoginPage: Sign in failed:', error);

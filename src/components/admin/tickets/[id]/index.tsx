@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -34,11 +34,13 @@ export default function ViewTicket() {
   const router = useRouter()
   const { id } = useParams()
   const { toast } = useToast()
+  const hasRedirected = useRef(false)
 
   // Redirect to login if not authenticated or not admin
   useEffect(() => {
-    if (!authLoading) {
+    if (!authLoading && !hasRedirected.current) {
       if (!user || role !== 'admin') {
+        hasRedirected.current = true
         router.push('/login')
       }
     }
