@@ -1,12 +1,11 @@
 "use client"
 
-import { LayoutDashboard, Wrench, Package, ShoppingCart, Users, Settings, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, Wrench, Package, ShoppingCart, Users, Settings, Menu } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { usePathname } from "next/navigation";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { useAuthStore } from "@/stores/auth-store";
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/admin" },
@@ -18,15 +17,7 @@ const menuItems = [
 ];
 
 const SidebarContent = ({ onItemClick }: { onItemClick?: () => void }) => {
-  const router = useRouter();
-  const logout = useAuthStore((state) => state.logout);
   const pathname = usePathname();
-
-  const handleLogout = () => {
-    logout();
-    router.push("/login");
-    onItemClick?.();
-  };
 
   return (
     <div className="flex flex-col h-full">
@@ -57,13 +48,6 @@ const SidebarContent = ({ onItemClick }: { onItemClick?: () => void }) => {
           );
         })}
       </nav>
-
-      <div className="p-4 border-t">
-        <Button variant="ghost" className="w-full justify-start gap-3" onClick={handleLogout}>
-          <LogOut className="h-5 w-5" />
-          Logout
-        </Button>
-      </div>
     </div>
   );
 };

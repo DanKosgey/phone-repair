@@ -1,6 +1,6 @@
 'use client'
 
-import Tickets from "@/pages/admin/Tickets"
+import Tickets from "@/components/admin/tickets/Tickets"
 
 export default function AdminTicketsPage() {
   return <Tickets />

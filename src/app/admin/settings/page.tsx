@@ -1,6 +1,6 @@
 'use client'
 
-import Settings from "@/pages/admin/Settings"
+import Settings from "@/components/admin/Settings"
 
 export default function AdminSettingsPage() {
   return <Settings />

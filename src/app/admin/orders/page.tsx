@@ -1,6 +1,6 @@
 'use client'
 
-import AdminOrders from "@/pages/admin/Orders"
+import AdminOrders from "@/components/admin/Orders"
 
 export default function AdminOrdersPage() {
   return <AdminOrders />

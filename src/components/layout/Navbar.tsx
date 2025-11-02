@@ -1,27 +1,11 @@
 "use client"
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Smartphone, User, LogOut } from "lucide-react";
-import { CartSheet } from "@/components/cart/CartSheet";
-import { useAuthStore } from "@/stores/auth-store";
-import { useEffect } from "react";
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Smartphone } from "lucide-react"
+import { CartSheet } from "@/components/cart/CartSheet"
 
 export const Navbar = () => {
-  const { isAuthenticated, user, logout, initializeAuth } = useAuthStore();
-  const router = useRouter();
-
-  // Initialize auth state on component mount
-  useEffect(() => {
-    initializeAuth();
-  }, [initializeAuth]);
-
-  const handleLogout = async () => {
-    await logout();
-    router.push("/");
-  };
-
   return (
     <nav className="border-b bg-card">
       <div className="container mx-auto px-4">
@@ -48,27 +32,9 @@ export const Navbar = () => {
 
           <div className="flex items-center space-x-4">
             <CartSheet />
-            {isAuthenticated ? (
-              <>
-                <span className="text-sm font-medium hidden md:inline">
-                  {user?.name}
-                </span>
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
-              </>
-            ) : (
-              <Link href="/login">
-                <Button variant="outline" size="sm">
-                  <User className="h-4 w-4 mr-2" />
-                  Login
-                </Button>
-              </Link>
-            )}
           </div>
         </div>
       </div>
     </nav>
-  );
-};
+  )
+}

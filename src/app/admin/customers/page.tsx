@@ -1,6 +1,6 @@
 'use client'
 
-import AdminCustomers from "@/pages/admin/Customers"
+import AdminCustomers from "@/components/admin/Customers"
 
 export default function AdminCustomersPage() {
   return <AdminCustomers />

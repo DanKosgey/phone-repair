@@ -17,6 +17,7 @@ A comprehensive Next.js 15 application for managing a phone repair business with
   - [Installation](#installation)
   - [Environment Variables](#environment-variables)
   - [Running the Application](#running-the-application)
+- [Authentication System](#authentication-system)
 - [Project Structure](#project-structure)
 - [API Endpoints](#api-endpoints)
 - [Admin Portal Pages](#admin-portal-pages)
@@ -184,6 +185,36 @@ npm run migrate:local
 
 3. Access the application at `http://localhost:9003`
 
+## Authentication System
+
+The application implements a secure authentication system with the following features:
+
+### Admin Authentication
+
+- **Secure Login**: Dedicated admin login page with email/password authentication
+- **Role-Based Access Control**: Only users with 'admin' role can access the admin dashboard
+- **Session Management**: Automatic session handling with secure token storage
+- **Password Reset**: Secure password reset functionality
+- **Logout**: Proper session termination
+
+### Implementation Details
+
+- **Middleware Protection**: All admin routes are protected by middleware
+- **Context Provider**: Centralized authentication state management
+- **Protected Components**: Components that conditionally render based on authentication status
+- **Secure Storage**: Proper handling of authentication tokens using Supabase's secure storage
+- **Error Handling**: Comprehensive error handling for authentication failures
+
+### Available Authentication Pages
+
+1. **Login**: `/login` - Admin login page
+2. **Password Reset**: `/reset-password` - Request password reset
+3. **Update Password**: `/update-password` - Update password after reset
+
+### Protected Routes
+
+All routes under `/admin/*` are protected and require admin authentication.
+
 ## Project Structure
 
 ```
@@ -197,6 +228,7 @@ src/
 │   ├── api/            # API routes
 │   └── product/[slug]/ # Dynamic product pages
 ├── components/         # Reusable UI components
+├── contexts/           # React context providers (including auth)
 ├── hooks/              # Custom React hooks
 ├── lib/                # Utility functions and types
 ├── server/             # Server-side utilities

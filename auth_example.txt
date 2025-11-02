@@ -1,0 +1,605 @@
+import React, { useState, useEffect } from 'react';
+import { AlertCircle, CheckCircle, User, Shield, LogOut } from 'lucide-react';
+
+// Supabase client implementation
+class SupabaseClient {
+  constructor(url, key) {
+    this.url = url;
+    this.key = key;
+    this.authListeners = [];
+  }
+
+  async request(endpoint, options = {}) {
+    const response = await fetch(`${this.url}${endpoint}`, {
+      ...options,
+      headers: {
+        'apikey': this.key,
+        'Authorization': `Bearer ${this.key}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+    
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Request failed');
+    return data;
+  }
+
+  auth = {
+    signUp: async ({ email, password, options = {} }) => {
+      const data = await this.request('/auth/v1/signup', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, data: options.data }),
+      });
+      return { data, error: null };
+    },
+
+    signInWithPassword: async ({ email, password }) => {
+      try {
+        const data = await this.request('/auth/v1/token?grant_type=password', {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+        });
+        localStorage.setItem('supabase_session', JSON.stringify(data));
+        this.notifyAuthListeners('SIGNED_IN', data);
+        return { data, error: null };
+      } catch (error) {
+        return { data: null, error };
+      }
+    },
+
+    signOut: async () => {
+      const session = this.getSession();
+      if (session?.access_token) {
+        await this.request('/auth/v1/logout', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+      }
+      localStorage.removeItem('supabase_session');
+      this.notifyAuthListeners('SIGNED_OUT', null);
+      return { error: null };
+    },
+
+    getSession: () => {
+      const session = localStorage.getItem('supabase_session');
+      return session ? JSON.parse(session) : null;
+    },
+
+    resetPasswordForEmail: async (email, options = {}) => {
+      try {
+        await this.request('/auth/v1/recover', {
+          method: 'POST',
+          body: JSON.stringify({ email, ...options }),
+        });
+        return { data: {}, error: null };
+      } catch (error) {
+        return { data: null, error };
+      }
+    },
+
+    onAuthStateChange: (callback) => {
+      this.authListeners.push(callback);
+      return {
+        data: {
+          subscription: {
+            unsubscribe: () => {
+              this.authListeners = this.authListeners.filter(cb => cb !== callback);
+            }
+          }
+        }
+      };
+    }
+  };
+
+  getSession() {
+    return this.auth.getSession();
+  }
+
+  notifyAuthListeners(event, session) {
+    this.authListeners.forEach(callback => callback(event, session));
+  }
+
+  from(table) {
+    return {
+      select: (columns = '*') => ({
+        eq: (column, value) => ({
+          single: async () => {
+            const session = this.auth.getSession();
+            const token = session?.access_token || this.key;
+            
+            try {
+              const response = await fetch(
+                `${this.url}/rest/v1/${table}?${column}=eq.${value}&select=${columns}`,
+                {
+                  headers: {
+                    'apikey': this.key,
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+              
+              const data = await response.json();
+              if (!response.ok) throw new Error(data.message);
+              return { data: data[0], error: null };
+            } catch (error) {
+              return { data: null, error };
+            }
+          }
+        })
+      }),
+      insert: async (values) => {
+        const session = this.auth.getSession();
+        const token = session?.access_token || this.key;
+        
+        try {
+          const response = await fetch(`${this.url}/rest/v1/${table}`, {
+            method: 'POST',
+            headers: {
+              'apikey': this.key,
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation',
+            },
+            body: JSON.stringify(values),
+          });
+          
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message);
+          return { data, error: null };
+        } catch (error) {
+          return { data: null, error };
+        }
+      }
+    };
+  }
+}
+
+const supabaseUrl = 'https://your-project.supabase.co';
+const supabaseKey = 'your-anon-key';
+const supabase = new SupabaseClient(supabaseUrl, supabaseKey);
+
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState('signin');
+  const [message, setMessage] = useState({ type: '', text: '' });
+  
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    fullName: '',
+    role: 'user'
+  });
+
+  useEffect(() => {
+    checkUser();
+    
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        fetchProfile(session.user.id);
+      } else {
+        setUser(null);
+        setProfile(null);
+      }
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
+  }, []);
+
+  const checkUser = async () => {
+    try {
+      const session = supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        await fetchProfile(session.user.id);
+      }
+    } catch (error) {
+      console.error('Error checking user:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchProfile = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      setProfile(data);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
+  const handleSignUp = async (e) => {
+    e?.preventDefault();
+    setMessage({ type: '', text: '' });
+
+    if (formData.password !== formData.confirmPassword) {
+      setMessage({ type: 'error', text: 'Passwords do not match' });
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setMessage({ type: 'error', text: 'Password must be at least 6 characters' });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.fullName,
+            role: formData.role
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([{
+            id: data.user.id,
+            email: formData.email,
+            full_name: formData.fullName,
+            role: formData.role
+          }]);
+
+        if (profileError) throw profileError;
+
+        setMessage({ 
+          type: 'success', 
+          text: 'Account created! Please check your email to verify.' 
+        });
+        setFormData({ email: '', password: '', confirmPassword: '', fullName: '', role: 'user' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message });
+    }
+  };
+
+  const handleSignIn = async (e) => {
+    e?.preventDefault();
+    setMessage({ type: '', text: '' });
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password
+      });
+
+      if (error) throw error;
+      setMessage({ type: 'success', text: 'Signed in successfully!' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message });
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e?.preventDefault();
+    setMessage({ type: '', text: '' });
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+
+      if (error) throw error;
+      setMessage({ 
+        type: 'success', 
+        text: 'Password reset email sent! Check your inbox.' 
+      });
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message });
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setMessage({ type: 'success', text: 'Signed out successfully!' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message });
+    }
+  };
+
+  const handleChange = (e) => {
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (view === 'signin') handleSignIn(e);
+    else if (view === 'signup') handleSignUp(e);
+    else if (view === 'reset') handleResetPassword(e);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-xl text-gray-600">Loading...</div>
+      </div>
+    );
+  }
+
+  if (user && profile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                {profile.role === 'admin' ? (
+                  <Shield className="w-8 h-8 text-purple-600" />
+                ) : (
+                  <User className="w-8 h-8 text-blue-600" />
+                )}
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-800">
+                    {profile.role === 'admin' ? 'Admin Dashboard' : 'User Dashboard'}
+                  </h1>
+                  <p className="text-gray-600">Welcome back, {profile.full_name}!</p>
+                </div>
+              </div>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-6 mb-6">
+              <h2 className="text-lg font-semibold mb-4 text-gray-800">Profile Information</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600">Email</p>
+                  <p className="font-medium text-gray-800">{profile.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Role</p>
+                  <p className="font-medium text-gray-800 capitalize">{profile.role}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">User ID</p>
+                  <p className="font-mono text-sm text-gray-800">{profile.id.slice(0, 8)}...</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Account Created</p>
+                  <p className="font-medium text-gray-800">
+                    {new Date(profile.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {profile.role === 'admin' && (
+              <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-6">
+                <h2 className="text-lg font-semibold mb-3 text-purple-800">Admin Features</h2>
+                <ul className="space-y-2 text-gray-700">
+                  <li>✓ Access to all user data</li>
+                  <li>✓ Manage user permissions</li>
+                  <li>✓ View system analytics</li>
+                  <li>✓ Configure application settings</li>
+                </ul>
+              </div>
+            )}
+
+            {profile.role === 'user' && (
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
+                <h2 className="text-lg font-semibold mb-3 text-blue-800">User Features</h2>
+                <ul className="space-y-2 text-gray-700">
+                  <li>✓ Manage your profile</li>
+                  <li>✓ Access your data</li>
+                  <li>✓ Update preferences</li>
+                  <li>✓ View activity history</li>
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="text-center mb-8">
+            <div className="inline-block p-3 bg-blue-100 rounded-full mb-4">
+              <Shield className="w-8 h-8 text-blue-600" />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-800">
+              {view === 'signin' && 'Sign In'}
+              {view === 'signup' && 'Create Account'}
+              {view === 'reset' && 'Reset Password'}
+            </h1>
+            <p className="text-gray-600 mt-2">
+              {view === 'signin' && 'Welcome back! Please sign in to continue.'}
+              {view === 'signup' && 'Join us today and get started.'}
+              {view === 'reset' && 'Enter your email to reset your password.'}
+            </p>
+          </div>
+
+          {message.text && (
+            <div className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${
+              message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+            }`}>
+              {message.type === 'success' ? (
+                <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              )}
+              <p className="text-sm">{message.text}</p>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {view === 'signup' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="John Doe"
+                />
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            {view === 'signup' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Role
+                </label>
+                <select
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            )}
+
+            {view !== 'reset' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="••••••••"
+                />
+              </div>
+            )}
+
+            {view === 'signup' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm Password
+                </label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="••••••••"
+                />
+              </div>
+            )}
+
+            <button
+              onClick={handleSubmit}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition"
+            >
+              {view === 'signin' && 'Sign In'}
+              {view === 'signup' && 'Create Account'}
+              {view === 'reset' && 'Send Reset Link'}
+            </button>
+          </div>
+
+          <div className="mt-6 text-center space-y-2">
+            {view === 'signin' && (
+              <>
+                <button
+                  onClick={() => setView('reset')}
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium block w-full"
+                >
+                  Forgot password?
+                </button>
+                <p className="text-gray-600 text-sm">
+                  Don't have an account?{' '}
+                  <button
+                    onClick={() => setView('signup')}
+                    className="text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Sign up
+                  </button>
+                </p>
+              </>
+            )}
+            {view === 'signup' && (
+              <p className="text-gray-600 text-sm">
+                Already have an account?{' '}
+                <button
+                  onClick={() => setView('signin')}
+                  className="text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Sign in
+                </button>
+              </p>
+            )}
+            {view === 'reset' && (
+              <p className="text-gray-600 text-sm">
+                Remember your password?{' '}
+                <button
+                  onClick={() => setView('signin')}
+                  className="text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Sign in
+                </button>
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-gray-700">
+          <p className="font-semibold mb-2">⚠️ Setup Required:</p>
+          <p>Replace the Supabase URL and key at the top of the code:</p>
+          <code className="block mt-2 bg-gray-100 p-2 rounded text-xs">
+            const supabaseUrl = 'https://your-project.supabase.co';<br/>
+            const supabaseKey = 'your-anon-key';
+          </code>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;

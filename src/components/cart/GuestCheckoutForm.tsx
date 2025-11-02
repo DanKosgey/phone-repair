@@ -9,7 +9,6 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { useCartStore } from "@/stores/cart-store"
 import { ordersDb } from "@/lib/db/orders"
-import { getSupabaseBrowserClient } from '@/server/supabase/client'
 
 interface GuestCheckoutFormProps {
   onComplete: () => void
@@ -33,10 +32,6 @@ export default function GuestCheckoutForm({ onComplete }: GuestCheckoutFormProps
       // Generate order number
       const orderNumber = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`
       
-      // Create order in database
-      const supabase = getSupabaseBrowserClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
       const orderData = {
         order_number: orderNumber,
         customer_name: name,
@@ -45,7 +40,7 @@ export default function GuestCheckoutForm({ onComplete }: GuestCheckoutFormProps
         shipping_address: address,
         total_amount: getTotalPrice(),
         status: 'pending',
-        user_id: user?.id || null
+        user_id: null
       }
       
       const order = await ordersDb.create(orderData)
@@ -122,13 +117,6 @@ export default function GuestCheckoutForm({ onComplete }: GuestCheckoutFormProps
         <CardFooter className="flex flex-col space-y-4">
           <Button className="w-full" type="submit" disabled={isLoading}>
             {isLoading ? "Processing..." : "Place Order"}
-          </Button>
-          <Button 
-            variant="outline" 
-            className="w-full" 
-            onClick={() => router.push('/register')}
-          >
-            Create Account for Faster Checkout
           </Button>
         </CardFooter>
       </form>

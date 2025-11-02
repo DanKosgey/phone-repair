@@ -1,7 +1,7 @@
 'use client'
 
-import TicketForm from "@/pages/admin/TicketForm"
+import TicketForm from "@/components/admin/tickets/TicketForm"
 
-export default function NewTicketPage() {
+export default function AdminNewTicketPage() {
   return <TicketForm />
 }

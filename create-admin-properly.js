@@ -1,7 +1,8 @@
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
 
 // Supabase configuration - using the local development URLs
-const supabaseUrl = 'http://127.0.0.1:54321';
+// Updated to use the correct API port from supabase/config.toml
+const supabaseUrl = 'http://127.0.0.1:54322';
 const supabaseKey = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
 const serviceRoleKey = 'sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz';
 

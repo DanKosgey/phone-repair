@@ -2,8 +2,29 @@
 
 import { Smartphone } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export const Footer = () => {
+  const { user, role, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    console.log('Footer: Auth state updated:', { user, role, isLoading });
+  }, [user, role, isLoading]);
+
+  const handleAdminAccess = () => {
+    console.log('Footer: Admin access button clicked', { user, role });
+    if (user && role === 'admin') {
+      console.log('Footer: Redirecting to admin dashboard');
+      router.push('/admin');
+    } else {
+      console.log('Footer: Redirecting to login');
+      router.push('/login');
+    }
+  };
+
   return (
     <footer className="border-t bg-card mt-auto">
       <div className="container mx-auto px-4 py-8">
@@ -32,6 +53,14 @@ export const Footer = () => {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/about" className="hover:text-primary">About Us</Link></li>
               <li><Link href="/contact" className="hover:text-primary">Contact</Link></li>
+              <li>
+                <button 
+                  onClick={handleAdminAccess}
+                  className="text-left hover:text-primary w-full text-sm bg-transparent border-none cursor-pointer"
+                >
+                  {isLoading ? 'Loading...' : (user && role === 'admin' ? 'Admin Dashboard' : 'Admin Login')}
+                </button>
+              </li>
             </ul>
           </div>
 

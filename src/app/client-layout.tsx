@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { QueryClientProvider } from "@tanstack/react-query"
 import { queryClient } from "@/lib/query-client"
 import { useRealtimeTickets, useRealtimeProducts, useRealtimeOrders, useRealtimeCustomers } from "@/hooks/use-realtime"
+import { AuthProvider } from '@/contexts/auth-context'
 
 // Component to handle real-time subscriptions
 const RealtimeHandler = () => {
@@ -25,13 +26,15 @@ export default function ClientLayout({
   children: React.ReactNode
 }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <RealtimeHandler />
-        {children}
-      </TooltipProvider>
-    </QueryClientProvider>
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <RealtimeHandler />
+          {children}
+        </TooltipProvider>
+      </QueryClientProvider>
+    </AuthProvider>
   )
 }

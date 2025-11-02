@@ -4,8 +4,6 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Trash2, Plus, Minus } from "lucide-react";
 import { useCartStore } from "@/stores/cart-store";
-import { useAuthStore } from "@/stores/auth-store";
-import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
@@ -13,8 +11,6 @@ import GuestCheckoutForm from "./GuestCheckoutForm";
 
 export const CartSheet = () => {
   const { items, removeItem, updateQuantity, getTotalItems, getTotalPrice, clearCart } = useCartStore();
-  const { isAuthenticated } = useAuthStore();
-  const router = useRouter();
   const { toast } = useToast();
   const [showGuestCheckout, setShowGuestCheckout] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -23,7 +19,7 @@ export const CartSheet = () => {
     setIsClient(true);
   }, []);
 
-  const handleAuthenticatedCheckout = () => {
+  const handleCheckout = () => {
     toast({
       title: "Order Placed!",
       description: "Your order has been successfully placed.",
@@ -119,24 +115,15 @@ export const CartSheet = () => {
                     <span>Total</span>
                     <span>KSh {getTotalPrice().toLocaleString()}</span>
                   </div>
-                  {isAuthenticated ? (
-                    <Button className="w-full" size="lg" onClick={handleAuthenticatedCheckout}>
-                      Checkout
+                  <div className="space-y-2">
+                    <Button 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={() => setShowGuestCheckout(true)}
+                    >
+                      Checkout as Guest
                     </Button>
-                  ) : (
-                    <div className="space-y-2">
-                      <Button className="w-full" size="lg" onClick={() => router.push("/login")}>
-                        Login to Checkout
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="w-full" 
-                        onClick={() => setShowGuestCheckout(true)}
-                      >
-                        Checkout as Guest
-                      </Button>
-                    </div>
-                  )}
+                  </div>
                 </div>
               )}
             </>
