@@ -1,66 +1,77 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { useToast } from "@/hooks/use-toast"
-import { Search, ShoppingCart, User, Star } from "lucide-react"
+import { Search } from "lucide-react"
 import Image from "next/image"
+import { secondHandProductsDb } from "@/lib/db/secondhand_products"
 
 export default function Marketplace() {
   const [searchTerm, setSearchTerm] = useState('')
-  const { toast } = useToast()
+  const [marketplaceItems, setMarketplaceItems] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock marketplace data
-  const marketplaceItems = [
-    {
-      id: 1,
-      seller: "TechGadgets Store",
-      sellerRating: 4.8,
-      itemName: "iPhone 12 Pro Max",
-      itemDescription: "Like new, 256GB, unlocked",
-      price: 85000,
-      originalPrice: 120000,
-      image: "/images/placeholder.png",
-      condition: "Excellent"
-    },
-    {
-      id: 2,
-      seller: "MobileHub",
-      sellerRating: 4.6,
-      itemName: "Samsung Galaxy S21",
-      itemDescription: "Good condition, 128GB, includes charger",
-      price: 45000,
-      originalPrice: 75000,
-      image: "/images/placeholder.png",
-      condition: "Good"
-    },
-    {
-      id: 3,
-      seller: "PhoneDeals Kenya",
-      sellerRating: 4.9,
-      itemName: "Google Pixel 6",
-      itemDescription: "Brand new, 128GB, factory sealed",
-      price: 65000,
-      originalPrice: 85000,
-      image: "/images/placeholder.png",
-      condition: "New"
+  // Fetch second-hand products from database
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true)
+        const products = await secondHandProductsDb.getAll()
+        setMarketplaceItems(products)
+        setError(null)
+      } catch (err) {
+        console.error('Error fetching second-hand products:', err)
+        setError('Failed to load marketplace items')
+      } finally {
+        setLoading(false)
+      }
     }
-  ]
+
+    fetchProducts()
+  }, [])
 
   const filteredItems = marketplaceItems.filter(item => 
-    item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.itemDescription.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.seller.toLowerCase().includes(searchTerm.toLowerCase())
+    item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.seller_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.condition?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const handleContactSeller = (item: any) => {
-    toast({
-      title: "Contact Seller",
-      description: `You can contact ${item.seller} at ${item.seller.toLowerCase().replace(/\s+/g, '')}@repairhub.com`,
-    });
+  // Get condition color
+  const getConditionColor = (condition: string) => {
+    switch (condition) {
+      case 'Like New': return 'bg-blue-100 text-blue-800'
+      case 'Good': return 'bg-green-100 text-green-800'
+      case 'Fair': return 'bg-yellow-100 text-yellow-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">{error}</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -69,7 +80,7 @@ export default function Marketplace() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Device Marketplace</h1>
           <p className="text-muted-foreground mb-6">
-            Buy and sell used electronics in our secure marketplace
+            Browse our selection of quality used electronics
           </p>
           
           <div className="relative max-w-md">
@@ -88,10 +99,10 @@ export default function Marketplace() {
             <Card key={item.id} className="flex flex-col">
               <CardHeader className="p-0">
                 <div className="aspect-square bg-muted rounded-t-lg flex items-center justify-center">
-                  {item.image ? (
+                  {item.image_url ? (
                     <Image 
-                      src={item.image} 
-                      alt={item.itemName} 
+                      src={item.image_url} 
+                      alt={item.description || "Second-hand product"} 
                       width={300}
                       height={300}
                       className="h-full w-full object-cover rounded-t-lg"
@@ -107,39 +118,28 @@ export default function Marketplace() {
               <CardContent className="flex-1 p-4">
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <CardTitle className="text-lg">{item.itemName}</CardTitle>
-                    <CardDescription>{item.itemDescription}</CardDescription>
+                    <CardTitle className="text-lg line-clamp-1">{item.description || "No description"}</CardTitle>
+                    <CardDescription className="line-clamp-2">
+                      Sold by {item.seller_name}
+                    </CardDescription>
                   </div>
-                  <Badge variant="secondary">{item.condition}</Badge>
-                </div>
-                
-                <div className="flex items-center mb-3">
-                  <User className="h-4 w-4 mr-1 text-muted-foreground" />
-                  <span className="text-sm">{item.seller}</span>
-                  <div className="flex items-center ml-2">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm ml-1">{item.sellerRating}</span>
-                  </div>
+                  <Badge className={getConditionColor(item.condition)}>
+                    {item.condition}
+                  </Badge>
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-bold text-lg text-primary">
-                      KSh {item.price.toLocaleString()}
+                      KSh {item.price?.toLocaleString() || 'N/A'}
                     </div>
-                    {item.originalPrice && (
-                      <div className="text-sm text-muted-foreground line-through">
-                        KSh {item.originalPrice.toLocaleString()}
-                      </div>
-                    )}
                   </div>
                 </div>
               </CardContent>
               <CardFooter className="p-4 pt-0">
-                <Button className="w-full" onClick={() => handleContactSeller(item)}>
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                  Contact Seller
-                </Button>
+                <div className="w-full text-center text-sm text-muted-foreground">
+                  Visit shop to purchase
+                </div>
               </CardFooter>
             </Card>
           ))}
@@ -147,7 +147,9 @@ export default function Marketplace() {
 
         {filteredItems.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No marketplace items found</p>
+            <p className="text-muted-foreground">
+              {searchTerm ? 'No marketplace items found matching your search' : 'No marketplace items available'}
+            </p>
           </div>
         )}
       </div>
