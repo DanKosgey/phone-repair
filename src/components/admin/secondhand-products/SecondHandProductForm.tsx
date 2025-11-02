@@ -22,6 +22,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select"
+import { CameraCapture } from '@/components/ui/camera'
 
 export default function SecondHandProductForm({ initialProduct = null }: { initialProduct?: any }) {
   const { user, role, isLoading: authLoading } = useAuth()
@@ -56,35 +57,43 @@ export default function SecondHandProductForm({ initialProduct = null }: { initi
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: "Error",
-          description: "Please select an image file",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "Error",
-          description: "Image size must be less than 5MB",
-          variant: "destructive",
-        })
-        return
-      }
-
-      setImageFile(file)
-      
-      // Create preview
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
+      processImageFile(file);
     }
+  }
+
+  const handleCameraCapture = (file: File) => {
+    processImageFile(file);
+  }
+
+  const processImageFile = (file: File) => {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Please select an image file",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "Image size must be less than 5MB",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setImageFile(file)
+    
+    // Create preview
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
   }
 
   const handleRemoveImage = () => {
@@ -344,28 +353,34 @@ export default function SecondHandProductForm({ initialProduct = null }: { initi
                       ×
                     </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Change Image
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Image
+                    </Button>
+                    <CameraCapture onCapture={handleCameraCapture} />
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-4">
                   <div className="border-2 border-dashed rounded-lg w-48 h-48 flex items-center justify-center">
                     <Upload className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Select Image
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Select Image
+                    </Button>
+                    <CameraCapture onCapture={handleCameraCapture} />
+                  </div>
                 </div>
               )}
               <input

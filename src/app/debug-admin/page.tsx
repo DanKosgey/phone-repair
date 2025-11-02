@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/auth-context'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import Dashboard from "@/pages/admin/Dashboard"
+import Dashboard from "@/components/admin/Dashboard"
 
 export default function DebugAdminPage() {
   const { user, role, isLoading } = useAuth()

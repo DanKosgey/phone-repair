@@ -16,6 +16,7 @@ import { getSupabaseBrowserClient } from '@/server/supabase/client'
 import { useAuth } from '@/contexts/auth-context'
 import { logger } from '@/lib/utils/logger'
 import { generateCSRFToken, storeCSRFToken, validateCSRFToken } from '@/lib/utils/csrf'
+import { CameraCapture } from '@/components/ui/camera'
 
 export default function TicketForm() {
   const { user, role, isLoading: authLoading } = useAuth()
@@ -61,6 +62,14 @@ export default function TicketForm() {
     if (!files) return;
 
     const newFiles = Array.from(files);
+    processPhotoFiles(newFiles);
+  }
+
+  const handleCameraCapture = (file: File) => {
+    processPhotoFiles([file]);
+  }
+
+  const processPhotoFiles = (newFiles: File[]) => {
     const validFiles = newFiles.filter(file => file.type.startsWith('image/'));
     
     if (validFiles.length !== newFiles.length) {
@@ -477,14 +486,19 @@ export default function TicketForm() {
                     >
                       <Upload className="h-8 w-8 text-muted-foreground" />
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      Add Photo
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        Add Photo
+                      </Button>
+                      <div className="w-24">
+                        <CameraCapture onCapture={handleCameraCapture} />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

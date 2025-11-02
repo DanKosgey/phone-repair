@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Lock } from 'lucide-react';
 import Link from 'next/link';
 
-export default function AdminLoginPage() {
+// Separate component for the login form that uses useSearchParams
+function LoginFormContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -153,5 +154,18 @@ export default function AdminLoginPage() {
         </form>
       </Card>
     </div>
+  );
+}
+
+// Main component that wraps the login form in a Suspense boundary
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <LoginFormContent />
+    </Suspense>
   );
 }

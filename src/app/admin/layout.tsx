@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { LogOut } from "lucide-react"
+import { useToast } from '@/hooks/use-toast'
 
 export default function AdminRootLayout({
   children,
@@ -14,6 +15,7 @@ export default function AdminRootLayout({
 }) {
   const { user, role, signOut, isLoading } = useAuth()
   const router = useRouter()
+  const { toast } = useToast()
   const hasRedirected = useRef(false)
 
   useEffect(() => {
@@ -51,9 +53,32 @@ export default function AdminRootLayout({
 
   const handleSignOut = async () => {
     console.log('AdminLayout: Signing out user:', user?.id);
-    await signOut();
-    console.log('AdminLayout: Sign out completed, redirecting to login');
-    router.push('/login');
+    try {
+      await signOut();
+      console.log('AdminLayout: Sign out completed, redirecting to login');
+      toast({
+        title: "Signed out",
+        description: "You have been successfully signed out.",
+      });
+      router.push('/login');
+    } catch (error: any) {
+      console.error('AdminLayout: Error during sign out:', error);
+      // Handle AuthSessionMissingError specifically
+      if (error.message === 'Auth session missing!') {
+        toast({
+          title: "Session expired",
+          description: "Your session has already expired. You have been logged out.",
+        });
+      } else {
+        toast({
+          title: "Sign out issue",
+          description: "There was a problem signing out. You have been logged out locally.",
+          variant: "destructive",
+        });
+      }
+      // Even if sign out fails, redirect to login page
+      router.push('/login');
+    }
   }
 
   // Show loading state while checking authentication

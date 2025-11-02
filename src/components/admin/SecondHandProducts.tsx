@@ -47,7 +47,8 @@ export default function AdminSecondHandProducts() {
     if (searchTerm) {
       const filtered = products.filter(product => 
         product.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        product.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.seller_name?.toLowerCase().includes(searchTerm.toLowerCase())
       )
       setFilteredProducts(filtered)
     } else {

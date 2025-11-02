@@ -12,7 +12,7 @@ interface AuthContextType {
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  refreshSession: () => Promise<void>;
+  refreshSession: () => Promise<Session | null>;
   isSessionValid: () => Promise<boolean>;
 }
 
@@ -93,6 +93,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (error) {
           logger.error('AuthProvider: Error getting session:', error.message);
+          // Handle AuthSessionMissingError specifically
+          if (error.message === 'Auth session missing!') {
+            logger.warn('AuthProvider: Auth session missing during initialization, treating as no session');
+            // Reset state cleanly
+            setUser(null);
+            setSession(null);
+            setRole(null);
+          }
         }
         
         logger.log('AuthProvider: Current session check result:', currentSession ? 'Session found' : 'No session');
@@ -218,8 +226,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       logger.log('AuthProvider: Signing out user:', user?.id);
       setIsLoading(true);
+      
+      // Check if there's an active session before attempting to sign out
+      if (!session) {
+        logger.warn('AuthProvider: No active session to sign out');
+        // Reset state even if there's no session
+        setUser(null);
+        setSession(null);
+        setRole(null);
+        return;
+      }
+      
       const { error } = await supabase.auth.signOut();
       if (error) {
+        // Handle AuthSessionMissingError specifically
+        if (error.message === 'Auth session missing!') {
+          logger.warn('AuthProvider: Auth session missing during sign out, resetting state');
+          // This is not a critical error - just reset state
+          setUser(null);
+          setSession(null);
+          setRole(null);
+          return;
+        }
         logger.error('AuthProvider: Error during sign out:', error.message);
         throw error;
       }
@@ -229,6 +257,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logger.log('AuthProvider: Sign out completed successfully');
     } catch (error: any) {
       logger.error('AuthProvider: Error signing out:', error.message);
+      // Still reset state on error to prevent UI issues
+      setUser(null);
+      setSession(null);
+      setRole(null);
       throw error;
     } finally {
       setIsLoading(false);
@@ -241,6 +273,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { data: { session: refreshedSession }, error } = await supabase.auth.refreshSession();
       
       if (error) {
+        // Handle AuthSessionMissingError specifically
+        if (error.message === 'Auth session missing!') {
+          logger.warn('AuthProvider: Auth session missing during refresh, clearing state');
+          // Reset state cleanly
+          setUser(null);
+          setSession(null);
+          setRole(null);
+          return null;
+        }
         logger.error('AuthProvider: Error during session refresh:', error.message);
         throw error;
       }
@@ -250,8 +291,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(refreshedSession.user);
         setSession(refreshedSession);
         await fetchUserRole(refreshedSession.user.id);
+        return refreshedSession;
       } else {
         logger.log('AuthProvider: No session returned from refresh');
+        return null;
       }
     } catch (error: any) {
       logger.error('AuthProvider: Error refreshing session:', error.message);
@@ -309,6 +352,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           try {
             logger.log('AuthProvider: Auto-refreshing session');
             await refreshSession();
+            logger.log('AuthProvider: Session auto-refresh completed');
           } catch (error: any) {
             logger.error('AuthProvider: Error during auto-refresh', error.message);
           }

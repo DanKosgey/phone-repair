@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Dashboard from "@/pages/admin/Dashboard"
+import Dashboard from "@/components/admin/Dashboard"
 import { useAuth } from '@/contexts/auth-context'
 
 export default function DebugDashboardPage() {
