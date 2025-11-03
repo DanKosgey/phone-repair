@@ -18,7 +18,7 @@ SELECT
   COUNT(DISTINCT user_id) as unique_customers,
   COALESCE(SUM(final_cost), 0) as total_revenue
 FROM public.tickets
-WHERE created_at >= NOW() - INTERVAL '12 months'
+WHERE created_at >= NOW() - INTERVAL '24 months'
 GROUP BY DATE_TRUNC('month', created_at)
 ORDER BY month;
 

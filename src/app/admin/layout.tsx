@@ -3,7 +3,7 @@
 import { AdminSidebar } from "@/components/layout/AdminSidebar"
 import { useAuth } from '@/contexts/auth-context'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { LogOut } from "lucide-react"
 import { useToast } from '@/hooks/use-toast'
@@ -16,38 +16,27 @@ export default function AdminRootLayout({
   const { user, role, signOut, isLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
-  const hasRedirected = useRef(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
 
   useEffect(() => {
     console.log('AdminLayout: Auth state updated in useEffect', { 
       userId: user?.id, 
       role, 
-      isLoading,
-      shouldRedirect: !isLoading && (!user || role !== 'admin')
+      isLoading
     });
     
-    // Prevent multiple redirects
-    if (hasRedirected.current) {
-      return;
-    }
-    
-    // If not loading and user is not authenticated or not admin, redirect appropriately
+    // Check authentication and redirect if needed
     if (!isLoading) {
       if (!user) {
         console.log('AdminLayout: No user authenticated, redirecting to login');
-        hasRedirected.current = true;
         router.push('/login');
       } else if (user && role !== 'admin') {
         console.log('AdminLayout: User authenticated but not admin, redirecting to home. User role:', role);
-        hasRedirected.current = true;
         router.push('/');
       } else if (user && role === 'admin') {
         console.log('AdminLayout: User authorized, rendering admin layout for user:', user.id);
-      } else {
-        console.log('AdminLayout: Unknown state', { user: !!user, role, isLoading });
+        setIsCheckingAuth(false);
       }
-    } else {
-      console.log('AdminLayout: Still loading', { user: !!user, role, isLoading });
     }
   }, [user, role, isLoading, router])
 
@@ -82,8 +71,8 @@ export default function AdminRootLayout({
   }
 
   // Show loading state while checking authentication
-  if (isLoading) {
-    console.log('AdminLayout: Showing loading state');
+  if (isLoading || isCheckingAuth) {
+    console.log('AdminLayout: Showing loading state', { isLoading, isCheckingAuth });
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -91,19 +80,9 @@ export default function AdminRootLayout({
     )
   }
 
-  // If user is not authenticated or not admin, we'll redirect in useEffect
-  if (!isLoading) {
-    if (!user) {
-      console.log('AdminLayout: No user in render check, should redirect to login');
-      // Redirect will happen in useEffect
-      return null;
-    } else if (role !== 'admin') {
-      console.log('AdminLayout: User not admin in render check, should redirect to home. Role:', role);
-      // Redirect will happen in useEffect
-      return null;
-    } else {
-      console.log('AdminLayout: User authorized in render check, showing admin layout');
-    }
+  // If user is not authenticated or not admin, don't render anything (redirect is handled in useEffect)
+  if (!user || role !== 'admin') {
+    return null;
   }
 
   console.log('AdminLayout: Rendering admin layout for authorized user:', user?.id);

@@ -42,6 +42,11 @@ function LoginFormContent() {
       }
     } else if (!authLoading && user && role !== 'admin') {
       console.log('LoginPage: User authenticated but not admin, role:', role);
+      // For non-admin users, redirect to homepage
+      if (!hasRedirected.current) {
+        hasRedirected.current = true;
+        router.push('/');
+      }
     } else if (!authLoading && !user) {
       console.log('LoginPage: No user authenticated');
     }
@@ -63,17 +68,20 @@ function LoginFormContent() {
     console.log('LoginPage: Attempting sign in for:', email);
     try {
       await signIn(email, password);
-      console.log('LoginPage: Sign in successful, redirecting to admin dashboard');
+      console.log('LoginPage: Sign in successful');
       
-      // Check if there's a redirectTo parameter
-      const redirectTo = searchParams.get('redirectTo');
-      if (redirectTo && redirectTo.startsWith('/admin')) {
-        console.log('LoginPage: Redirecting to:', redirectTo);
-        router.push(redirectTo);
-      } else {
-        console.log('LoginPage: Redirecting to default admin dashboard');
-        router.push('/admin');
-      }
+      // Small delay to ensure role is properly set
+      setTimeout(() => {
+        // Check if there's a redirectTo parameter
+        const redirectTo = searchParams.get('redirectTo');
+        if (redirectTo && redirectTo.startsWith('/admin')) {
+          console.log('LoginPage: Redirecting to:', redirectTo);
+          router.push(redirectTo);
+        } else {
+          console.log('LoginPage: Redirecting to default admin dashboard');
+          router.push('/admin');
+        }
+      }, 100);
     } catch (error: any) {
       console.error('LoginPage: Sign in failed:', error);
       console.error('LoginPage: Error stack:', error.stack);
