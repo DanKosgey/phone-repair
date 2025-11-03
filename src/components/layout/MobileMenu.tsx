@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Menu, X, Home, ShoppingCart, Smartphone, Recycle, FileSearch } from "lucide-react";
 
 const menuItems = [
@@ -25,6 +25,12 @@ export function MobileMenu() {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+        {/* Adding SheetTitle for accessibility */}
+        <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+        {/* Adding SheetDescription for accessibility */}
+        <SheetDescription className="sr-only">
+          Mobile navigation menu with links to main sections of the website
+        </SheetDescription>
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between border-b py-4">
             <Link href="/" className="flex items-center space-x-2" onClick={() => setIsOpen(false)}>

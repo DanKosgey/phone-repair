@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, ShoppingCart, Recycle, FileSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 const navItems = [
   { name: "Home", href: "/", icon: Home },
@@ -31,10 +32,15 @@ export function MobileBottomNav() {
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <item.icon
-                className={cn("h-5 w-5", isActive ? "text-primary" : "text-muted-foreground")}
-              />
-              <span className="mt-1">{item.name}</span>
+              <motion.div
+                whileTap={{ scale: 0.9 }}
+                whileHover={{ y: isActive ? 0 : -5 }}
+              >
+                <item.icon
+                  className={cn("h-5 w-5", isActive ? "text-primary" : "text-muted-foreground")}
+                />
+                <span className="mt-1">{item.name}</span>
+              </motion.div>
             </Link>
           );
         })}

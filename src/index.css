@@ -4,49 +4,49 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 0 0% 95%; /* Slightly darker background */
     --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
+    --card: 0 0% 97%; /* Slightly darker card background */
     --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
+    --popover: 0 0% 97%; /* Slightly darker popover background */
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 217 91% 60%;
+    --primary: 195 100% 55%; /* Darker primary color */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96.1%;
+    --secondary: 210 40% 90%; /* Darker secondary color */
     --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
+    --muted: 210 40% 90%; /* Darker muted background */
+    --muted-foreground: 215.4 16.3% 40%; /* Darker muted text */
+    --accent: 210 40% 90%; /* Darker accent background */
     --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84.2% 50%; /* Darker destructive color */
     --destructive-foreground: 0 0% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 217 91% 60%;
+    --border: 214.3 31.8% 85%; /* Darker border */
+    --input: 214.3 31.8% 85%; /* Darker input border */
+    --ring: 195 100% 55%; /* Darker ring color */
     --radius: 0.5rem;
     
     /* Status Colors */
-    --status-received: 217 91% 60%;
-    --status-diagnosing: 271 91% 65%;
-    --status-awaiting: 38 92% 50%;
-    --status-repairing: 48 96% 53%;
-    --status-quality: 239 84% 67%;
-    --status-ready: 142 76% 36%;
-    --status-completed: 215 16% 47%;
-    --status-cancelled: 0 84% 60%;
+    --status-received: 195 100% 55%; /* Darker light blue */
+    --status-diagnosing: 271 91% 55%; /* Darker diagnosing color */
+    --status-awaiting: 38 92% 45%; /* Darker awaiting color */
+    --status-repairing: 48 96% 48%; /* Darker repairing color */
+    --status-quality: 239 84% 60%; /* Darker quality color */
+    --status-ready: 142 76% 32%; /* Darker ready color */
+    --status-completed: 215 16% 42%; /* Darker completed color */
+    --status-cancelled: 0 84% 55%; /* Darker cancelled color */
     
     /* Priority Colors */
-    --priority-low: 215 16% 47%;
-    --priority-normal: 217 91% 60%;
-    --priority-high: 38 92% 50%;
-    --priority-urgent: 0 84% 60%;
+    --priority-low: 215 16% 42%; /* Darker low priority */
+    --priority-normal: 195 100% 55%; /* Darker normal priority */
+    --priority-high: 38 92% 45%; /* Darker high priority */
+    --priority-urgent: 0 84% 55%; /* Darker urgent priority */
     
     /* Success/Warning/Error */
-    --success: 142 76% 36%;
+    --success: 142 76% 32%; /* Darker success color */
     --success-foreground: 0 0% 100%;
-    --warning: 48 96% 53%;
+    --warning: 48 96% 48%; /* Darker warning color */
     --warning-foreground: 222.2 84% 4.9%;
-    --error: 0 84% 60%;
+    --error: 0 84% 55%; /* Darker error color */
     --error-foreground: 0 0% 100%;
     
     /* Font definitions */
@@ -60,19 +60,19 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
+    --primary: 195 100% 55%; /* Darker primary color */
     --primary-foreground: 0 0% 100%;
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 217.2 32.6% 15%; /* Darker secondary color */
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --muted: 217.2 32.6% 15%; /* Darker muted background */
+    --muted-foreground: 215 20.2% 60%; /* Darker muted text */
+    --accent: 217.2 32.6% 15%; /* Darker accent background */
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62.8% 25%; /* Darker destructive color */
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 217 91% 60%;
+    --border: 217.2 32.6% 15%; /* Darker border */
+    --input: 217.2 32.6% 15%; /* Darker input border */
+    --ring: 195 100% 55%; /* Darker ring color */
   }
 }
 
@@ -92,51 +92,51 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 0 0% 95%; /* Slightly darker background */
     --foreground: 222.2 84% 4.9%;
 
-    --card: 0 0% 100%;
+    --card: 0 0% 97%; /* Slightly darker card background */
     --card-foreground: 222.2 84% 4.9%;
 
-    --popover: 0 0% 100%;
+    --popover: 0 0% 97%; /* Slightly darker popover background */
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 195 100% 55%; /* Darker primary color */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
+    --secondary: 210 40% 90%; /* Darker secondary color */
     --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 210 40% 90%; /* Darker muted background */
+    --muted-foreground: 215.4 16.3% 40%; /* Darker muted text */
 
-    --accent: 210 40% 96.1%;
+    --accent: 210 40% 90%; /* Darker accent background */
     --accent-foreground: 222.2 47.4% 11.2%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84.2% 50%; /* Darker destructive color */
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 214.3 31.8% 85%; /* Darker border */
+    --input: 214.3 31.8% 85%; /* Darker input border */
+    --ring: 195 100% 55%; /* Darker ring color */
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 0 0% 95%; /* Darker sidebar background */
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-foreground: 240 5.3% 20%; /* Darker sidebar text */
 
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 240 5.9% 15%; /* Darker sidebar primary */
 
     --sidebar-primary-foreground: 0 0% 98%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent: 240 4.8% 90%; /* Darker sidebar accent */
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-accent-foreground: 240 5.9% 15%;
 
-    --sidebar-border: 220 13% 91%;
+    --sidebar-border: 220 13% 85%; /* Darker sidebar border */
 
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 195 100% 55%; /* Darker sidebar ring */
     
     /* Font definitions */
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
@@ -152,32 +152,32 @@ All colors MUST be HSL.
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 195 100% 55%; /* Darker primary color */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 217.2 32.6% 15%; /* Darker secondary color */
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 217.2 32.6% 15%; /* Darker muted background */
+    --muted-foreground: 215 20.2% 60%; /* Darker muted text */
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 217.2 32.6% 15%; /* Darker accent background */
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62.8% 25%; /* Darker destructive color */
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 217.2 32.6% 15%; /* Darker border */
+    --input: 217.2 32.6% 15%; /* Darker input border */
+    --ring: 195 100% 55%; /* Darker ring color */
     --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-foreground: 240 4.8% 90%;
+    --sidebar-primary: 224.3 76.3% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 240 3.7% 12%;
+    --sidebar-accent-foreground: 240 4.8% 90%;
+    --sidebar-border: 240 3.7% 12%;
+    --sidebar-ring: 195 100% 55%; /* Darker sidebar ring */
   }
 }
 
