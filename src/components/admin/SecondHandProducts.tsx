@@ -122,7 +122,7 @@ export default function AdminSecondHandProducts() {
   const fetchProducts = async () => {
     try {
       setIsLoading(true)
-      const data = await secondHandProductsDb.getAll()
+      const data = await secondHandProductsDb.getAllAdmin()
       setProducts(data)
       setFilteredProducts(data)
     } catch (error: any) {

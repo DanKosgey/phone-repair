@@ -205,7 +205,7 @@ export default function SecondHandProductForm({ initialProduct = null }: { initi
         price: Number(price),
         is_available: isAvailable,
         seller_id: user.id, // Use admin user ID as seller_id since you're the escrow
-        seller_name: "Shop Owner", // Default seller name since you're the escrow
+        seller_name: "Jay's Shop", // Default seller name since you're the escrow
         seller_email: user.email, // Use admin email
         product_id: secondHandProductRecord.id, // Use the valid product ID
         image_url: imageUrl || '' // Add image URL if available

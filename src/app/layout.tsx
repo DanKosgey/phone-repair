@@ -3,8 +3,8 @@ import '@/index.css'
 import ClientLayout from './client-layout'
 
 export const metadata: Metadata = {
-  title: 'Device Caretaker',
-  description: 'Professional phone repair service',
+  title: "Jay's Shop - Phone Repair & Services",
+  description: "Jay's Shop - Professional phone repair service and quality products",
 }
 
 export default function RootLayout({

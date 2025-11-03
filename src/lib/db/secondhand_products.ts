@@ -6,8 +6,22 @@ export type SecondHandProductInsert = Database['public']['Tables']['second_hand_
 export type SecondHandProductUpdate = Database['public']['Tables']['second_hand_products']['Update']
 
 export const secondHandProductsDb = {
-  // Get all available second-hand products
+  // Get all available second-hand products (for public marketplace)
   async getAll() {
+    const supabase = getSupabaseBrowserClient()
+    const { data, error } = await supabase
+      .from('second_hand_products')
+      .select('*')
+      .eq('is_available', true) // Only return available products
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data
+  },
+
+  // Get all second-hand products (for admin use)
+  async getAllAdmin() {
     const supabase = getSupabaseBrowserClient()
     const { data, error } = await supabase
       .from('second_hand_products')
@@ -40,6 +54,7 @@ export const secondHandProductsDb = {
       .from('second_hand_products')
       .select('*')
       .eq('condition', condition)
+      .eq('is_available', true) // Only return available products
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
     
@@ -53,6 +68,7 @@ export const secondHandProductsDb = {
     const { data, error } = await supabase
       .from('second_hand_products')
       .select('*')
+      .eq('is_available', true) // Only return available products
       .or(`seller_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })

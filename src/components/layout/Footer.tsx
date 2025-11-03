@@ -1,6 +1,6 @@
 "use client"
 
-import { Smartphone } from "lucide-react";
+import { Smartphone, Facebook, Twitter, Instagram } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
@@ -27,16 +27,24 @@ export const Footer = () => {
 
   return (
     <footer className="border-t bg-card mt-auto pb-16 lg:pb-0">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <Smartphone className="h-5 w-5 text-primary" />
-              <span className="font-bold">RepairHub</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
+          <div className="col-span-1 md:col-span-2">
+            <h3 className="text-lg font-semibold mb-4">Jay's Shop</h3>
+            <p className="text-muted-foreground mb-4">
               Professional phone repair services and quality products.
             </p>
+            <div className="flex space-x-4">
+              <a href="#" className="text-muted-foreground hover:text-foreground">
+                <Facebook className="h-5 w-5" />
+              </a>
+              <a href="#" className="text-muted-foreground hover:text-foreground">
+                <Twitter className="h-5 w-5" />
+              </a>
+              <a href="#" className="text-muted-foreground hover:text-foreground">
+                <Instagram className="h-5 w-5" />
+              </a>
+            </div>
           </div>
 
           <div>
@@ -74,8 +82,8 @@ export const Footer = () => {
           </div>
         </div>
 
-        <div className="border-t mt-8 pt-6 text-center text-sm text-muted-foreground">
-          <p>&copy; 2024 RepairHub. All rights reserved.</p>
+        <div className="border-t border-border mt-8 pt-8 text-center">
+          <p>&copy; 2024 Jay's Shop. All rights reserved.</p>
         </div>
       </div>
     </footer>

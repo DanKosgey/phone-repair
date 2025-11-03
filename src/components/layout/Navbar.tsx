@@ -26,7 +26,7 @@ export const Navbar = () => {
               >
                 <Smartphone className="h-6 w-6 text-primary" />
               </motion.div>
-              <span className="text-xl font-bold">RepairHub</span>
+              <span className="text-xl font-bold">Jay's Shop</span>
             </Link>
           </div>
 

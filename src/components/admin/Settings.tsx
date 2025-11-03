@@ -48,7 +48,7 @@ export default function Settings() {
   const { toast } = useToast()
 
   // Business Information
-  const [businessName, setBusinessName] = useState("Device Caretaker")
+  const [businessName, setBusinessName] = useState("Jay's Shop")
   const [businessEmail, setBusinessEmail] = useState("info@devicecaretaker.com")
   const [businessPhone, setBusinessPhone] = useState("+254700123456")
   const [businessAddress, setBusinessAddress] = useState("123 Tech Street, Nairobi, Kenya")

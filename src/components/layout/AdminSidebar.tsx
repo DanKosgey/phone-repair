@@ -26,7 +26,7 @@ const SidebarContent = ({ onItemClick }: { onItemClick?: () => void }) => {
         <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
           Admin Portal
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">Repair Shop Manager</p>
+        <p className="text-sm text-muted-foreground mt-1">Jay's Shop Manager</p>
       </div>
 
       <nav className="flex-1 p-4 space-y-2">

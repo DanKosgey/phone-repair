@@ -1,33 +1,63 @@
 import { Navbar } from "@/components/layout/Navbar"
 import { Footer } from "@/components/layout/Footer"
+import { Clock, Heart, ShieldCheck, Wrench } from "lucide-react"
 
 export default function AboutPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">About Us</h1>
-        <div className="prose max-w-none">
-          <p>
-            RepairHub is a leading provider of phone repair services and quality products. 
-            We've been serving our community for over 5 years with a commitment to excellence 
-            and customer satisfaction.
-          </p>
-          <h2 className="text-2xl font-semibold mt-6 mb-4">Our Mission</h2>
-          <p>
-            Our mission is to provide fast, reliable, and affordable phone repair services 
-            while offering high-quality products to extend the life of your devices.
-          </p>
-          <h2 className="text-2xl font-semibold mt-6 mb-4">Why Choose Us</h2>
-          <ul className="list-disc pl-6 space-y-2">
-            <li>Expert technicians with years of experience</li>
-            <li>90-day warranty on all repairs</li>
-            <li>Fast turnaround times</li>
-            <li>Competitive pricing</li>
-            <li>Genuine parts and accessories</li>
-          </ul>
+      <div className="bg-primary text-primary-foreground py-24">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center space-y-4">
+              <h1 className="text-4xl font-bold">About Jay's Shop</h1>
+              <p className="text-xl text-muted-foreground">
+                Your trusted partner for phone repair services and quality products.
+              </p>
+            </div>
+          </div>
         </div>
-      </main>
+      </div>
+      
+      <div className="container mx-auto px-4 py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div>
+            <h2 className="text-3xl font-bold mb-6">Our Story</h2>
+            <p className="text-lg mb-4">
+              Jay's Shop is a leading provider of phone repair services and quality products. 
+              Founded with a passion for technology and customer satisfaction, we've been serving 
+              our community for years with exceptional service.
+            </p>
+            <p className="text-lg mb-4">
+              Our mission is to provide fast, reliable, and affordable phone repair services 
+              while offering quality products that enhance your mobile experience. We believe 
+              in building lasting relationships with our customers through transparency, 
+              expertise, and genuine care.
+            </p>
+            <ul className="space-y-2 mt-6">
+              <li className="flex items-center">
+                <Wrench className="h-5 w-5 text-primary mr-2" />
+                <span>Certified technicians with years of experience</span>
+              </li>
+              <li className="flex items-center">
+                <ShieldCheck className="h-5 w-5 text-primary mr-2" />
+                <span>90-day warranty on all repairs</span>
+              </li>
+              <li className="flex items-center">
+                <Clock className="h-5 w-5 text-primary mr-2" />
+                <span>Same-day service for most repairs</span>
+              </li>
+              <li className="flex items-center">
+                <Heart className="h-5 w-5 text-primary mr-2" />
+                <span>Customer satisfaction guarantee</span>
+              </li>
+            </ul>
+          </div>
+          <div className="hidden lg:block">
+            <img src="/about.jpg" alt="About Us" className="rounded-lg shadow-lg" />
+          </div>
+        </div>
+      </div>
       <Footer />
     </div>
   )
