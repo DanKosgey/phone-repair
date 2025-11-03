@@ -131,7 +131,6 @@ export const useRealtimeOrders = () => {
           queryClient.invalidateQueries({ queryKey: queryKeys.orders.details() })
           
           // Also invalidate dashboard queries since they might be affected
-          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.orderDetails() })
           queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.metrics() })
         })
       } catch (error) {

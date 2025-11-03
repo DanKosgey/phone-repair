@@ -208,5 +208,24 @@ export const ticketsDb = {
       console.error('Error in ticketsDb.getByUserId:', error)
       throw error
     }
+  },
+
+  // Get recent tickets for dashboard
+  async getRecent(limit: number = 5) {
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('id, ticket_number, status, customer_name, device_brand, device_model, created_at')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+      
+      if (error) throw new Error(`Failed to fetch recent tickets: ${error.message}`)
+      return data
+    } catch (error) {
+      console.error('Error in ticketsDb.getRecent:', error)
+      throw error
+    }
   }
 }

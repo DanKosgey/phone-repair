@@ -34,14 +34,6 @@ export const useProductSalesSummary = () => {
   })
 }
 
-// Get order details
-export const useOrderDetails = () => {
-  return useQuery({
-    queryKey: queryKeys.dashboard.orderDetails(),
-    queryFn: () => dashboardDb.getOrderDetails(),
-  })
-}
-
 // Get monthly revenue trends
 export const useMonthlyRevenueTrends = () => {
   return useQuery({

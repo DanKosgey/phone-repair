@@ -4,6 +4,13 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { 
   BarChart3, 
   TrendingUp, 
@@ -25,11 +32,10 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { redirect } from 'next/navigation'
-import { dashboardDb } from '@/lib/db/dashboard'
+import { dashboardDb, Timeframe } from '@/lib/db/dashboard'
 import { ticketsDb } from '@/lib/db/tickets'
 import { productsDb } from '@/lib/db/products'
 import { customersDb } from '@/lib/db/customers'
-import { ordersDb } from '@/lib/db/orders'
 
 // Types
 type StatCard = {
@@ -40,7 +46,7 @@ type StatCard = {
   color: string
 }
 
-type MonthlyTicketData = {
+type TicketData = {
   name: string
   ticket_count: number
   unique_customers: number
@@ -66,18 +72,18 @@ type CustomerLifetimeValue = {
   total_lifetime_value: number
 }
 
-type YearOverYearData = {
-  month: string
-  current_year_tickets: number
-  previous_year_tickets: number
-  current_year_revenue: number
-  previous_year_revenue: number
+type PeriodOverPeriodData = {
+  period: string
+  current_period_tickets: number
+  previous_period_tickets: number
+  current_period_revenue: number
+  previous_period_revenue: number
   ticket_growth_rate: number
   revenue_growth_rate: number
 }
 
 type ForecastData = {
-  month: string
+  period: string
   predicted_tickets: number
   predicted_revenue: number
   confidence_lower: number
@@ -103,18 +109,27 @@ export default function AdminDashboard() {
   const { toast } = useToast()
   
   // State
+  const [timeframe, setTimeframe] = useState<Timeframe>(() => {
+    if (typeof window !== 'undefined') {
+      const savedTimeframe = localStorage.getItem('dashboardTimeframe');
+      if (savedTimeframe && ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'].includes(savedTimeframe)) {
+        return savedTimeframe as Timeframe;
+      }
+    }
+    return 'daily';
+  });
+
   const [stats, setStats] = useState<StatCard[]>([
     { title: "Total Revenue", value: "KSh 0", change: "+0% from last month", icon: Package, color: "bg-blue-500" },
     { title: "Tickets", value: "0", change: "+0% from last month", icon: BarChart3, color: "bg-green-500" },
     { title: "Customers", value: "0", change: "+0% from last month", icon: Users, color: "bg-orange-500" },
-    { title: "Orders", value: "0", change: "+0% from last month", icon: ShoppingCart, color: "bg-purple-500" },
   ])
   
-  const [monthlyTicketData, setMonthlyTicketData] = useState<MonthlyTicketData[]>([])
+  const [ticketData, setTicketData] = useState<TicketData[]>([])
   const [ticketStatusData, setTicketStatusData] = useState<TicketStatusData[]>([])
   const [topProducts, setTopProducts] = useState<TopProduct[]>([])
   const [customerLifetimeValue, setCustomerLifetimeValue] = useState<CustomerLifetimeValue[]>([])
-  const [yearOverYearData, setYearOverYearData] = useState<YearOverYearData[]>([])
+  const [periodOverPeriodData, setPeriodOverPeriodData] = useState<PeriodOverPeriodData[]>([])
   const [forecastData, setForecastData] = useState<ForecastData[]>([])
   const [recentTickets, setRecentTickets] = useState<RecentTicket[]>([])
   
@@ -122,7 +137,12 @@ export default function AdminDashboard() {
   const [ticketMovingAverage, setTicketMovingAverage] = useState<number[]>([])
   const [ticketTrendDirection, setTicketTrendDirection] = useState<'up' | 'down' | 'stable'>('stable')
   const [ticketVolatility, setTicketVolatility] = useState<string>('0')
+  const [ticketVariance, setTicketVariance] = useState<string>('0');
+  const [ticketCoefficientOfVariation, setTicketCoefficientOfVariation] = useState<string>('0');
+  const [ticketRollingVolatility, setTicketRollingVolatility] = useState<number[]>([]);
   const [ticketRevenueCorrelation, setTicketRevenueCorrelation] = useState<string>('0')
+  const [ticketRevenueCorrelationPValue, setTicketRevenueCorrelationPValue] = useState<string>('0');
+  const [ticketRevenueCorrelationSignificant, setTicketRevenueCorrelationSignificant] = useState<boolean>(false);
   const [ticketRegression, setTicketRegression] = useState<{slope: number, intercept: number}>({slope: 0, intercept: 0})
   
   // Loading states
@@ -145,7 +165,7 @@ export default function AdminDashboard() {
   // Fetch all dashboard data
   useEffect(() => {
     fetchDashboardData()
-  }, [])
+  }, [timeframe])
 
   const fetchDashboardData = async () => {
     try {
@@ -176,140 +196,575 @@ export default function AdminDashboard() {
       setDataLoading(prev => ({ ...prev, stats: true }))
       const data = await dashboardDb.getAdminMetrics()
       
+      // Calculate total revenue from repair and product revenue
+      const totalRevenue = (data.total_repair_revenue || 0) + (data.total_product_revenue || 0)
+      
       setStats([
         { 
           title: "Total Revenue", 
-          value: `KSh ${data.total_revenue?.toLocaleString() || '0'}`, 
+          value: `KSh ${totalRevenue.toLocaleString()}`, 
           change: "+0% from last month", 
           icon: Package, 
           color: "bg-blue-500" 
         },
         { 
           title: "Tickets", 
-          value: data.total_tickets?.toString() || '0', 
+          value: (data.tickets_completed || 0).toString(), 
           change: "+0% from last month", 
           icon: BarChart3, 
           color: "bg-green-500" 
         },
         { 
           title: "Customers", 
-          value: data.total_customers?.toString() || '0', 
+          value: (data.total_customers || 0).toString(), 
           change: "+0% from last month", 
           icon: Users, 
           color: "bg-orange-500" 
         },
-        { 
-          title: "Orders", 
-          value: data.total_orders?.toString() || '0', 
-          change: "+0% from last month", 
-          icon: ShoppingCart, 
-          color: "bg-purple-500" 
-        },
       ])
     } catch (error) {
       console.error("Failed to fetch stats:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch dashboard statistics",
+        variant: "destructive",
+      })
     } finally {
       setDataLoading(prev => ({ ...prev, stats: false }))
     }
   }
 
+  // Enhanced statistical functions
+  const calculateSimpleMovingAverage = (data: number[], period: number = 3): number[] => {
+    if (data.length === 0) return [];
+    
+    const sma: number[] = [];
+    
+    for (let i = 0; i < data.length; i++) {
+      if (i < period - 1) {
+        // For initial points, use available data
+        const slice = data.slice(0, i + 1);
+        const average = slice.reduce((sum, val) => sum + val, 0) / slice.length;
+        sma.push(average);
+      } else {
+        // For other points, use full period window
+        const slice = data.slice(i - period + 1, i + 1);
+        const average = slice.reduce((sum, val) => sum + val, 0) / period;
+        sma.push(average);
+      }
+    }
+    
+    return sma;
+  };
+
+  const calculateWeightedMovingAverage = (data: number[], weights: number[]): number[] => {
+    const wma: number[] = [];
+    const weightSum = weights.reduce((sum, w) => sum + w, 0);
+    
+    for (let i = weights.length - 1; i < data.length; i++) {
+      let weightedSum = 0;
+      for (let j = 0; j < weights.length; j++) {
+        weightedSum += data[i - j] * weights[j];
+      }
+      wma.push(weightedSum / weightSum);
+    }
+    
+    // Fill in the beginning with simple averages
+    for (let i = 0; i < weights.length - 1; i++) {
+      wma.unshift(data.slice(0, i + 1).reduce((sum, val) => sum + val, 0) / (i + 1));
+    }
+    
+    return wma;
+  };
+
+  const calculateExponentialMovingAverage = (data: number[], smoothingFactor: number = 0.3): number[] => {
+    if (data.length === 0) return [];
+    
+    const ema: number[] = [data[0]]; // First EMA is the first data point
+    
+    for (let i = 1; i < data.length; i++) {
+      const newValue = data[i] * smoothingFactor + ema[i - 1] * (1 - smoothingFactor);
+      ema.push(newValue);
+    }
+    
+    return ema;
+  };
+
+  // Enhanced exponential smoothing with different methods
+  const calculateEnhancedExponentialSmoothing = (data: number[], alpha: number = 0.3): number[] => {
+    if (data.length === 0) return [];
+    
+    // Use the database implementation for more accurate calculations
+    return dashboardDb.calculateExponentialSmoothing(data, alpha);
+  };
+
+  // Double exponential smoothing (Holt's linear trend method)
+  const calculateDoubleExponentialSmoothing = (data: number[], alpha: number = 0.3, beta: number = 0.3): { level: number[], trend: number[], forecast: number[] } => {
+    if (data.length === 0) return { level: [], trend: [], forecast: [] };
+    
+    // Use the database implementation for more accurate calculations
+    return dashboardDb.calculateDoubleExponentialSmoothing(data, alpha, beta);
+  };
+
+  // Triple exponential smoothing (Holt-Winters seasonal method)
+  const calculateTripleExponentialSmoothing = (data: number[], alpha: number = 0.3, beta: number = 0.3, gamma: number = 0.3, seasonality: number = 4): { level: number[], trend: number[], seasonal: number[], forecast: number[] } => {
+    if (data.length === 0) return { level: [], trend: [], seasonal: [], forecast: [] };
+    
+    // For simplicity, we'll implement a basic version here
+    // In practice, you might want to use the database implementation
+    
+    // Initialize components
+    const level: number[] = Array(data.length).fill(0);
+    const trend: number[] = Array(data.length).fill(0);
+    const seasonal: number[] = Array(data.length).fill(0);
+    const forecast: number[] = [];
+    
+    // Initial estimates
+    if (data.length >= seasonality * 2) {
+      // Calculate initial level and trend from first two seasons
+      let sum1 = 0, sum2 = 0;
+      for (let i = 0; i < seasonality; i++) {
+        sum1 += data[i];
+        sum2 += data[i + seasonality];
+      }
+      
+      level[seasonality - 1] = sum1 / seasonality;
+      trend[seasonality - 1] = (sum2 - sum1) / (seasonality * seasonality);
+      
+      // Calculate initial seasonal indices
+      for (let i = 0; i < seasonality; i++) {
+        seasonal[i] = data[i] / level[seasonality - 1];
+      }
+      
+      // Calculate forecasts
+      for (let i = seasonality; i < data.length; i++) {
+        // Update level
+        level[i] = alpha * (data[i] / seasonal[i - seasonality]) + (1 - alpha) * (level[i - 1] + trend[i - 1]);
+        
+        // Update trend
+        trend[i] = beta * (level[i] - level[i - 1]) + (1 - beta) * trend[i - 1];
+        
+        // Update seasonal
+        seasonal[i] = gamma * (data[i] / level[i]) + (1 - gamma) * seasonal[i - seasonality];
+        
+        // Forecast next period
+        const nextForecast = (level[i] + trend[i]) * seasonal[i - seasonality + 1];
+        forecast.push(nextForecast);
+      }
+    }
+    
+    return { level, trend, seasonal, forecast };
+  };
+
+  // Adaptive moving average (KAMA - Kaufman's Adaptive Moving Average)
+  const calculateKAMA = (data: number[], period: number = 10, fastSC: number = 2, slowSC: number = 30): number[] => {
+    if (data.length === 0) return [];
+    
+    const kama: number[] = [data[0]];
+    let volatilitySum = 0;
+    
+    // Calculate initial volatility
+    for (let i = 1; i < Math.min(period + 1, data.length); i++) {
+      volatilitySum += Math.abs(data[i] - data[i - 1]);
+    }
+    
+    const fastAlpha = 2 / (fastSC + 1);
+    const slowAlpha = 2 / (slowSC + 1);
+    
+    for (let i = 1; i < data.length; i++) {
+      // Calculate efficiency ratio (ER)
+      const change = Math.abs(data[i] - (i >= period ? data[i - period] : data[0]));
+      let volatility = 0;
+      
+      // Calculate volatility for the period
+      const start = Math.max(1, i - period + 1);
+      for (let j = start; j <= i; j++) {
+        volatility += Math.abs(data[j] - data[j - 1]);
+      }
+      
+      // Avoid division by zero
+      const er = volatility !== 0 ? change / volatility : 1;
+      
+      // Calculate smoothing constant
+      const sc = Math.pow(er * (fastAlpha - slowAlpha) + slowAlpha, 2);
+      
+      // Calculate KAMA
+      const newValue = kama[i - 1] + sc * (data[i] - kama[i - 1]);
+      kama.push(newValue);
+    }
+    
+    return kama;
+  };
+
+  // Hull Moving Average (HMA)
+  const calculateHullMA = (data: number[], period: number = 9): number[] => {
+    if (data.length === 0) return [];
+    
+    // HMA = WMA(2*WMA(n/2) - WMA(n)), sqrt(n)
+    const sqrtPeriod = Math.round(Math.sqrt(period));
+    
+    // Calculate weights for WMA
+    const createWeights = (n: number): number[] => {
+      return Array.from({ length: n }, (_, i) => i + 1);
+    };
+    
+    const wmaHalf = calculateWeightedMovingAverage(data, createWeights(Math.floor(period / 2)));
+    const wmaFull = calculateWeightedMovingAverage(data, createWeights(period));
+    
+    // Calculate 2*WMA(n/2) - WMA(n)
+    const diff: number[] = [];
+    for (let i = 0; i < data.length; i++) {
+      const val = 2 * (wmaHalf[i] || 0) - (wmaFull[i] || 0);
+      diff.push(val);
+    }
+    
+    // Apply WMA with sqrt period to the difference
+    const hma = calculateWeightedMovingAverage(diff, createWeights(sqrtPeriod));
+    
+    return hma;
+  };
+
+  // Triangular Moving Average (TMA)
+  const calculateTriangularMA = (data: number[], period: number = 10): number[] => {
+    if (data.length === 0) return [];
+    
+    // TMA is a double smoothed SMA
+    const sma1 = calculateSimpleMovingAverage(data, Math.ceil((period + 1) / 2));
+    const sma2 = calculateSimpleMovingAverage(sma1, Math.floor((period + 1) / 2));
+    
+    return sma2;
+  };
+
   const fetchChartData = async () => {
     try {
-      setDataLoading(prev => ({ ...prev, charts: true }))
+      setDataLoading(prev => ({ ...prev, charts: true }));
       
-      // Mock data for demonstration
-      // In a real implementation, you would fetch this from your database
-      const mockMonthlyData: MonthlyTicketData[] = [
-        { name: 'Jan', ticket_count: 45, unique_customers: 30, total_revenue: 120000 },
-        { name: 'Feb', ticket_count: 52, unique_customers: 35, total_revenue: 145000 },
-        { name: 'Mar', ticket_count: 48, unique_customers: 32, total_revenue: 132000 },
-        { name: 'Apr', ticket_count: 61, unique_customers: 42, total_revenue: 168000 },
-        { name: 'May', ticket_count: 55, unique_customers: 38, total_revenue: 152000 },
-        { name: 'Jun', ticket_count: 67, unique_customers: 45, total_revenue: 185000 },
-        { name: 'Jul', ticket_count: 62, unique_customers: 41, total_revenue: 172000 },
-        { name: 'Aug', ticket_count: 71, unique_customers: 48, total_revenue: 198000 },
-        { name: 'Sep', ticket_count: 68, unique_customers: 46, total_revenue: 189000 },
-        { name: 'Oct', ticket_count: 75, unique_customers: 52, total_revenue: 210000 },
-        { name: 'Nov', ticket_count: 82, unique_customers: 56, total_revenue: 235000 },
-        { name: 'Dec', ticket_count: 78, unique_customers: 53, total_revenue: 220000 },
-      ]
+      // Fetch real data from database with selected timeframe
+      const [ticketTrendData, statusData, topProducts, customerData, periodOverPeriod, forecast] = await Promise.all([
+        dashboardDb.getDailyRevenueTrends(timeframe),
+        dashboardDb.getTicketStatusDistribution(),
+        dashboardDb.getTopProductsBySales(),
+        dashboardDb.getCustomerLifetimeValue(),
+        dashboardDb.getPeriodOverPeriodComparison(timeframe),
+        dashboardDb.getForecastData(timeframe)
+      ]);
       
-      const mockStatusData: TicketStatusData[] = [
-        { status: 'Open', count: 12 },
-        { status: 'In Progress', count: 24 },
-        { status: 'Pending Parts', count: 8 },
-        { status: 'Completed', count: 45 },
-        { status: 'Cancelled', count: 3 },
-      ]
+      // Transform ticket trend data for charts
+      const transformedTicketData = ticketTrendData.map((item: any) => ({
+        name: item.period || item.date || item.month,
+        ticket_count: item.ticket_count,
+        unique_customers: item.unique_customers,
+        total_revenue: item.total_revenue
+      }));
       
-      const mockTopProducts: TopProduct[] = [
-        { name: 'Screen Replacement', total_revenue: 85000, total_quantity_sold: 34 },
-        { name: 'Battery Replacement', total_revenue: 62000, total_quantity_sold: 42 },
-        { name: 'Camera Repair', total_revenue: 48000, total_quantity_sold: 28 },
-        { name: 'Water Damage', total_revenue: 92000, total_quantity_sold: 19 },
-        { name: 'Software Repair', total_revenue: 35000, total_quantity_sold: 52 },
-      ]
+      // Transform status data
+      const transformedStatusData = statusData.map(item => ({
+        status: item.status,
+        count: item.count
+      }));
       
-      const mockCustomerData: CustomerLifetimeValue[] = [
-        { name: 'John Doe', email: 'john@example.com', total_tickets: 12, total_lifetime_value: 45000 },
-        { name: 'Jane Smith', email: 'jane@example.com', total_tickets: 8, total_lifetime_value: 32000 },
-        { name: 'Robert Johnson', email: 'robert@example.com', total_tickets: 15, total_lifetime_value: 68000 },
-        { name: 'Emily Davis', email: 'emily@example.com', total_tickets: 6, total_lifetime_value: 24000 },
-        { name: 'Michael Wilson', email: 'michael@example.com', total_tickets: 11, total_lifetime_value: 41000 },
-      ]
+      // Transform top products data
+      const transformedTopProducts = topProducts.map(item => ({
+        name: item.name,
+        total_revenue: item.total_revenue,
+        total_quantity_sold: item.total_quantity_sold
+      }));
       
-      const mockYearOverYear: YearOverYearData[] = [
-        { month: 'Jan', current_year_tickets: 45, previous_year_tickets: 38, current_year_revenue: 120000, previous_year_revenue: 98000, ticket_growth_rate: 18.4, revenue_growth_rate: 22.4 },
-        { month: 'Feb', current_year_tickets: 52, previous_year_tickets: 42, current_year_revenue: 145000, previous_year_revenue: 118000, ticket_growth_rate: 23.8, revenue_growth_rate: 22.9 },
-        { month: 'Mar', current_year_tickets: 48, previous_year_tickets: 40, current_year_revenue: 132000, previous_year_revenue: 108000, ticket_growth_rate: 20.0, revenue_growth_rate: 22.2 },
-        { month: 'Apr', current_year_tickets: 61, previous_year_tickets: 50, current_year_revenue: 168000, previous_year_revenue: 135000, ticket_growth_rate: 22.0, revenue_growth_rate: 24.4 },
-        { month: 'May', current_year_tickets: 55, previous_year_tickets: 45, current_year_revenue: 152000, previous_year_revenue: 122000, ticket_growth_rate: 22.2, revenue_growth_rate: 24.6 },
-        { month: 'Jun', current_year_tickets: 67, previous_year_tickets: 55, current_year_revenue: 185000, previous_year_revenue: 150000, ticket_growth_rate: 21.8, revenue_growth_rate: 23.3 },
-      ]
+      // Transform customer data
+      const transformedCustomerData = customerData.map(item => ({
+        name: item.name || 'Unknown',
+        email: item.email || '',
+        total_tickets: item.total_tickets,
+        total_lifetime_value: item.total_lifetime_value
+      }));
       
-      const mockForecast: ForecastData[] = [
-        { month: 'Dec', predicted_tickets: 78, predicted_revenue: 220000, confidence_lower: 195000, confidence_upper: 245000 },
-        { month: 'Jan', predicted_tickets: 85, predicted_revenue: 240000, confidence_lower: 210000, confidence_upper: 270000 },
-        { month: 'Feb', predicted_tickets: 92, predicted_revenue: 260000, confidence_lower: 225000, confidence_upper: 295000 },
-        { month: 'Mar', predicted_tickets: 88, predicted_revenue: 248000, confidence_lower: 215000, confidence_upper: 280000 },
-        { month: 'Apr', predicted_tickets: 95, predicted_revenue: 268000, confidence_lower: 235000, confidence_upper: 300000 },
-        { month: 'May', predicted_tickets: 102, predicted_revenue: 288000, confidence_lower: 250000, confidence_upper: 325000 },
-      ]
+      setTicketData(transformedTicketData);
+      setTicketStatusData(transformedStatusData);
+      setTopProducts(transformedTopProducts);
+      setCustomerLifetimeValue(transformedCustomerData);
+      setPeriodOverPeriodData(periodOverPeriod);
+      setForecastData(forecast);
       
-      // Set mock data
-      setMonthlyTicketData(mockMonthlyData)
-      setTicketStatusData(mockStatusData)
-      setTopProducts(mockTopProducts)
-      setCustomerLifetimeValue(mockCustomerData)
-      setYearOverYearData(mockYearOverYear)
-      setForecastData(mockForecast)
+      // Calculate enhanced moving averages
+      const ticketCounts = transformedTicketData.map(item => item.ticket_count);
       
-      // Calculate moving average (3-month window)
-      const movingAvg = mockMonthlyData.map((_, index) => {
-        if (index < 2) return mockMonthlyData[index].ticket_count
-        const sum = mockMonthlyData.slice(index-2, index+1).reduce((acc, curr) => acc + curr.ticket_count, 0)
-        return sum / 3
-      })
-      setTicketMovingAverage(movingAvg)
+      // Simple moving average (3-period window)
+      const simpleMovingAvg = calculateSimpleMovingAverage(ticketCounts, 3);
       
-      // Calculate trend direction (simplified)
-      const firstHalf = mockMonthlyData.slice(0, 6).reduce((acc, curr) => acc + curr.ticket_count, 0) / 6
-      const secondHalf = mockMonthlyData.slice(6).reduce((acc, curr) => acc + curr.ticket_count, 0) / 6
-      setTicketTrendDirection(secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'stable')
+      // Weighted moving average (3-period with weights [1, 2, 3])
+      const weightedMovingAvg = calculateWeightedMovingAverage(ticketCounts, [1, 2, 3]);
       
-      // Mock volatility (standard deviation)
-      setTicketVolatility('12.5')
+      // Exponential moving average
+      const exponentialMovingAvg = calculateExponentialMovingAverage(ticketCounts, 0.3);
       
-      // Mock correlation
-      setTicketRevenueCorrelation('0.85')
+      // Enhanced exponential smoothing
+      const enhancedExponentialSmooth = calculateEnhancedExponentialSmoothing(ticketCounts, 0.3);
       
-      // Mock regression
-      setTicketRegression({slope: 0.75, intercept: 42.3})
+      // Double exponential smoothing (Holt's method)
+      const doubleExponentialSmooth = calculateDoubleExponentialSmoothing(ticketCounts, 0.3, 0.3);
+      
+      // Adaptive moving average (KAMA)
+      const kama = calculateKAMA(ticketCounts, 10);
+      
+      // Hull moving average
+      const hullMA = calculateHullMA(ticketCounts, 9);
+      
+      // Triangular moving average
+      const triangularMA = calculateTriangularMA(ticketCounts, 10);
+      
+      // Combine all moving averages for the chart
+      const enhancedTicketData = transformedTicketData.map((item, index) => ({
+        ...item,
+        simple_moving_average: simpleMovingAvg[index] || 0,
+        weighted_moving_average: weightedMovingAvg[index] || 0,
+        exponential_moving_average: exponentialMovingAvg[index] || 0,
+        enhanced_exponential: enhancedExponentialSmooth[index] || 0,
+        double_exponential_level: doubleExponentialSmooth.level[index] || 0,
+        double_exponential_trend: doubleExponentialSmooth.trend[index] || 0,
+        kama: kama[index] || 0,
+        hull_ma: hullMA[index] || 0,
+        triangular_ma: triangularMA[index] || 0
+      }));
+      
+      setTicketData(enhancedTicketData);
+      setTicketMovingAverage(simpleMovingAvg);
+      
+      // Calculate trend direction using enhanced linear regression with statistical significance
+      const calculateEnhancedTrendDirection = (data: { ticket_count: number }[]): 'up' | 'down' | 'stable' => {
+        if (data.length < 3) return 'stable'; // Need at least 3 points for meaningful regression
+        
+        // Prepare data for linear regression (x: index, y: ticket_count)
+        const xValues = data.map((_, index) => index);
+        const yValues = data.map(item => item.ticket_count);
+        
+        // Use enhanced linear regression with statistical significance testing
+        const regressionResult = dashboardDb.calculateEnhancedLinearRegression(xValues, yValues);
+        
+        // Check if trend is statistically significant (p-value < 0.05)
+        const isSignificant = regressionResult.slopePValue < 0.05;
+        
+        // Determine trend based on slope and statistical significance
+        if (!isSignificant || Math.abs(regressionResult.slope) < 0.01) {
+          return 'stable'; // Not statistically significant or nearly flat trend
+        }
+        
+        return regressionResult.slope > 0 ? 'up' : 'down';
+      };
+      
+      // Calculate trend direction
+      const trendDirection = calculateEnhancedTrendDirection(transformedTicketData);
+      setTicketTrendDirection(trendDirection);
+      
+      // Enhanced volatility calculations with additional statistical measures
+      const ticketCountsForVolatility = transformedTicketData.map(item => item.ticket_count);
+      if (ticketCountsForVolatility.length > 0) {
+        // Calculate mean
+        const mean = ticketCountsForVolatility.reduce((sum, count) => sum + count, 0) / ticketCountsForVolatility.length;
+        
+        // Calculate variance and standard deviation
+        const squaredDifferences = ticketCountsForVolatility.map(count => Math.pow(count - mean, 2));
+        const variance = squaredDifferences.reduce((sum, diff) => sum + diff, 0) / ticketCountsForVolatility.length;
+        const standardDeviation = Math.sqrt(variance);
+        
+        // Standard error of the mean
+        const standardError = standardDeviation / Math.sqrt(ticketCountsForVolatility.length);
+        
+        // Coefficient of variation (standard deviation / mean)
+        const coefficientOfVariation = mean !== 0 ? (standardDeviation / mean) * 100 : 0;
+        
+        // Range (max - min)
+        const min = Math.min(...ticketCountsForVolatility);
+        const max = Math.max(...ticketCountsForVolatility);
+        const range = max - min;
+        
+        // Interquartile range (IQR)
+        const sortedData = [...ticketCountsForVolatility].sort((a, b) => a - b);
+        const q1Index = Math.floor(sortedData.length * 0.25);
+        const q3Index = Math.floor(sortedData.length * 0.75);
+        const q1 = sortedData[q1Index];
+        const q3 = sortedData[q3Index];
+        const iqr = q3 - q1;
+        
+        // Mean absolute deviation (MAD)
+        const absoluteDeviations = ticketCountsForVolatility.map(count => Math.abs(count - mean));
+        const meanAbsoluteDeviation = absoluteDeviations.reduce((sum, diff) => sum + diff, 0) / ticketCountsForVolatility.length;
+        
+        // Median absolute deviation (MAD)
+        const median = sortedData[Math.floor(sortedData.length / 2)];
+        const medianAbsoluteDeviations = ticketCountsForVolatility.map(count => Math.abs(count - median));
+        const sortedMAD = [...medianAbsoluteDeviations].sort((a, b) => a - b);
+        const medianAbsoluteDeviation = sortedMAD[Math.floor(sortedMAD.length / 2)];
+        
+        // Skewness (measure of asymmetry)
+        const skewness = ticketCountsForVolatility.length > 2 ? 
+          (ticketCountsForVolatility.reduce((sum, count) => sum + Math.pow(count - mean, 3), 0) / ticketCountsForVolatility.length) / Math.pow(standardDeviation, 3) : 0;
+        
+        // Kurtosis (measure of tailedness)
+        const kurtosis = ticketCountsForVolatility.length > 3 ? 
+          (ticketCountsForVolatility.reduce((sum, count) => sum + Math.pow(count - mean, 4), 0) / ticketCountsForVolatility.length) / Math.pow(variance, 2) - 3 : 0;
+        
+        // Set state values
+        setTicketVolatility(standardDeviation.toFixed(2));
+        setTicketVariance(variance.toFixed(2));
+        setTicketCoefficientOfVariation(coefficientOfVariation.toFixed(2));
+        
+        // Enhanced rolling volatility calculations
+        const enhancedRollingVolatility: number[] = [];
+        const rollingVariance: number[] = [];
+        const rollingSkewness: number[] = [];
+        const rollingKurtosis: number[] = [];
+        
+        for (let i = 0; i < ticketCountsForVolatility.length; i++) {
+          // Determine window size (at least 3 points, max 7 points)
+          const windowSize = Math.min(Math.max(3, Math.floor(ticketCountsForVolatility.length * 0.2)), 7);
+          const start = Math.max(0, i - Math.floor(windowSize / 2));
+          const end = Math.min(ticketCountsForVolatility.length, i + Math.floor(windowSize / 2) + 1);
+          const window = ticketCountsForVolatility.slice(start, end);
+          
+          if (window.length >= 3) {
+            // Calculate window statistics
+            const windowMean = window.reduce((sum, val) => sum + val, 0) / window.length;
+            const windowSquaredDifferences = window.map(val => Math.pow(val - windowMean, 2));
+            const windowVariance = windowSquaredDifferences.reduce((sum, diff) => sum + diff, 0) / window.length;
+            const windowStdDev = Math.sqrt(windowVariance);
+            
+            // Rolling standard deviation
+            enhancedRollingVolatility.push(windowStdDev);
+            rollingVariance.push(windowVariance);
+            
+            // Rolling skewness
+            if (windowStdDev !== 0) {
+              const windowCubedDifferences = window.map(val => Math.pow(val - windowMean, 3));
+              const windowSkewness = (windowCubedDifferences.reduce((sum, diff) => sum + diff, 0) / window.length) / Math.pow(windowStdDev, 3);
+              rollingSkewness.push(windowSkewness);
+            } else {
+              rollingSkewness.push(0);
+            }
+            
+            // Rolling kurtosis
+            if (windowVariance !== 0) {
+              const windowFourthDifferences = window.map(val => Math.pow(val - windowMean, 4));
+              const windowKurtosis = (windowFourthDifferences.reduce((sum, diff) => sum + diff, 0) / window.length) / Math.pow(windowVariance, 2) - 3;
+              rollingKurtosis.push(windowKurtosis);
+            } else {
+              rollingKurtosis.push(0);
+            }
+          } else {
+            // For small windows, use simple values
+            enhancedRollingVolatility.push(0);
+            rollingVariance.push(0);
+            rollingSkewness.push(0);
+            rollingKurtosis.push(0);
+          }
+        }
+        
+        setTicketRollingVolatility(enhancedRollingVolatility);
+        
+        // Add a console log for debugging the enhanced statistics
+        console.log('Enhanced Volatility Statistics:', {
+          mean: mean.toFixed(2),
+          variance: variance.toFixed(2),
+          standardDeviation: standardDeviation.toFixed(2),
+          standardError: standardError.toFixed(2),
+          coefficientOfVariation: coefficientOfVariation.toFixed(2),
+          range: range.toFixed(2),
+          iqr: iqr.toFixed(2),
+          meanAbsoluteDeviation: meanAbsoluteDeviation.toFixed(2),
+          medianAbsoluteDeviation: medianAbsoluteDeviation.toFixed(2),
+          skewness: skewness.toFixed(2),
+          kurtosis: kurtosis.toFixed(2)
+        });
+      }
+      
+      // Enhanced correlation analysis with statistical significance testing and confidence intervals
+      if (transformedTicketData.length >= 3) { // Need at least 3 points for meaningful correlation
+        const ticketValues = transformedTicketData.map(item => item.ticket_count);
+        const revenueValues = transformedTicketData.map(item => item.total_revenue);
+        
+        // Use enhanced correlation with statistical significance testing and confidence intervals
+        const correlationResult = dashboardDb.calculateEnhancedCorrelation(ticketValues, revenueValues);
+        
+        setTicketRevenueCorrelation(correlationResult.correlation.toFixed(4));
+        setTicketRevenueCorrelationPValue(correlationResult.pValue.toFixed(4));
+        // Consider correlation significant if p-value < 0.05
+        setTicketRevenueCorrelationSignificant(correlationResult.pValue < 0.05);
+        
+        // Log additional information for debugging
+        console.log('Enhanced Correlation Analysis:', {
+          correlation: correlationResult.correlation.toFixed(4),
+          pValue: correlationResult.pValue.toFixed(4),
+          confidenceInterval: `[${correlationResult.confidenceInterval[0].toFixed(4)}, ${correlationResult.confidenceInterval[1].toFixed(4)}]`,
+          isSignificant: correlationResult.pValue < 0.05
+        });
+      } else if (transformedTicketData.length === 2) {
+        // For exactly 2 points, calculate simple correlation
+        const ticketValues = transformedTicketData.map(item => item.ticket_count);
+        const revenueValues = transformedTicketData.map(item => item.total_revenue);
+        
+        // Calculate means
+        const ticketMean = ticketValues.reduce((sum, val) => sum + val, 0) / ticketValues.length;
+        const revenueMean = revenueValues.reduce((sum, val) => sum + val, 0) / revenueValues.length;
+        
+        // Calculate correlation coefficient
+        let numerator = 0;
+        let denomTicket = 0;
+        let denomRevenue = 0;
+        
+        for (let i = 0; i < ticketValues.length; i++) {
+          const ticketDiff = ticketValues[i] - ticketMean;
+          const revenueDiff = revenueValues[i] - revenueMean;
+          numerator += ticketDiff * revenueDiff;
+          denomTicket += Math.pow(ticketDiff, 2);
+          denomRevenue += Math.pow(revenueDiff, 2);
+        }
+        
+        const denominator = Math.sqrt(denomTicket * denomRevenue);
+        const correlation = denominator !== 0 ? numerator / denominator : 0;
+        
+        setTicketRevenueCorrelation(correlation.toFixed(4));
+        setTicketRevenueCorrelationPValue('N/A');
+        setTicketRevenueCorrelationSignificant(false);
+      } else {
+        // Not enough data points
+        setTicketRevenueCorrelation('0.0000');
+        setTicketRevenueCorrelationPValue('N/A');
+        setTicketRevenueCorrelationSignificant(false);
+      }
+      
+      // Calculate simple linear regression for trend line
+      if (transformedTicketData.length > 1) {
+        const xValues = transformedTicketData.map((_, index) => index);
+        const yValues = transformedTicketData.map(item => item.ticket_count);
+        
+        // Calculate means
+        const xMean = xValues.reduce((sum, val) => sum + val, 0) / xValues.length;
+        const yMean = yValues.reduce((sum, val) => sum + val, 0) / yValues.length;
+        
+        // Calculate slope and intercept
+        let numerator = 0;
+        let denominator = 0;
+        
+        for (let i = 0; i < xValues.length; i++) {
+          const xDiff = xValues[i] - xMean;
+          const yDiff = yValues[i] - yMean;
+          numerator += xDiff * yDiff;
+          denominator += Math.pow(xDiff, 2);
+        }
+        
+        const slope = denominator !== 0 ? numerator / denominator : 0;
+        const intercept = yMean - slope * xMean;
+        setTicketRegression({ slope: parseFloat(slope.toFixed(2)), intercept: parseFloat(intercept.toFixed(2)) });
+      }
       
     } catch (error) {
-      console.error("Failed to fetch chart data:", error)
+      console.error("Failed to fetch chart data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch dashboard chart data",
+        variant: "destructive",
+      });
     } finally {
-      setDataLoading(prev => ({ ...prev, charts: false }))
+      setDataLoading(prev => ({ ...prev, charts: false }));
     }
   }
 
@@ -317,18 +772,27 @@ export default function AdminDashboard() {
     try {
       setDataLoading(prev => ({ ...prev, tickets: true }))
       
-      // Mock recent tickets data
-      const mockTickets: RecentTicket[] = [
-        { id: '1', ticket_number: 'TKT-2023-001', status: 'completed', customer_name: 'John Doe', device_brand: 'Samsung', device_model: 'Galaxy S21', created_at: '2023-11-15' },
-        { id: '2', ticket_number: 'TKT-2023-002', status: 'in_progress', customer_name: 'Jane Smith', device_brand: 'Apple', device_model: 'iPhone 13', created_at: '2023-11-14' },
-        { id: '3', ticket_number: 'TKT-2023-003', status: 'pending_parts', customer_name: 'Robert Johnson', device_brand: 'Google', device_model: 'Pixel 6', created_at: '2023-11-13' },
-        { id: '4', ticket_number: 'TKT-2023-004', status: 'open', customer_name: 'Emily Davis', device_brand: 'Samsung', device_model: 'Galaxy Note 20', created_at: '2023-11-12' },
-        { id: '5', ticket_number: 'TKT-2023-005', status: 'completed', customer_name: 'Michael Wilson', device_brand: 'Apple', device_model: 'iPhone 12', created_at: '2023-11-11' },
-      ]
+      // Fetch real recent tickets data
+      const tickets = await ticketsDb.getRecent(5)
       
-      setRecentTickets(mockTickets)
+      const transformedTickets = tickets.map(ticket => ({
+        id: ticket.id,
+        ticket_number: ticket.ticket_number || '',
+        status: ticket.status || '',
+        customer_name: ticket.customer_name || '',
+        device_brand: ticket.device_brand || '',
+        device_model: ticket.device_model || '',
+        created_at: ticket.created_at || ''
+      }))
+      
+      setRecentTickets(transformedTickets)
     } catch (error) {
       console.error("Failed to fetch recent tickets:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch recent tickets",
+        variant: "destructive",
+      })
     } finally {
       setDataLoading(prev => ({ ...prev, tickets: false }))
     }
@@ -357,294 +821,250 @@ export default function AdminDashboard() {
     router.push('/admin/customers')
   }
 
-  const handleNewOrder = () => {
-    router.push('/admin/orders')
-  }
-
-  if (authLoading || isLoading) {
-    return <div className="flex items-center justify-center h-full">Loading dashboard...</div>
+  const handleTimeframeChange = (newTimeframe: Timeframe) => {
+    setTimeframe(newTimeframe);
+    // Save to localStorage for persistence
+    localStorage.setItem('dashboardTimeframe', newTimeframe);
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Admin Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Welcome back, {user?.email?.split('@')[0] || 'Admin'}. Here's what's happening today.
-          </p>
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+            <p className="text-muted-foreground">Monitor and manage your business metrics</p>
+          </div>
+          
+          {/* Timeframe Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Timeframe:</span>
+            <Select value={timeframe} onValueChange={(value) => handleTimeframeChange(value as Timeframe)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select timeframe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="quarterly">Quarterly</SelectItem>
+                <SelectItem value="yearly">Yearly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Generate Report
-          </Button>
-        </div>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, index) => (
-          <Card key={index} className="hover:shadow-md transition-all duration-300 border-l-4 border-l-blue-500">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {stat.title}
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {stats.map((stat, index) => (
+            <Card key={index} className="shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                <stat.icon className={`h-5 w-5 ${stat.color.replace('bg-', 'text-')}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+                <p className="text-xs text-muted-foreground">{stat.change}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Ticket Trends
               </CardTitle>
-              <div className={`p-2 rounded-lg ${stat.color} bg-opacity-20`}>
-                <stat.icon className={`h-4 w-4 ${stat.color.replace('bg-', 'text-')}`} />
-              </div>
+              <CardDescription>
+                Ticket volume trends over time
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground flex items-center mt-1">
-                <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
-                {stat.change} from last month
-              </p>
+            <CardContent className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={ticketData}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))', 
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: '0.5rem'
+                    }} 
+                    formatter={(value, name) => {
+                      if (name === 'ticket_count') return [value, 'Tickets'];
+                      if (name === 'unique_customers') return [value, 'Customers'];
+                      if (name === 'total_revenue') return [`KSh ${value.toLocaleString()}`, 'Revenue'];
+                      return [value, name];
+                    }}
+                  />
+                  <Bar dataKey="ticket_count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Tickets" />
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
-        ))}
-      </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              Monthly Tickets Overview
-            </CardTitle>
-            <CardDescription>
-              Ticket volume trends over the past year
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyTicketData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--background))', 
-                    borderColor: 'hsl(var(--border))',
-                    borderRadius: '0.5rem'
-                  }} 
-                  formatter={(value, name) => {
-                    if (name === 'ticket_count') return [value, 'Tickets'];
-                    if (name === 'unique_customers') return [value, 'Customers'];
-                    if (name === 'total_revenue') return [`KSh ${value.toLocaleString()}`, 'Revenue'];
-                    return [value, name];
-                  }}
-                />
-                <Bar dataKey="ticket_count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Tickets" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Ticket Volume Analysis
+              </CardTitle>
+              <CardDescription>
+                Statistical analysis of ticket volume trends with enhanced moving averages
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={ticketData}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))', 
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: '0.5rem'
+                    }} 
+                    formatter={(value, name) => {
+                      if (name === 'ticket_count') return [value, 'Tickets'];
+                      if (name === 'simple_moving_average') return [typeof value === 'number' ? value.toFixed(2) : value, 'Simple MA'];
+                      if (name === 'weighted_moving_average') return [typeof value === 'number' ? value.toFixed(2) : value, 'Weighted MA'];
+                      if (name === 'exponential_moving_average') return [typeof value === 'number' ? value.toFixed(2) : value, 'Exponential MA'];
+                      return [value, name];
+                    }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="ticket_count" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={2} 
+                    dot={{ r: 4 }} 
+                    activeDot={{ r: 6 }} 
+                    name="Ticket Volume" 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="simple_moving_average" 
+                    stroke="hsl(var(--secondary))" 
+                    strokeWidth={2} 
+                    strokeDasharray="5 5" 
+                    name="Simple Moving Average" 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="weighted_moving_average" 
+                    stroke="hsl(var(--accent))" 
+                    strokeWidth={2} 
+                    name="Weighted Moving Average" 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="exponential_moving_average" 
+                    stroke="hsl(var(--destructive))" 
+                    strokeWidth={2} 
+                    strokeDasharray="3 3" 
+                    name="Exponential Moving Average" 
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
 
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              Ticket Volume Analysis
-            </CardTitle>
-            <CardDescription>
-              Statistical analysis of ticket volume trends
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyTicketData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--background))', 
-                    borderColor: 'hsl(var(--border))',
-                    borderRadius: '0.5rem'
-                  }} 
-                  formatter={(value, name) => {
-                    if (name === 'ticket_count') return [value, 'Tickets'];
-                    if (name === 'moving_average') return [value, 'Moving Average'];
-                    return [value, name];
-                  }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="ticket_count" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={2} 
-                  dot={{ r: 4 }} 
-                  activeDot={{ r: 6 }} 
-                  name="Ticket Volume" 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="moving_average" 
-                  stroke="hsl(var(--secondary))" 
-                  strokeWidth={2} 
-                  strokeDasharray="5 5" 
-                  name="3-Month Average" 
-                  data={monthlyTicketData.map((d, i) => ({
-                    ...d,
-                    moving_average: ticketMovingAverage[i] || 0
-                  }))}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Charts Section Continued */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PieChart className="h-5 w-5 text-primary" />
+                Ticket Status Distribution
+              </CardTitle>
+              <CardDescription>
+                Current distribution of ticket statuses
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPieChart>
+                  <Pie
+                    data={ticketStatusData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={true}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="count"
+                    label={({ status, count }) => `${status}: ${count}`}
+                  >
+                    {ticketStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))', 
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: '0.5rem'
+                    }} 
+                  />
+                  <Legend />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-      {/* Charts Section Continued */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PieChart className="h-5 w-5 text-primary" />
-              Ticket Status Distribution
-            </CardTitle>
-            <CardDescription>
-              Current distribution of ticket statuses
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsPieChart>
-                <Pie
-                  data={ticketStatusData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={true}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="count"
-                  label={({ status, count }) => `${status}: ${count}`}
-                >
-                  {ticketStatusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--background))', 
-                    borderColor: 'hsl(var(--border))',
-                    borderRadius: '0.5rem'
-                  }} 
-                />
-                <Legend />
-              </RechartsPieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
+                Top Selling Products
+              </CardTitle>
+              <CardDescription>
+                Best performing products by revenue
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topProducts} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis type="number" />
+                  <YAxis 
+                    type="category" 
+                    dataKey="name" 
+                    width={150}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))', 
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: '0.5rem'
+                    }} 
+                    formatter={(value, name) => {
+                      if (name === 'total_revenue') return [`KSh ${value.toLocaleString()}`, 'Revenue'];
+                      if (name === 'total_quantity_sold') return [value, 'Quantity Sold'];
+                      return [value, name];
+                    }}
+                    labelFormatter={(value) => `Product: ${value}`}
+                  />
+                  <Bar 
+                    dataKey="total_revenue" 
+                    fill="hsl(var(--primary))" 
+                    name="Revenue" 
+                    radius={[0, 4, 4, 0]} 
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
 
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-primary" />
-              Top Selling Products
-            </CardTitle>
-            <CardDescription>
-              Best performing products by revenue
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topProducts} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis type="number" />
-                <YAxis 
-                  type="category" 
-                  dataKey="name" 
-                  width={150}
-                  tick={{ fontSize: 12 }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--background))', 
-                    borderColor: 'hsl(var(--border))',
-                    borderRadius: '0.5rem'
-                  }} 
-                  formatter={(value, name) => {
-                    if (name === 'total_revenue') return [`KSh ${value.toLocaleString()}`, 'Revenue'];
-                    if (name === 'total_quantity_sold') return [value, 'Quantity Sold'];
-                    return [value, name];
-                  }}
-                  labelFormatter={(value) => `Product: ${value}`}
-                />
-                <Bar 
-                  dataKey="total_revenue" 
-                  fill="hsl(var(--primary))" 
-                  name="Revenue" 
-                  radius={[0, 4, 4, 0]} 
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Section Continued */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary" />
-              Customer Lifetime Value
-            </CardTitle>
-            <CardDescription>
-              Top customers by total lifetime value
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  type="number" 
-                  dataKey="total_tickets" 
-                  name="Tickets" 
-                  label={{ value: 'Tickets', position: 'insideBottom', offset: -5 }} 
-                />
-                <YAxis 
-                  type="number" 
-                  dataKey="total_lifetime_value" 
-                  name="Lifetime Value" 
-                  tickFormatter={(value) => `KSh ${value?.toLocaleString()}`} 
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--background))', 
-                    borderColor: 'hsl(var(--border))',
-                    borderRadius: '0.5rem'
-                  }} 
-                  formatter={(value, name) => {
-                    if (name === 'total_lifetime_value') return [`KSh ${value?.toLocaleString()}`, 'Lifetime Value'];
-                    if (name === 'total_tickets') return [value, 'Tickets'];
-                    return [value, name];
-                  }}
-                  labelFormatter={(value, payload) => {
-                    const data = payload[0]?.payload;
-                    return data?.name || data?.email || 'Customer';
-                  }}
-                />
-                <Scatter 
-                  name="Customers" 
-                  data={customerLifetimeValue} 
-                  fill="hsl(var(--primary))" 
-                >
-                  {customerLifetimeValue.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index < 3 ? '#ef4444' : 'hsl(var(--primary))'} />
-                  ))}
-                </Scatter>
-              </ScatterChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
+        {/* Statistical Insights */}
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -671,275 +1091,288 @@ export default function AdminDashboard() {
                 </div>
                 <div className="bg-primary/10 p-4 rounded-lg">
                   <h3 className="font-semibold text-primary">Volume Volatility</h3>
-                  <p className="text-2xl font-bold mt-2">
-                    {ticketVolatility}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Standard deviation
-                  </p>
+                  <p className="text-2xl font-bold mt-2">{ticketVolatility}</p>
+                  <p className="text-sm text-muted-foreground">Standard Deviation</p>
                 </div>
                 <div className="bg-primary/10 p-4 rounded-lg">
-                  <h3 className="font-semibold text-primary">Ticket-Revenue Correlation</h3>
-                  <p className="text-2xl font-bold mt-2">
-                    {ticketRevenueCorrelation}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Correlation coefficient
-                  </p>
+                  <h3 className="font-semibold text-primary">Coefficient of Variation</h3>
+                  <p className="text-2xl font-bold mt-2">{ticketCoefficientOfVariation}%</p>
+                  <p className="text-sm text-muted-foreground">Volatility Relative to Mean</p>
                 </div>
                 <div className="bg-primary/10 p-4 rounded-lg">
-                  <h3 className="font-semibold text-primary">Trend Line</h3>
-                  <p className="text-2xl font-bold mt-2">
-                    {ticketRegression.slope > 0 ? '↗️' : ticketRegression.slope < 0 ? '↘️' : '➡️'}
-                  </p>
+                  <h3 className="font-semibold text-primary">Tickets vs Revenue Correlation</h3>
+                  <p className="text-2xl font-bold mt-2">{ticketRevenueCorrelation}</p>
                   <p className="text-sm text-muted-foreground">
-                    Slope: {ticketRegression.slope}
+                    {ticketRevenueCorrelationPValue !== 'N/A' ? `p-value: ${ticketRevenueCorrelationPValue}` : 'Correlation'}
+                    {ticketRevenueCorrelationSignificant && ticketRevenueCorrelationPValue !== 'N/A' && ' (significant)'}
                   </p>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Year-over-Year and Forecast Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              Year-Over-Year Comparison
-            </CardTitle>
-            <CardDescription>
-              Ticket and revenue growth compared to previous year
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={yearOverYearData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="month" />
-                <YAxis yAxisId="left" orientation="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--background))', 
-                    borderColor: 'hsl(var(--border))',
-                    borderRadius: '0.5rem'
-                  }} 
-                  formatter={(value, name) => {
-                    if (name === 'current_year_tickets' || name === 'previous_year_tickets') {
-                      return [value, 'Tickets'];
-                    }
-                    if (name === 'current_year_revenue' || name === 'previous_year_revenue') {
-                      return [`KSh ${value.toLocaleString()}`, 'Revenue'];
-                    }
-                    if (name === 'ticket_growth_rate' || name === 'revenue_growth_rate') {
-                      return [`${value}%`, 'Growth Rate'];
-                    }
-                    return [value, name];
-                  }}
-                />
-                <Legend />
-                <Bar 
-                  yAxisId="left"
-                  dataKey="current_year_tickets" 
-                  fill="hsl(var(--primary))" 
-                  name="Current Year Tickets" 
-                  radius={[4, 4, 0, 0]} 
-                />
-                <Bar 
-                  yAxisId="left"
-                  dataKey="previous_year_tickets" 
-                  fill="hsl(var(--secondary))" 
-                  name="Previous Year Tickets" 
-                  radius={[4, 4, 0, 0]} 
-                />
-                <Line 
-                  yAxisId="right"
-                  type="monotone" 
-                  dataKey="ticket_growth_rate" 
-                  stroke="hsl(var(--accent-foreground))" 
-                  strokeWidth={2} 
-                  dot={{ r: 4 }} 
-                  activeDot={{ r: 6 }} 
-                  name="Ticket Growth %" 
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {/* Period-over-Period and Forecast Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                Period-over-Period Comparison
+              </CardTitle>
+              <CardDescription>
+                Ticket and revenue growth compared to previous period
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={periodOverPeriodData}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="period" />
+                  <YAxis yAxisId="left" orientation="left" />
+                  <YAxis yAxisId="right" orientation="right" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))', 
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: '0.5rem'
+                    }} 
+                    formatter={(value, name) => {
+                      if (name === 'current_period_tickets' || name === 'previous_period_tickets') {
+                        return [value, 'Tickets'];
+                      }
+                      if (name === 'current_period_revenue' || name === 'previous_period_revenue') {
+                        return [`KSh ${value.toLocaleString()}`, 'Revenue'];
+                      }
+                      if (name === 'ticket_growth_rate' || name === 'revenue_growth_rate') {
+                        return [`${value}%`, 'Growth Rate'];
+                      }
+                      return [value, name];
+                    }}
+                  />
+                  <Legend />
+                  <Bar 
+                    yAxisId="left"
+                    dataKey="current_period_tickets" 
+                    fill="hsl(var(--primary))" 
+                    name="Current Period Tickets" 
+                    radius={[4, 4, 0, 0]} 
+                  />
+                  <Bar 
+                    yAxisId="left"
+                    dataKey="previous_period_tickets" 
+                    fill="hsl(var(--secondary))" 
+                    name="Previous Period Tickets" 
+                    radius={[4, 4, 0, 0]} 
+                  />
+                  <Line 
+                    yAxisId="right"
+                    type="monotone" 
+                    dataKey="ticket_growth_rate" 
+                    stroke="hsl(var(--accent-foreground))" 
+                    strokeWidth={2} 
+                    dot={{ r: 4 }} 
+                    activeDot={{ r: 6 }} 
+                    name="Ticket Growth %" 
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              Forecast Analysis
-            </CardTitle>
-            <CardDescription>
-              Predicted ticket volumes and revenue for next 6 months
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={forecastData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--background))', 
-                    borderColor: 'hsl(var(--border))',
-                    borderRadius: '0.5rem'
-                  }} 
-                  formatter={(value, name) => {
-                    if (name === 'predicted_tickets') return [value, 'Predicted Tickets'];
-                    if (name === 'predicted_revenue') return [`KSh ${value.toLocaleString()}`, 'Predicted Revenue'];
-                    if (name === 'confidence_lower' || name === 'confidence_upper') return [value, 'Confidence Interval'];
-                    return [value, name];
-                  }}
-                />
-                <Legend />
-                <Area 
-                  type="monotone" 
-                  dataKey="confidence_lower" 
-                  stroke="none" 
-                  fill="hsl(var(--primary))" 
-                  fillOpacity={0.1} 
-                  name="Lower Confidence"
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="confidence_upper" 
-                  stroke="none" 
-                  fill="hsl(var(--primary))" 
-                  fillOpacity={0.1} 
-                  name="Upper Confidence"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="predicted_tickets" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={2} 
-                  dot={{ r: 4 }} 
-                  activeDot={{ r: 6 }} 
-                  name="Predicted Tickets" 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="predicted_revenue" 
-                  stroke="hsl(var(--secondary))" 
-                  strokeWidth={2} 
-                  dot={{ r: 4 }} 
-                  activeDot={{ r: 6 }} 
-                  name="Predicted Revenue (KSh)" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Forecast Analysis
+              </CardTitle>
+              <CardDescription>
+                Predicted ticket volumes and revenue
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={forecastData}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="period" />
+                  <YAxis />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))', 
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: '0.5rem'
+                    }} 
+                    formatter={(value, name) => {
+                      if (name === 'predicted_tickets') return [value, 'Predicted Tickets'];
+                      if (name === 'predicted_revenue') return [`KSh ${value.toLocaleString()}`, 'Predicted Revenue'];
+                      if (name === 'confidence_lower' || name === 'confidence_upper') return [value, 'Confidence Interval'];
+                      return [value, name];
+                    }}
+                  />
+                  <Legend />
+                  <Area 
+                    type="monotone" 
+                    dataKey="confidence_lower" 
+                    stroke="none" 
+                    fill="hsl(var(--primary))" 
+                    fillOpacity={0.1} 
+                    name="Lower Confidence"
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="confidence_upper" 
+                    stroke="none" 
+                    fill="hsl(var(--primary))" 
+                    fillOpacity={0.1} 
+                    name="Upper Confidence"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="predicted_tickets" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={2} 
+                    dot={{ r: 4 }} 
+                    activeDot={{ r: 6 }} 
+                    name="Predicted Tickets" 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="predicted_revenue" 
+                    stroke="hsl(var(--secondary))" 
+                    strokeWidth={2} 
+                    dot={{ r: 4 }} 
+                    activeDot={{ r: 6 }} 
+                    name="Predicted Revenue (KSh)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Recent Tickets and Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
-              Recent Tickets
-            </CardTitle>
-            <CardDescription>
-              Latest repair tickets and their status
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentTickets.length === 0 ? (
-                <div className="text-center py-8">
-                  <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-muted-foreground">No tickets found</p>
-                </div>
-              ) : (
-                recentTickets.map((ticket) => (
-                  <div key={ticket.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent/50 transition-colors">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{ticket.ticket_number}</p>
-                        <Badge className={getStatusColor(ticket.status)} variant="secondary">
-                          {ticket.status.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {ticket.customer_name} • {ticket.device_brand} {ticket.device_model}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Created: {new Date(ticket.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => router.push(`/admin/tickets/${ticket.id}`)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
+        {/* Recent Tickets and Quick Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-primary" />
+                Recent Tickets
+              </CardTitle>
+              <CardDescription>
+                Latest repair tickets and their status
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentTickets.length === 0 ? (
+                  <div className="text-center py-8">
+                    <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-muted-foreground">No tickets found</p>
                   </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                ) : (
+                  recentTickets.map((ticket) => (
+                    <div key={ticket.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent/50 transition-colors">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{ticket.ticket_number}</p>
+                          <Badge className={getStatusColor(ticket.status)} variant="secondary">
+                            {ticket.status.replace('_', ' ')}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {ticket.customer_name} • {ticket.device_brand} {ticket.device_model}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Created: {new Date(ticket.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => router.push(`/admin/tickets/${ticket.id}`)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5 text-primary" />
-              Quick Actions
-            </CardTitle>
-            <CardDescription>
-              Common tasks you can perform quickly
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <Button 
-              variant="outline" 
-              className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
-              onClick={handleNewTicket}
-            >
-              <div className="p-2 bg-blue-500/10 rounded-full">
-                <Wrench className="h-5 w-5 text-blue-500" />
-              </div>
-              <span>New Ticket</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
-              onClick={handleAddProduct}
-            >
-              <div className="p-2 bg-green-500/10 rounded-full">
-                <Package className="h-5 w-5 text-green-500" />
-              </div>
-              <span>Add Product</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
-              onClick={handleNewCustomer}
-            >
-              <div className="p-2 bg-orange-500/10 rounded-full">
-                <Users className="h-5 w-5 text-orange-500" />
-              </div>
-              <span>New Customer</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
-              onClick={handleNewOrder}
-            >
-              <div className="p-2 bg-purple-500/10 rounded-full">
-                <ShoppingCart className="h-5 w-5 text-purple-500" />
-              </div>
-              <span>New Order</span>
-            </Button>
-          </CardContent>
-        </Card>
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="h-5 w-5 text-primary" />
+                Quick Actions
+              </CardTitle>
+              <CardDescription>
+                Common tasks you can perform quickly
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4">
+              <Button 
+                variant="outline" 
+                className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
+                onClick={handleNewTicket}
+              >
+                <div className="p-2 bg-blue-500/10 rounded-full">
+                  <Wrench className="h-5 w-5 text-blue-500" />
+                </div>
+                <span>New Ticket</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
+                onClick={handleAddProduct}
+              >
+                <div className="p-2 bg-green-500/10 rounded-full">
+                  <Package className="h-5 w-5 text-green-500" />
+                </div>
+                <span>Add Product</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
+                onClick={handleNewCustomer}
+              >
+                <div className="p-2 bg-orange-500/10 rounded-full">
+                  <Users className="h-5 w-5 text-orange-500" />
+                </div>
+                <span>New Customer</span>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )
 }
+
+// Enhanced correlation calculation using database function
+// This function is kept for backward compatibility but delegates to the database implementation
+const calculatePearsonCorrelation = (x: number[], y: number[]): { correlation: number, pValue: number } => {
+  if (x.length !== y.length || x.length < 2) {
+    return { correlation: 0, pValue: 1 };
+  }
+  
+  // Use the enhanced correlation function from the database
+  const result = dashboardDb.calculateEnhancedCorrelation(x, y);
+  return { correlation: result.correlation, pValue: result.pValue };
+};
+
+// Simple approximation of cumulative normal distribution
+const cumulativeNormalDistribution = (x: number): number => {
+  // Approximation using Abramowitz and Stegun formula
+  const a1 = 0.31938153;
+  const a2 = -0.356563782;
+  const a3 = 1.781477937;
+  const a4 = -1.821255978;
+  const a5 = 1.330274429;
+  
+  const p = 0.2316419;
+  const sign = x < 0 ? -1 : 1;
+  const absX = Math.abs(x);
+  
+  const t = 1.0 / (1.0 + p * absX);
+  const polynomial = a1 + t * (a2 + t * (a3 + t * (a4 + t * a5)));
+  const y = 1.0 - (1.0 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * absX * absX) * t * polynomial;
+  
+  return sign === 1 ? y : 1 - y;
+};

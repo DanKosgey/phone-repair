@@ -6,17 +6,14 @@
 - `/` - Home page
 - `/about` - About page
 - `/contact` - Contact page
-- `/login` - Login page
-- `/products` - Products page
+- `/login` - User login
 - `/marketplace` - Marketplace page
+- `/products` - Products page
 - `/track` - Track ticket page
-- `/reset-password` - Reset password page
-- `/update-password` - Update password page
 
 ### Admin Routes
 - `/admin` - Admin dashboard (redirects to /admin/dashboard)
 - `/admin/customers` - Customer management
-- `/admin/orders` - Order management
 - `/admin/products` - Product management
 - `/admin/settings` - System settings
 - `/admin/tickets` - Ticket management (main list)
@@ -34,7 +31,6 @@
 ### Admin Routes
 - `/admin/dashboard` - Admin dashboard
 - `/admin/customers` - Customer management
-- `/admin/orders` - Order management
 - `/admin/products` - Product management
 - `/admin/settings` - System settings
 - `/admin/tickets` - Ticket management (main list)

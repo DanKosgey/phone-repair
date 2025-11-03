@@ -10,17 +10,17 @@ FROM public.tickets
 GROUP BY status
 ORDER BY count DESC;
 
--- Materialized view for monthly ticket trends
-CREATE MATERIALIZED VIEW public.monthly_ticket_trends AS
+-- Materialized view for daily ticket trends (replacing monthly_ticket_trends)
+CREATE MATERIALIZED VIEW public.daily_ticket_trends AS
 SELECT 
-  DATE_TRUNC('month', created_at) as month,
+  DATE(created_at) as date,
   COUNT(*) as ticket_count,
   COUNT(DISTINCT user_id) as unique_customers,
   COALESCE(SUM(final_cost), 0) as total_revenue
 FROM public.tickets
-WHERE created_at >= NOW() - INTERVAL '24 months'
-GROUP BY DATE_TRUNC('month', created_at)
-ORDER BY month;
+WHERE created_at >= NOW() - INTERVAL '90 days'
+GROUP BY DATE(created_at)
+ORDER BY date;
 
 -- Materialized view for top products by sales
 CREATE MATERIALIZED VIEW public.top_products_by_sales AS
@@ -73,7 +73,7 @@ ORDER BY total_inventory_value DESC;
 
 -- Create indexes on materialized views for better performance
 CREATE INDEX idx_ticket_status_distribution_status ON public.ticket_status_distribution(status);
-CREATE INDEX idx_monthly_ticket_trends_month ON public.monthly_ticket_trends(month);
+CREATE INDEX idx_daily_ticket_trends_date ON public.daily_ticket_trends(date);
 CREATE INDEX idx_top_products_by_sales_category ON public.top_products_by_sales(category);
 CREATE INDEX idx_customer_lifetime_value_value ON public.customer_lifetime_value(total_lifetime_value);
 CREATE INDEX idx_inventory_status_category ON public.inventory_status(category);
@@ -83,7 +83,7 @@ CREATE OR REPLACE FUNCTION public.refresh_dashboard_materialized_views()
 RETURNS VOID AS $$
 BEGIN
   REFRESH MATERIALIZED VIEW public.ticket_status_distribution;
-  REFRESH MATERIALIZED VIEW public.monthly_ticket_trends;
+  REFRESH MATERIALIZED VIEW public.daily_ticket_trends;
   REFRESH MATERIALIZED VIEW public.top_products_by_sales;
   REFRESH MATERIALIZED VIEW public.customer_lifetime_value;
   REFRESH MATERIALIZED VIEW public.inventory_status;
@@ -92,7 +92,7 @@ $$ LANGUAGE plpgsql;
 
 -- Grant SELECT permissions on materialized views
 GRANT SELECT ON public.ticket_status_distribution TO authenticated;
-GRANT SELECT ON public.monthly_ticket_trends TO authenticated;
+GRANT SELECT ON public.daily_ticket_trends TO authenticated;
 GRANT SELECT ON public.top_products_by_sales TO authenticated;
 GRANT SELECT ON public.customer_lifetime_value TO authenticated;
 GRANT SELECT ON public.inventory_status TO authenticated;

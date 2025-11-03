@@ -43,7 +43,6 @@ export const queryKeys = {
     ticketSummary: () => ['dashboard', 'ticketSummary'] as const,
     customerSummary: () => ['dashboard', 'customerSummary'] as const,
     productSalesSummary: () => ['dashboard', 'productSalesSummary'] as const,
-    orderDetails: () => ['dashboard', 'orderDetails'] as const,
     monthlyRevenueTrends: () => ['dashboard', 'monthlyRevenueTrends'] as const,
     ticketStatusDistribution: () => ['dashboard', 'ticketStatusDistribution'] as const,
     topProductsBySales: () => ['dashboard', 'topProductsBySales'] as const,

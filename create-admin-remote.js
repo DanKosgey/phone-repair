@@ -1,36 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Load environment variables
-import dotenv from 'dotenv';
-dotenv.config();
-
-// Supabase configuration - using the remote development URLs from .env
+// Supabase configuration - using the remote database URLs
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://sefirznxgiymfkegdtgh.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZmlyem54Z2l5bWZrZWdkdGdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3OTIyMjksImV4cCI6MjA3NjM2ODIyOX0.IyIP9KX8xqseIgdKg4QOGTDC-znphm927rQQjnf5g6I';
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZmlyem54Z2l5bWZrZWdkdGdoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDc5MjIyOSwiZXhwIjoyMDc2MzY4MjI5fQ.CmX4F3fXvJ0F3fXvJ0F3fXvJ0F3fXvJ0F3fXvJ0F3fX';
 
 console.log('Supabase URL:', supabaseUrl);
-console.log('Anon Key exists:', !!supabaseKey);
-console.log('Service Role Key exists:', !!serviceRoleKey);
-
-// Check if we have the required configuration
-if (!supabaseUrl) {
-  console.error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
-  process.exit(1);
-}
-
-if (!supabaseKey) {
-  console.error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable');
-  process.exit(1);
-}
-
-if (!serviceRoleKey) {
-  console.error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
-  process.exit(1);
-}
 
 // Create Supabase clients
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
 async function createAdminUser() {
@@ -39,16 +17,16 @@ async function createAdminUser() {
     
     // Sign up the user
     const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email: 'admin@g.com',
-      password: 'Dan@2020',
+      email: 'admin@example.com',
+      password: 'AdminPass123!',
     });
     
     if (signUpError) {
       console.error('Sign up error:', signUpError);
       // If user already exists, let's try to sign in instead
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: 'admin@g.com',
-        password: 'Dan@2020',
+        email: 'admin@example.com',
+        password: 'AdminPass123!',
       });
       
       if (signInError) {
@@ -56,34 +34,33 @@ async function createAdminUser() {
         return;
       }
       
-      console.log('User signed in:', signInData);
+      console.log('User signed in:', signInData.user.id);
       authData.user = signInData.user;
     } else {
-      console.log('User signed up:', authData);
+      console.log('User signed up:', authData.user.id);
     }
     
     // If we have a user, update the profile to set role to admin
     if (authData.user) {
+      console.log('Setting admin role for user:', authData.user.id);
+      
       // Wait a moment for the profile to be created by the trigger
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
-      console.log('Attempting to update profile with admin role...');
-      
-      // Update the profile to set role to admin
-      const { data: profileData, error: profileError } = await supabaseAdmin
+      // First, try to update existing profile
+      const { data: updateData, error: updateError } = await supabaseAdmin
         .from('profiles')
         .update({ role: 'admin' })
         .eq('id', authData.user.id);
       
-      if (profileError) {
-        console.error('Profile update error:', profileError);
+      if (updateError) {
+        console.error('Profile update error:', updateError);
         // If update fails, try to insert
-        console.log('Attempting to insert profile with admin role...');
         const { data: insertData, error: insertError } = await supabaseAdmin
           .from('profiles')
           .insert({ 
             id: authData.user.id,
-            email: 'admin@g.com',
+            email: 'admin@example.com',
             role: 'admin'
           });
         
@@ -94,7 +71,7 @@ async function createAdminUser() {
         
         console.log('Profile created with admin role:', insertData);
       } else {
-        console.log('Profile updated to admin role:', profileData);
+        console.log('Profile updated to admin role:', updateData);
       }
     }
     
