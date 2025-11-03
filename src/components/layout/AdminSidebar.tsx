@@ -3,7 +3,7 @@
 import { LayoutDashboard, Wrench, Package, ShoppingCart, Users, Settings, Menu, Recycle } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
@@ -66,6 +66,8 @@ export const AdminSidebar = () => {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="p-0 w-72">
+          {/* Adding SheetTitle for accessibility */}
+          <SheetTitle className="sr-only">Admin Navigation</SheetTitle>
           <SidebarContent onItemClick={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
