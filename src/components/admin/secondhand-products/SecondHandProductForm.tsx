@@ -23,6 +23,7 @@ import {
   SelectValue 
 } from "@/components/ui/select"
 import { CameraCapture } from '@/components/ui/camera'
+import { getSupabaseBrowserClient } from '@/server/supabase/client'
 
 export default function SecondHandProductForm({ initialProduct = null }: { initialProduct?: any }) {
   const { user, role, isLoading: authLoading } = useAuth()
@@ -164,11 +165,21 @@ export default function SecondHandProductForm({ initialProduct = null }: { initi
       // Find or create a generic "Second-hand Item" product to associate with this listing
       let secondHandProductRecord = null;
       try {
-        // Search for existing "Second-hand Item" product
-        const searchResults = await productsDb.search("Second-hand Item");
-        if (searchResults && searchResults.length > 0) {
-          // Use the first matching product
-          secondHandProductRecord = searchResults[0];
+        // Search for existing "Second-hand Item" product by exact name
+        const supabase = getSupabaseBrowserClient();
+        const { data: existingProducts, error: searchError } = await supabase
+          .from('products')
+          .select('*')
+          .eq('name', 'Second-hand Item')
+          .limit(1);
+        
+        if (searchError) {
+          throw new Error(`Failed to search for existing product: ${searchError.message}`);
+        }
+        
+        if (existingProducts && existingProducts.length > 0) {
+          // Use the existing product
+          secondHandProductRecord = existingProducts[0];
         } else {
           // Create a generic "Second-hand Item" product if it doesn't exist
           secondHandProductRecord = await productsDb.create({
@@ -179,7 +190,7 @@ export default function SecondHandProductForm({ initialProduct = null }: { initi
             image_url: imageUrl || "", // Use uploaded image if available
             is_featured: false,
             category: "Second-hand",
-            slug: "second-hand-item"
+            slug: "second-hand-item" // Use fixed slug for the first (and only) generic product
           });
         }
       } catch (productError) {
