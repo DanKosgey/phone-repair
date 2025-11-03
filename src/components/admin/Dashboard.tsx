@@ -731,8 +731,54 @@ export default function AdminDashboard() {
         setTicketRevenueCorrelationSignificant(false);
       }
       
-      // Calculate simple linear regression for trend line
-      if (transformedTicketData.length > 1) {
+      // Enhanced regression analysis with multiple models (linear, polynomial, logarithmic)
+      if (transformedTicketData.length >= 3) { // Need at least 3 points for meaningful regression analysis
+        const xValues = transformedTicketData.map((_, index) => index + 1); // 1-indexed periods
+        const yValues = transformedTicketData.map(item => item.ticket_count);
+        
+        // Calculate multiple regression models
+        const linearModel = dashboardDb.calculateLinearRegression(xValues, yValues);
+        const polynomialModel = dashboardDb.calculatePolynomialRegression(xValues, yValues);
+        const logarithmicModel = dashboardDb.calculateLogarithmicRegression(xValues, yValues);
+        
+        // Select best model based on R-squared
+        const models = [
+          { name: 'linear', rSquared: linearModel.rSquared, model: linearModel },
+          { name: 'polynomial', rSquared: polynomialModel.rSquared, model: polynomialModel },
+          { name: 'logarithmic', rSquared: logarithmicModel.rSquared, model: logarithmicModel }
+        ];
+        
+        const bestModel = models.reduce((best, current) => 
+          current.rSquared > best.rSquared ? current : best
+        );
+        
+        // Set regression results
+        setTicketRegression({ 
+          slope: parseFloat(linearModel.slope.toFixed(2)), 
+          intercept: parseFloat(linearModel.intercept.toFixed(2)) 
+        });
+        
+        // Log detailed regression analysis for debugging
+        console.log('Enhanced Regression Analysis:', {
+          linear: {
+            slope: linearModel.slope.toFixed(4),
+            intercept: linearModel.intercept.toFixed(4),
+            rSquared: linearModel.rSquared.toFixed(4)
+          },
+          polynomial: {
+            coefficients: polynomialModel.coefficients.map(c => c.toFixed(4)),
+            rSquared: polynomialModel.rSquared.toFixed(4)
+          },
+          logarithmic: {
+            a: logarithmicModel.a.toFixed(4),
+            b: logarithmicModel.b.toFixed(4),
+            rSquared: logarithmicModel.rSquared.toFixed(4)
+          },
+          bestModel: bestModel.name,
+          bestRSquared: bestModel.rSquared.toFixed(4)
+        });
+      } else if (transformedTicketData.length === 2) {
+        // For exactly 2 points, calculate simple linear regression
         const xValues = transformedTicketData.map((_, index) => index);
         const yValues = transformedTicketData.map(item => item.ticket_count);
         
@@ -754,6 +800,9 @@ export default function AdminDashboard() {
         const slope = denominator !== 0 ? numerator / denominator : 0;
         const intercept = yMean - slope * xMean;
         setTicketRegression({ slope: parseFloat(slope.toFixed(2)), intercept: parseFloat(intercept.toFixed(2)) });
+      } else {
+        // Not enough data points
+        setTicketRegression({ slope: 0, intercept: 0 });
       }
       
     } catch (error) {
