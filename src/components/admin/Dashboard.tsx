@@ -76,7 +76,6 @@ export default function AdminDashboard() {
   });
 
   const [stats, setStats] = useState<StatCard[]>([
-    { title: "Total Revenue", value: "KSh 0", change: "+0% from last month", icon: Package, color: "bg-blue-500" },
     { title: "Tickets", value: "0", change: "+0% from last month", icon: BarChart3, color: "bg-green-500" },
     { title: "Customers", value: "0", change: "+0% from last month", icon: Users, color: "bg-orange-500" },
     { title: "Avg Tickets per Customer", value: "0", change: "+0% from last month", icon: TrendingUp, color: "bg-purple-500" },
@@ -136,22 +135,12 @@ export default function AdminDashboard() {
       setDataLoading(prev => ({ ...prev, stats: true }))
       const data = await dashboardDb.getAdminMetrics()
       
-      // Calculate total revenue from repair and product revenue
-      const totalRevenue = (data.total_repair_revenue || 0) + (data.total_product_revenue || 0)
-      
       // Calculate average tickets per customer
       const avgTicketsPerCustomer = data.total_customers && data.total_customers > 0 
         ? (data.tickets_completed || 0) / data.total_customers 
         : 0
       
       setStats([
-        { 
-          title: "Total Revenue", 
-          value: `KSh ${totalRevenue.toLocaleString()}`, 
-          change: "+0% from last month", 
-          icon: Package, 
-          color: "bg-blue-500" 
-        },
         { 
           title: "Tickets", 
           value: (data.tickets_completed || 0).toString(), 
@@ -360,8 +349,8 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Stats Cards - Reduced from 4 to 3 cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {stats.map((stat, index) => (
             <Card key={index} className="shadow-md hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

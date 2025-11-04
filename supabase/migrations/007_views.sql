@@ -93,9 +93,13 @@ SELECT
   (SELECT COUNT(*) FROM public.customers) as total_customers,
   (SELECT COUNT(*) FROM public.profiles WHERE role = 'admin') as total_admins,
   
-  -- Financial metrics
+  -- Financial metrics - ORIGINAL (all completed tickets)
   (SELECT COALESCE(SUM(final_cost), 0) FROM public.tickets WHERE status = 'completed') as total_repair_revenue,
-  (SELECT COALESCE(SUM(total_amount), 0) FROM public.orders WHERE status = 'delivered') as total_product_revenue;
+  (SELECT COALESCE(SUM(total_amount), 0) FROM public.orders WHERE status = 'delivered') as total_product_revenue,
+  
+  -- Financial metrics - NEW (only paid tickets and orders)
+  (SELECT COALESCE(SUM(final_cost), 0) FROM public.tickets WHERE status = 'completed' AND payment_status = 'paid') as paid_repair_revenue,
+  (SELECT COALESCE(SUM(total_amount), 0) FROM public.orders WHERE status = 'delivered') as paid_product_revenue;
 
 -- Grant SELECT permissions on views
 GRANT SELECT ON public.ticket_summary TO authenticated;

@@ -89,31 +89,6 @@ interface CustomerLifetimeValue {
 export type Timeframe = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 
 export const dashboardDb = {
-  // Helper function to format period based on timeframe
-  formatPeriod(date: Date, timeframe: Timeframe): string {
-    switch (timeframe) {
-      case 'daily':
-        return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-      case 'weekly': {
-        const day = date.getDay();
-        const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-        const monday = new Date(date);
-        monday.setDate(diff);
-        return `Week of ${monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-      }
-      case 'monthly':
-        return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      case 'quarterly': {
-        const quarter = Math.floor(date.getMonth() / 3) + 1;
-        return `Q${quarter} ${date.getFullYear()}`;
-      }
-      case 'yearly':
-        return date.getFullYear().toString();
-      default:
-        return date.toLocaleDateString();
-    }
-  },
-
   // Get admin dashboard metrics
   async getAdminMetrics() {
     try {
@@ -127,60 +102,6 @@ export const dashboardDb = {
       return data
     } catch (error) {
       console.error('Error fetching admin metrics:', error)
-      throw error
-    }
-  },
-
-  // Get ticket summary
-  async getTicketSummary() {
-    try {
-      const supabase = getSupabaseBrowserClient()
-      const { data, error } = await supabase
-        .from('ticket_summary')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10)
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error fetching ticket summary:', error)
-      throw error
-    }
-  },
-
-  // Get customer summary
-  async getCustomerSummary() {
-    try {
-      const supabase = getSupabaseBrowserClient()
-      const { data, error } = await supabase
-        .from('customer_summary')
-        .select('*')
-        .order('last_activity', { ascending: false })
-        .limit(10)
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error fetching customer summary:', error)
-      throw error
-    }
-  },
-
-  // Get product sales summary
-  async getProductSalesSummary() {
-    try {
-      const supabase = getSupabaseBrowserClient()
-      const { data, error } = await supabase
-        .from('product_sales_summary')
-        .select('*')
-        .order('total_revenue', { ascending: false })
-        .limit(10)
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error fetching product sales summary:', error)
       throw error
     }
   },
@@ -291,6 +212,117 @@ export const dashboardDb = {
       });
     } catch (error) {
       console.error('Error fetching revenue trends:', error)
+      throw error
+    }
+  },
+
+  // Get revenue trends for paid tickets only
+  async getRevenueTrendsPaidOnly(timeframe: Timeframe = 'daily', startDate?: string, endDate?: string) {
+    try {
+      const supabase = getSupabaseBrowserClient()
+
+      // Query only paid tickets
+      let query = supabase
+        .from('tickets')
+        .select(`
+          created_at,
+          id,
+          user_id,
+          final_cost
+        `)
+        .eq('payment_status', 'paid')
+        .order('created_at', { ascending: true });
+
+      if (startDate) {
+        query = query.gte('created_at', startDate);
+      }
+      if (endDate) {
+        query = query.lte('created_at', endDate);
+      }
+
+      const { data: rawData, error: queryError } = await query;
+      
+      if (queryError) throw queryError;
+
+      // Process raw data into time periods manually
+      const processedData: Record<string, any> = {};
+      
+      rawData.forEach((item: any) => {
+        const date = new Date(item.created_at);
+        let periodKey: string;
+        let periodLabel: string;
+        
+        switch (timeframe) {
+          case 'weekly': {
+            // Get Monday of the week
+            const day = date.getDay();
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+            const monday = new Date(date);
+            monday.setDate(diff);
+            periodKey = monday.toISOString().split('T')[0];
+            periodLabel = `Week of ${monday.toLocaleDateString()}`;
+            break;
+          }
+          case 'monthly':
+            periodKey = `${date.getFullYear()}-${date.getMonth()}`;
+            periodLabel = new Date(date.getFullYear(), date.getMonth(), 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            break;
+          case 'quarterly': {
+            const quarter = Math.floor(date.getMonth() / 3) + 1;
+            periodKey = `${date.getFullYear()}-Q${quarter}`;
+            periodLabel = `Q${quarter} ${date.getFullYear()}`;
+            break;
+          }
+          case 'yearly':
+            periodKey = date.getFullYear().toString();
+            periodLabel = date.getFullYear().toString();
+            break;
+          default: // daily
+            periodKey = date.toISOString().split('T')[0];
+            periodLabel = date.toLocaleDateString();
+        }
+        
+        if (!processedData[periodKey]) {
+          processedData[periodKey] = {
+            period: periodLabel,
+            ticket_count: 0,
+            unique_customers: new Set(),
+            total_revenue: 0
+          };
+        }
+        
+        processedData[periodKey].ticket_count += 1;
+        processedData[periodKey].unique_customers.add(item.user_id);
+        processedData[periodKey].total_revenue += item.final_cost || 0;
+      });
+      
+      // Convert Set to count for unique customers
+      Object.values(processedData).forEach((item: any) => {
+        item.unique_customers = item.unique_customers.size;
+      });
+      
+      // Format the data
+      const formattedData: TrendsData[] = Object.values(processedData).map((item: any) => {
+        const ticketCount = item.ticket_count || 0;
+        const uniqueCustomers = item.unique_customers || 0;
+        const totalRevenue = item.total_revenue || 0;
+        return {
+          period: item.period,
+          ticket_count: ticketCount,
+          unique_customers: uniqueCustomers,
+          total_revenue: totalRevenue,
+          average_ticket_value: ticketCount > 0 ? totalRevenue / ticketCount : 0,
+          revenue_per_customer: uniqueCustomers > 0 ? totalRevenue / uniqueCustomers : 0
+        };
+      });
+      
+      // Sort by period
+      return formattedData.sort((a, b) => {
+        // Simple string comparison for sorting
+        return a.period.localeCompare(b.period);
+      });
+    } catch (error) {
+      console.error('Error fetching paid revenue trends:', error)
       throw error
     }
   },

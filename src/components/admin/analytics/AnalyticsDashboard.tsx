@@ -38,7 +38,7 @@ import { productsDb } from '@/lib/db/products';
 
 // Types
 type TicketData = {
-  name: string;
+  period: string;
   ticket_count: number;
   unique_customers: number;
   total_revenue: number;
@@ -98,6 +98,9 @@ export default function AnalyticsDashboard() {
     return 'daily';
   });
 
+  // New state for revenue type toggle
+  const [revenueType, setRevenueType] = useState<'all' | 'paid'>('all');
+
   const [ticketData, setTicketData] = useState<TicketData[]>([]);
   const [ticketStatusData, setTicketStatusData] = useState<TicketStatusData[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
@@ -134,7 +137,7 @@ export default function AnalyticsDashboard() {
   // Fetch all analytics data
   useEffect(() => {
     fetchAnalyticsData();
-  }, [timeframe]);
+  }, [timeframe, revenueType]);
 
   const fetchAnalyticsData = async () => {
     try {
@@ -158,24 +161,39 @@ export default function AnalyticsDashboard() {
     try {
       setDataLoading(prev => ({ ...prev, charts: true }));
       
-      // Fetch ticket trends data
-      const trendsData = await dashboardDb.getRevenueTrends(timeframe);
-      setTicketData(trendsData);
+      // Fetch ticket trends data based on revenue type
+      let trendsData;
+      if (revenueType === 'paid') {
+        trendsData = await dashboardDb.getRevenueTrendsPaidOnly(timeframe);
+      } else {
+        trendsData = await dashboardDb.getRevenueTrends(timeframe);
+      }
+      
+      // Convert TrendsData to TicketData format
+      const ticketDataFormatted: TicketData[] = trendsData.map(item => ({
+        period: item.period,
+        ticket_count: item.ticket_count,
+        unique_customers: item.unique_customers,
+        total_revenue: item.total_revenue,
+        moving_average: undefined
+      }));
+      
+      setTicketData(ticketDataFormatted);
       
       // Calculate moving averages and statistical analysis
-      if (trendsData.length > 0) {
+      if (ticketDataFormatted.length > 0) {
         // Calculate 7-day moving average
         const movingAverages = [];
-        const period = Math.min(7, trendsData.length);
+        const period = Math.min(7, ticketDataFormatted.length);
         
-        for (let i = period - 1; i < trendsData.length; i++) {
-          const sum = trendsData.slice(i - period + 1, i + 1)
+        for (let i = period - 1; i < ticketDataFormatted.length; i++) {
+          const sum = ticketDataFormatted.slice(i - period + 1, i + 1)
             .reduce((acc, curr) => acc + curr.ticket_count, 0);
           movingAverages.push(sum / period);
         }
         
         // Add moving averages to ticket data
-        const ticketDataWithMA = [...trendsData];
+        const ticketDataWithMA = [...ticketDataFormatted];
         for (let i = period - 1; i < ticketDataWithMA.length; i++) {
           ticketDataWithMA[i] = {
             ...ticketDataWithMA[i],
@@ -198,7 +216,7 @@ export default function AnalyticsDashboard() {
         }
         
         // Calculate volatility metrics
-        const ticketCounts = trendsData.map(d => d.ticket_count);
+        const ticketCounts = ticketDataFormatted.map(d => d.ticket_count);
         const mean = ticketCounts.reduce((sum, count) => sum + count, 0) / ticketCounts.length;
         const variance = ticketCounts.reduce((sum, count) => sum + Math.pow(count - mean, 2), 0) / ticketCounts.length;
         const stdDev = Math.sqrt(variance);
@@ -226,9 +244,9 @@ export default function AnalyticsDashboard() {
       setForecastData(forecastData);
       
       // Calculate correlation between tickets and revenue
-      if (trendsData.length > 1) {
-        const ticketCounts = trendsData.map(d => d.ticket_count);
-        const revenues = trendsData.map(d => d.total_revenue);
+      if (ticketDataFormatted.length > 1) {
+        const ticketCounts = ticketDataFormatted.map(d => d.ticket_count);
+        const revenues = ticketDataFormatted.map(d => d.total_revenue);
         
         // Simple correlation calculation
         const n = ticketCounts.length;
@@ -286,27 +304,59 @@ export default function AnalyticsDashboard() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
             <p className="text-muted-foreground">
               Advanced insights and business intelligence
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Timeframe:</span>
-            <Select value={timeframe} onValueChange={handleTimeframeChange}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-                <SelectItem value="quarterly">Quarterly</SelectItem>
-                <SelectItem value="yearly">Yearly</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col sm:flex-row gap-2">
+            {/* Revenue Type Toggle */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Revenue:</span>
+              <div className="inline-flex rounded-md shadow-sm" role="group">
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 text-sm font-medium rounded-l-lg border ${
+                    revenueType === 'all' 
+                      ? 'bg-primary text-primary-foreground border-primary' 
+                      : 'bg-background text-foreground border-input hover:bg-accent'
+                  }`}
+                  onClick={() => setRevenueType('all')}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 text-sm font-medium rounded-r-lg border ${
+                    revenueType === 'paid' 
+                      ? 'bg-primary text-primary-foreground border-primary' 
+                      : 'bg-background text-foreground border-input hover:bg-accent'
+                  }`}
+                  onClick={() => setRevenueType('paid')}
+                >
+                  Paid Only
+                </button>
+              </div>
+            </div>
+            
+            {/* Timeframe Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Timeframe:</span>
+              <Select value={timeframe} onValueChange={handleTimeframeChange}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </div>
