@@ -177,31 +177,67 @@ export default function TicketForm() {
         throw new Error('Invalid request. Please refresh the page and try again.');
       }
 
-      // Validate customer is selected
+      // Enhanced customer validation with user-friendly error handling
       if (!customer) {
-        throw new Error('Please select or create a customer');
+        toast({
+          title: "Customer Required",
+          description: "Please select an existing customer or create a new one before submitting the ticket.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return; // Exit early to prevent form submission
       }
 
       // Validate device information
       if (!deviceType || deviceType.trim().length < 2) {
-        throw new Error('Device type must be at least 2 characters long');
+        toast({
+          title: "Invalid Device Type",
+          description: "Device type must be at least 2 characters long.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
 
       if (!deviceBrand || deviceBrand.trim().length < 2) {
-        throw new Error('Device brand must be at least 2 characters long');
+        toast({
+          title: "Invalid Device Brand",
+          description: "Device brand must be at least 2 characters long.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
 
       if (!deviceModel || deviceModel.trim().length < 1) {
-        throw new Error('Device model is required');
+        toast({
+          title: "Device Model Required",
+          description: "Device model is required.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
 
       if (!issueDescription || issueDescription.trim().length < 10) {
-        throw new Error('Issue description must be at least 10 characters long');
+        toast({
+          title: "Issue Description Too Short",
+          description: "Issue description must be at least 10 characters long.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
 
       // Validate estimated cost if provided
       if (estimatedCost && (isNaN(Number(estimatedCost)) || Number(estimatedCost) <= 0)) {
-        throw new Error('Estimated cost must be a positive number');
+        toast({
+          title: "Invalid Estimated Cost",
+          description: "Estimated cost must be a positive number.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
 
       // Upload photos if any
@@ -309,8 +345,11 @@ export default function TicketForm() {
             />
             
             {!customer && (
-              <div className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded-md">
-                <strong>Note:</strong> Please select a customer to enable the "Create Ticket" button.
+              <div className="text-sm text-yellow-600 bg-yellow-50 p-3 rounded-md border border-yellow-200">
+                <div className="flex items-center">
+                  <span className="font-medium mr-2">Customer Required:</span>
+                  <span>Please select an existing customer or create a new one to enable the "Create Ticket" button.</span>
+                </div>
               </div>
             )}
             
@@ -513,6 +552,7 @@ export default function TicketForm() {
             <Button 
               type="submit" 
               disabled={isLoading || !customer}
+              className={!customer ? "opacity-70 cursor-not-allowed" : ""}
               title={!customer ? "Please select a customer first" : isLoading ? "Creating ticket..." : "Create ticket"}
             >
               <Save className="mr-2 h-4 w-4" />

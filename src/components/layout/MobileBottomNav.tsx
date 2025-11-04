@@ -8,8 +8,8 @@ import { motion } from "framer-motion";
 
 const navItems = [
   { name: "Home", href: "/", icon: Home },
-  { name: "Products", href: "/products", icon: ShoppingCart },
-  { name: "Marketplace", href: "/marketplace", icon: Recycle },
+  { name: "Shop", href: "/products", icon: ShoppingCart },
+  { name: "Market", href: "/marketplace", icon: Recycle },
   { name: "Track", href: "/track", icon: FileSearch },
 ];
 

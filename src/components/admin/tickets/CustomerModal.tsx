@@ -98,7 +98,7 @@ export function CustomerModal({ open, onOpenChange, onCustomerCreated }: Custome
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" aria-describedby="customer-modal-description">
         <DialogHeader>
           <DialogTitle>Add New Customer</DialogTitle>
           <DialogDescription id="customer-modal-description">

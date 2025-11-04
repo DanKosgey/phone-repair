@@ -8,8 +8,8 @@ import { Menu, X, Home, ShoppingCart, Smartphone, Recycle, FileSearch } from "lu
 
 const menuItems = [
   { name: "Home", href: "/", icon: Home },
-  { name: "Products", href: "/products", icon: ShoppingCart },
-  { name: "Marketplace", href: "/marketplace", icon: Recycle },
+  { name: "Shop Products", href: "/products", icon: ShoppingCart },
+  { name: "Device Marketplace", href: "/marketplace", icon: Recycle },
   { name: "Track Repair", href: "/track", icon: FileSearch },
 ];
 
