@@ -2,11 +2,28 @@ import { getSupabaseBrowserClient } from '@/server/supabase/client'
 import { Database } from '../../../types/database.types'
 
 // Define types for materialized views that may not be in the auto-generated types
+interface TrendsData {
+  period: string;
+  ticket_count: number;
+  unique_customers: number;
+  total_revenue: number;
+  average_ticket_value: number;
+  revenue_per_customer: number;
+}
+
 interface DailyTicketTrends {
-  date: string
-  ticket_count: number
-  unique_customers: number
-  total_revenue: number
+  date: string;
+  ticket_count: number;
+  unique_customers: number;
+  total_revenue: number;
+}
+
+// Create a type for the actual data structure we get from the materialized view
+interface DailyTicketTrendsView {
+  date: string;
+  ticket_count: number;
+  unique_customers: number;
+  total_revenue: number;
 }
 
 interface TicketStatusDistribution {
@@ -50,8 +67,10 @@ interface ForecastData {
   period: string;
   predicted_tickets: number;
   predicted_revenue: number;
-  confidence_lower: number;
-  confidence_upper: number;
+  ticket_confidence_lower: number;
+  ticket_confidence_upper: number;
+  revenue_confidence_lower: number;
+  revenue_confidence_upper: number;
 }
 
 interface CustomerLifetimeValue {
@@ -70,113 +89,256 @@ interface CustomerLifetimeValue {
 export type Timeframe = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 
 export const dashboardDb = {
+  // Helper function to format period based on timeframe
+  formatPeriod(date: Date, timeframe: Timeframe): string {
+    switch (timeframe) {
+      case 'daily':
+        return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      case 'weekly': {
+        const day = date.getDay();
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(date);
+        monday.setDate(diff);
+        return `Week of ${monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      }
+      case 'monthly':
+        return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      case 'quarterly': {
+        const quarter = Math.floor(date.getMonth() / 3) + 1;
+        return `Q${quarter} ${date.getFullYear()}`;
+      }
+      case 'yearly':
+        return date.getFullYear().toString();
+      default:
+        return date.toLocaleDateString();
+    }
+  },
+
   // Get admin dashboard metrics
   async getAdminMetrics() {
-    const supabase = getSupabaseBrowserClient()
-    const { data, error } = await supabase
-      .from('admin_dashboard_metrics')
-      .select('*')
-      .single()
-    
-    if (error) throw error
-    return data
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('admin_dashboard_metrics')
+        .select('*')
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching admin metrics:', error)
+      throw error
+    }
   },
 
   // Get ticket summary
   async getTicketSummary() {
-    const supabase = getSupabaseBrowserClient()
-    const { data, error } = await supabase
-      .from('ticket_summary')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(10)
-    
-    if (error) throw error
-    return data
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('ticket_summary')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10)
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching ticket summary:', error)
+      throw error
+    }
   },
 
   // Get customer summary
   async getCustomerSummary() {
-    const supabase = getSupabaseBrowserClient()
-    const { data, error } = await supabase
-      .from('customer_summary')
-      .select('*')
-      .order('last_activity', { ascending: false })
-      .limit(10)
-    
-    if (error) throw error
-    return data
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('customer_summary')
+        .select('*')
+        .order('last_activity', { ascending: false })
+        .limit(10)
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching customer summary:', error)
+      throw error
+    }
   },
 
   // Get product sales summary
   async getProductSalesSummary() {
-    const supabase = getSupabaseBrowserClient()
-    const { data, error } = await supabase
-      .from('product_sales_summary')
-      .select('*')
-      .order('total_revenue', { ascending: false })
-      .limit(10)
-    
-    if (error) throw error
-    return data
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('product_sales_summary')
+        .select('*')
+        .order('total_revenue', { ascending: false })
+        .limit(10)
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching product sales summary:', error)
+      throw error
+    }
   },
 
-  // Get daily revenue trends (default daily timeframe)
-  async getDailyRevenueTrends(timeframe: Timeframe = 'daily') {
-    const supabase = getSupabaseBrowserClient()
-    // Using RPC to query materialized views as they're not in the auto-generated types
-    const { data, error } = await (supabase as any)
-      .from('daily_ticket_trends')
-      .select('*')
-      .order('date', { ascending: true })
-    
-    if (error) throw error
-    
-    // Transform data based on selected timeframe
-    switch (timeframe) {
-      case 'weekly':
-        return this.aggregateToWeekly(data as DailyTicketTrends[])
-      case 'monthly':
-        return this.aggregateToMonthly(data as DailyTicketTrends[])
-      case 'quarterly':
-        return this.aggregateToQuarterly(data as DailyTicketTrends[])
-      case 'yearly':
-        return this.aggregateToYearly(data as DailyTicketTrends[])
-      default: // daily
-        return data as DailyTicketTrends[]
+  // Get revenue trends with proper aggregation for the selected timeframe
+  async getRevenueTrends(timeframe: Timeframe = 'daily', startDate?: string, endDate?: string) {
+    try {
+      const supabase = getSupabaseBrowserClient()
+
+      // For direct query, we need to handle dates properly
+      let query = supabase
+        .from('tickets')
+        .select(`
+          created_at,
+          id,
+          user_id,
+          final_cost
+        `)
+        .order('created_at', { ascending: true });
+
+      if (startDate) {
+        query = query.gte('created_at', startDate);
+      }
+      if (endDate) {
+        query = query.lte('created_at', endDate);
+      }
+
+      const { data: rawData, error: queryError } = await query;
+      
+      if (queryError) throw queryError;
+
+      // Process raw data into time periods manually
+      const processedData: Record<string, any> = {};
+      
+      rawData.forEach((item: any) => {
+        const date = new Date(item.created_at);
+        let periodKey: string;
+        let periodLabel: string;
+        
+        switch (timeframe) {
+          case 'weekly': {
+            // Get Monday of the week
+            const day = date.getDay();
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+            const monday = new Date(date);
+            monday.setDate(diff);
+            periodKey = monday.toISOString().split('T')[0];
+            periodLabel = `Week of ${monday.toLocaleDateString()}`;
+            break;
+          }
+          case 'monthly':
+            periodKey = `${date.getFullYear()}-${date.getMonth()}`;
+            periodLabel = new Date(date.getFullYear(), date.getMonth(), 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            break;
+          case 'quarterly': {
+            const quarter = Math.floor(date.getMonth() / 3) + 1;
+            periodKey = `${date.getFullYear()}-Q${quarter}`;
+            periodLabel = `Q${quarter} ${date.getFullYear()}`;
+            break;
+          }
+          case 'yearly':
+            periodKey = date.getFullYear().toString();
+            periodLabel = date.getFullYear().toString();
+            break;
+          default: // daily
+            periodKey = date.toISOString().split('T')[0];
+            periodLabel = date.toLocaleDateString();
+        }
+        
+        if (!processedData[periodKey]) {
+          processedData[periodKey] = {
+            period: periodLabel,
+            ticket_count: 0,
+            unique_customers: new Set(),
+            total_revenue: 0
+          };
+        }
+        
+        processedData[periodKey].ticket_count += 1;
+        processedData[periodKey].unique_customers.add(item.user_id);
+        processedData[periodKey].total_revenue += item.final_cost || 0;
+      });
+      
+      // Convert Set to count for unique customers
+      Object.values(processedData).forEach((item: any) => {
+        item.unique_customers = item.unique_customers.size;
+      });
+      
+      // Format the data
+      const formattedData: TrendsData[] = Object.values(processedData).map((item: any) => {
+        const ticketCount = item.ticket_count || 0;
+        const uniqueCustomers = item.unique_customers || 0;
+        const totalRevenue = item.total_revenue || 0;
+        return {
+          period: item.period,
+          ticket_count: ticketCount,
+          unique_customers: uniqueCustomers,
+          total_revenue: totalRevenue,
+          average_ticket_value: ticketCount > 0 ? totalRevenue / ticketCount : 0,
+          revenue_per_customer: uniqueCustomers > 0 ? totalRevenue / uniqueCustomers : 0
+        };
+      });
+      
+      // Sort by period
+      return formattedData.sort((a, b) => {
+        // Simple string comparison for sorting
+        return a.period.localeCompare(b.period);
+      });
+    } catch (error) {
+      console.error('Error fetching revenue trends:', error)
+      throw error
     }
   },
 
   // Helper function to aggregate daily data to weekly
-  aggregateToWeekly(data: DailyTicketTrends[]): any[] {
+  aggregateToWeekly(data: any[]): any[] {
+    // Add empty data validation
+    if (!data || data.length === 0) {
+      return []
+    }
+    
     const weeklyData: Record<string, any> = {}
     
     data.forEach(item => {
       const date = new Date(item.date)
-      // Get the Monday of the week for grouping
-      const monday = new Date(date)
-      monday.setDate(date.getDate() - date.getDay() + (date.getDay() === 0 ? -6 : 1))
+      // Get the Monday of the week for grouping using UTC to avoid timezone issues
+      const monday = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+      const day = monday.getUTCDay()
+      const diff = monday.getUTCDate() - day + (day === 0 ? -6 : 1) // Adjust when day is Sunday
+      monday.setUTCDate(diff)
+      
+      // Format the date as YYYY-MM-DD for consistent grouping
       const weekKey = monday.toISOString().split('T')[0]
       
       if (!weeklyData[weekKey]) {
         weeklyData[weekKey] = {
-          period: `Week of ${monday.toLocaleDateString()}`,
+          period: `Week of ${monday.toLocaleDateString(undefined, { timeZone: 'UTC' })}`,
           ticket_count: 0,
-          unique_customers: 0,
+          unique_customers: 0, // Initialize as number
           total_revenue: 0
         }
       }
       
       weeklyData[weekKey].ticket_count += item.ticket_count
       weeklyData[weekKey].total_revenue += item.total_revenue
-      // Note: unique_customers aggregation would need more complex logic in a real implementation
+      weeklyData[weekKey].unique_customers += item.unique_customers
     })
     
     return Object.values(weeklyData)
   },
 
   // Helper function to aggregate daily data to monthly
-  aggregateToMonthly(data: DailyTicketTrends[]): any[] {
+  aggregateToMonthly(data: any[]): any[] {
+    // Add empty data validation
+    if (!data || data.length === 0) {
+      return []
+    }
+    
     const monthlyData: Record<string, any> = {}
     
     data.forEach(item => {
@@ -187,20 +349,26 @@ export const dashboardDb = {
         monthlyData[monthKey] = {
           period: new Date(date.getFullYear(), date.getMonth(), 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
           ticket_count: 0,
-          unique_customers: 0,
+          unique_customers: 0, // Initialize as number
           total_revenue: 0
         }
       }
       
       monthlyData[monthKey].ticket_count += item.ticket_count
       monthlyData[monthKey].total_revenue += item.total_revenue
+      monthlyData[monthKey].unique_customers += item.unique_customers
     })
     
     return Object.values(monthlyData)
   },
 
   // Helper function to aggregate daily data to quarterly
-  aggregateToQuarterly(data: DailyTicketTrends[]): any[] {
+  aggregateToQuarterly(data: any[]): any[] {
+    // Add empty data validation
+    if (!data || data.length === 0) {
+      return []
+    }
+    
     const quarterlyData: Record<string, any> = {}
     
     data.forEach(item => {
@@ -213,20 +381,26 @@ export const dashboardDb = {
         quarterlyData[quarterKey] = {
           period: `Q${quarter} ${year}`,
           ticket_count: 0,
-          unique_customers: 0,
+          unique_customers: 0, // Initialize as number
           total_revenue: 0
         }
       }
       
       quarterlyData[quarterKey].ticket_count += item.ticket_count
       quarterlyData[quarterKey].total_revenue += item.total_revenue
+      quarterlyData[quarterKey].unique_customers += item.unique_customers
     })
     
     return Object.values(quarterlyData)
   },
 
   // Helper function to aggregate daily data to yearly
-  aggregateToYearly(data: DailyTicketTrends[]): any[] {
+  aggregateToYearly(data: any[]): any[] {
+    // Add empty data validation
+    if (!data || data.length === 0) {
+      return []
+    }
+    
     const yearlyData: Record<string, any> = {}
     
     data.forEach(item => {
@@ -237,13 +411,14 @@ export const dashboardDb = {
         yearlyData[yearKey] = {
           period: yearKey,
           ticket_count: 0,
-          unique_customers: 0,
+          unique_customers: 0, // Initialize as number
           total_revenue: 0
         }
       }
       
       yearlyData[yearKey].ticket_count += item.ticket_count
       yearlyData[yearKey].total_revenue += item.total_revenue
+      yearlyData[yearKey].unique_customers += item.unique_customers
     })
     
     return Object.values(yearlyData)
@@ -251,135 +426,418 @@ export const dashboardDb = {
 
   // Get ticket status distribution
   async getTicketStatusDistribution() {
-    const supabase = getSupabaseBrowserClient()
-    // Using RPC to query materialized views as they're not in the auto-generated types
-    const { data, error } = await (supabase as any)
-      .from('ticket_status_distribution')
-      .select('*')
-    
-    if (error) throw error
-    return data as TicketStatusDistribution[]
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('ticket_status_distribution')
+        .select('*')
+      
+      if (error) throw error
+      return data as TicketStatusDistribution[]
+    } catch (error) {
+      console.error('Error fetching ticket status distribution:', error)
+      throw error
+    }
   },
 
   // Get top products by sales
   async getTopProductsBySales() {
-    const supabase = getSupabaseBrowserClient()
-    // Using RPC to query materialized views as they're not in the auto-generated types
-    const { data, error } = await (supabase as any)
-      .from('top_products_by_sales')
-      .select('*')
-      .order('total_revenue', { ascending: false })
-      .limit(10)
-    
-    if (error) throw error
-    return data as TopProductsBySales[]
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('top_products_by_sales')
+        .select('*')
+        .order('total_revenue', { ascending: false })
+        .limit(10)
+      
+      if (error) throw error
+      return data as TopProductsBySales[]
+    } catch (error) {
+      console.error('Error fetching top products by sales:', error)
+      throw error
+    }
   },
 
   // Get inventory status
   async getInventoryStatus() {
-    const supabase = getSupabaseBrowserClient()
-    // Using RPC to query materialized views as they're not in the auto-generated types
-    const { data, error } = await (supabase as any)
-      .from('inventory_status')
-      .select('*')
-      .order('total_inventory_value', { ascending: false })
-    
-    if (error) throw error
-    return data as InventoryStatus[];
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('inventory_status')
+        .select('*')
+        .order('total_inventory_value', { ascending: false })
+      
+      if (error) throw error
+      return data as InventoryStatus[]
+    } catch (error) {
+      console.error('Error fetching inventory status:', error)
+      throw error
+    }
   },
 
   // Get customer lifetime value
   async getCustomerLifetimeValue() {
-    const supabase = getSupabaseBrowserClient()
-    // Using RPC to query materialized views as they're not in the auto-generated types
-    const { data, error } = await (supabase as any)
-      .from('customer_lifetime_value')
-      .select('*')
-      .order('total_lifetime_value', { ascending: false })
-      .limit(10)
-    
-    if (error) throw error
-    return data as CustomerLifetimeValue[];
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('customer_lifetime_value')
+        .select('*')
+        .order('total_lifetime_value', { ascending: false })
+        .limit(10)
+      
+      if (error) throw error
+      return data as CustomerLifetimeValue[]
+    } catch (error) {
+      console.error('Error fetching customer lifetime value:', error)
+      throw error
+    }
   },
 
   // Get period-over-period comparison data (replacing year-over-year)
   async getPeriodOverPeriodComparison(timeframe: Timeframe = 'daily') {
-    const supabase = getSupabaseBrowserClient();
-    // Using RPC to query materialized views as they're not in the auto-generated types
-    const { data, error } = await (supabase as any)
-      .from('daily_ticket_trends')
-      .select('*')
-      .order('date', { ascending: true });
-    
-    if (error) throw error;
-    
-    // Process data for period-over-period comparison
-    const processedData: YearOverYearData[] = [];
-    
-    // Transform data based on selected timeframe
-    let transformedData: any[] = [];
-    switch (timeframe) {
-      case 'weekly':
-        transformedData = this.aggregateToWeekly(data as DailyTicketTrends[])
-        break
-      case 'monthly':
-        transformedData = this.aggregateToMonthly(data as DailyTicketTrends[])
-        break
-      case 'quarterly':
-        transformedData = this.aggregateToQuarterly(data as DailyTicketTrends[])
-        break
-      case 'yearly':
-        transformedData = this.aggregateToYearly(data as DailyTicketTrends[])
-        break
-      default: // daily
-        transformedData = data.map((item: any) => ({
-          period: new Date(item.date).toLocaleDateString(),
-          ticket_count: item.ticket_count,
-          total_revenue: item.total_revenue
-        }))
-    }
-    
-    // For period-over-period comparison, we'll compare each period with the previous one
-    for (let i = 1; i < transformedData.length; i++) {
-      const currentPeriod = transformedData[i];
-      const previousPeriod = transformedData[i - 1];
+    try {
+      const supabase = getSupabaseBrowserClient() as any
+      const { data, error } = await supabase
+        .rpc('get_daily_ticket_trends')
       
-      // Calculate growth rates
-      const ticketGrowthRate = previousPeriod.ticket_count !== 0 
-        ? parseFloat(((currentPeriod.ticket_count - previousPeriod.ticket_count) / previousPeriod.ticket_count * 100).toFixed(2))
-        : (currentPeriod.ticket_count > 0 ? 100 : 0);
+      if (error) throw error
+      
+      // Process data for period-over-period comparison
+      const processedData: YearOverYearData[] = []
+      
+      // Transform data based on selected timeframe
+      let transformedData: any[] = []
+      switch (timeframe) {
+        case 'weekly':
+          transformedData = this.aggregateToWeekly(data)
+          break
+        case 'monthly':
+          transformedData = this.aggregateToMonthly(data)
+          break
+        case 'quarterly':
+          transformedData = this.aggregateToQuarterly(data)
+          break
+        case 'yearly':
+          transformedData = this.aggregateToYearly(data)
+          break
+        default: // daily
+          transformedData = (data as any[]).map((item: any) => ({
+            period: new Date(item.date).toLocaleDateString(),
+            ticket_count: item.ticket_count,
+            total_revenue: item.total_revenue
+          }))
+      }
+      
+      // For period-over-period comparison, we'll compare each period with the previous one
+      for (let i = 1; i < transformedData.length; i++) {
+        const currentPeriod = transformedData[i]
+        const previousPeriod = transformedData[i - 1]
         
-      const revenueGrowthRate = previousPeriod.total_revenue !== 0
-        ? parseFloat(((currentPeriod.total_revenue - previousPeriod.total_revenue) / previousPeriod.total_revenue * 100).toFixed(2))
-        : (currentPeriod.total_revenue > 0 ? 100 : 0);
+        // Calculate growth rates
+        const ticketGrowthRate = previousPeriod.ticket_count !== 0 
+          ? parseFloat(((currentPeriod.ticket_count - previousPeriod.ticket_count) / previousPeriod.ticket_count * 100).toFixed(2))
+          : (currentPeriod.ticket_count > 0 ? 100 : 0)
+          
+        const revenueGrowthRate = previousPeriod.total_revenue !== 0
+          ? parseFloat(((currentPeriod.total_revenue - previousPeriod.total_revenue) / previousPeriod.total_revenue * 100).toFixed(2))
+          : (currentPeriod.total_revenue > 0 ? 100 : 0)
+        
+        // Calculate statistical significance of growth rates
+        // Simple approach: if the absolute difference is greater than 2 standard deviations, consider it significant
+        const ticketDiff = Math.abs(currentPeriod.ticket_count - previousPeriod.ticket_count)
+        const avgTicketCount = (currentPeriod.ticket_count + previousPeriod.ticket_count) / 2
+        const ticketStdDev = Math.sqrt(avgTicketCount) // Poisson approximation for count data
+        
+        const revenueDiff = Math.abs(currentPeriod.total_revenue - previousPeriod.total_revenue)
+        const avgRevenue = (currentPeriod.total_revenue + previousPeriod.total_revenue) / 2
+        const revenueStdDev = avgRevenue * 0.1 // Simplified assumption
+        
+        const ticketSignificant = ticketDiff > 2 * ticketStdDev
+        const revenueSignificant = revenueDiff > 2 * revenueStdDev
+        
+        processedData.push({
+          period: currentPeriod.period,
+          current_period_tickets: currentPeriod.ticket_count,
+          previous_period_tickets: previousPeriod.ticket_count,
+          current_period_revenue: currentPeriod.total_revenue,
+          previous_period_revenue: previousPeriod.total_revenue,
+          ticket_growth_rate: ticketGrowthRate,
+          revenue_growth_rate: revenueGrowthRate,
+          ticket_significant: ticketSignificant,
+          revenue_significant: revenueSignificant
+        })
+      }
       
-      // Calculate statistical significance of growth rates
-      // Simple approach: if the absolute difference is greater than 2 standard deviations, consider it significant
-      const ticketDiff = Math.abs(currentPeriod.ticket_count - previousPeriod.ticket_count);
-      const avgTicketCount = (currentPeriod.ticket_count + previousPeriod.ticket_count) / 2;
-      const ticketStdDev = Math.sqrt(avgTicketCount); // Poisson approximation for count data
-      
-      const revenueDiff = Math.abs(currentPeriod.total_revenue - previousPeriod.total_revenue);
-      const avgRevenue = (currentPeriod.total_revenue + previousPeriod.total_revenue) / 2;
-      const revenueStdDev = avgRevenue * 0.1; // Simplified assumption
-      
-      const ticketSignificant = ticketDiff > 2 * ticketStdDev;
-      const revenueSignificant = revenueDiff > 2 * revenueStdDev;
-      
-      processedData.push({
-        period: currentPeriod.period,
-        current_period_tickets: currentPeriod.ticket_count,
-        previous_period_tickets: previousPeriod.ticket_count,
-        current_period_revenue: currentPeriod.total_revenue,
-        previous_period_revenue: previousPeriod.total_revenue,
-        ticket_growth_rate: ticketGrowthRate,
-        revenue_growth_rate: revenueGrowthRate,
-        ticket_significant: ticketSignificant,
-        revenue_significant: revenueSignificant
-      });
+      return processedData
+    } catch (error) {
+      console.error('Error fetching period-over-period comparison data:', error)
+      throw error
     }
-    
-    return processedData;
+  },
+
+  // Get forecasting data based on historical trends with enhanced models
+  async getForecastData(timeframe: Timeframe = 'daily', periodsAhead: number = 6) {
+    try {
+      const data = await this.getRevenueTrends(timeframe);
+      
+      // Process data for forecasting
+      const processedData: ForecastData[] = []
+      
+      if (data.length < 3) {
+        // Not enough data for forecasting
+        return processedData
+      }
+      
+      // Extract ticket counts and revenue for regression analysis
+      const ticketCounts = data.map((item: any) => item.ticket_count)
+      const revenues = data.map((item: any) => item.total_revenue)
+      const periods = data.map((item: any, index: number) => index + 1) // 1-indexed periods
+      
+      // Calculate different regression models for tickets
+      const linearModel = this.calculateEnhancedLinearRegression(periods, ticketCounts)
+      const polynomialModel = this.calculatePolynomialRegression(periods, ticketCounts)
+      const logarithmicModel = this.calculateLogarithmicRegression(periods, ticketCounts)
+      
+      // Select best model based on R-squared
+      const models = [
+        { name: 'linear', rSquared: linearModel.rSquared, model: linearModel },
+        { name: 'polynomial', rSquared: polynomialModel.rSquared, model: polynomialModel },
+        { name: 'logarithmic', rSquared: logarithmicModel.rSquared, model: logarithmicModel }
+      ]
+      
+      const best = models.reduce((best, current) => 
+        current.rSquared > best.rSquared ? current : best
+      )
+      
+      // Calculate revenue model (always linear)
+      const revenueModel = this.calculateEnhancedLinearRegression(periods, revenues)
+      
+      // Calculate simple stddev for non-linear models
+      const avgTicketCount = ticketCounts.reduce((sum, count) => sum + count, 0) / ticketCounts.length
+      const ticketVariance = ticketCounts.reduce((sum, count) => sum + Math.pow(count - avgTicketCount, 2), 0) / ticketCounts.length
+      const ticketStdDev = Math.sqrt(ticketVariance)
+      
+      // Get last date for forecasting periods
+      const lastDate = new Date(data[data.length - 1].period)
+      const lastPeriodIndex = periods[periods.length - 1]
+      
+      for (let i = 1; i <= periodsAhead; i++) {
+        const forecastPeriodIndex = lastPeriodIndex + i
+        let predictedTickets = 0
+        
+        let ticketLower = 0
+        let ticketUpper = 0
+        
+        switch (best.name) {
+          case 'linear':
+            predictedTickets = Math.max(0, Math.round(
+              linearModel.slope * forecastPeriodIndex + linearModel.intercept
+            ))
+            const sePredTicket = Math.sqrt(linearModel.mse * (1 + 1 / periods.length + Math.pow(forecastPeriodIndex - linearModel.meanX, 2) / linearModel.ssxx))
+            const marginTicket = linearModel.tValue * sePredTicket
+            ticketLower = Math.max(0, Math.round(predictedTickets - marginTicket))
+            ticketUpper = Math.round(predictedTickets + marginTicket)
+            break
+          case 'polynomial':
+            const [a, b, c] = polynomialModel.coefficients
+            predictedTickets = Math.max(0, Math.round(
+              a * forecastPeriodIndex * forecastPeriodIndex + b * forecastPeriodIndex + c
+            ))
+            ticketLower = Math.max(0, predictedTickets - ticketStdDev)
+            ticketUpper = predictedTickets + ticketStdDev
+            break
+          case 'logarithmic':
+            predictedTickets = Math.max(0, Math.round(
+              logarithmicModel.a * Math.log(forecastPeriodIndex) + logarithmicModel.b
+            ))
+            ticketLower = Math.max(0, predictedTickets - ticketStdDev)
+            ticketUpper = predictedTickets + ticketStdDev
+            break
+        }
+        
+        const predictedRevenue = Math.max(0, Math.round(
+          revenueModel.slope * forecastPeriodIndex + revenueModel.intercept
+        ))
+        
+        const sePredRevenue = Math.sqrt(revenueModel.mse * (1 + 1 / periods.length + Math.pow(forecastPeriodIndex - revenueModel.meanX, 2) / revenueModel.ssxx))
+        const marginRevenue = revenueModel.tValue * sePredRevenue
+        const revenueLower = Math.max(0, Math.round(predictedRevenue - marginRevenue))
+        const revenueUpper = Math.round(predictedRevenue + marginRevenue)
+        
+        // Calculate forecast date
+        const forecastDate = new Date(lastDate)
+        switch (timeframe) {
+          case 'daily':
+            forecastDate.setDate(forecastDate.getDate() + i)
+            break
+          case 'weekly':
+            forecastDate.setDate(forecastDate.getDate() + 7 * i)
+            break
+          case 'monthly':
+            forecastDate.setMonth(forecastDate.getMonth() + i)
+            break
+          case 'quarterly':
+            forecastDate.setMonth(forecastDate.getMonth() + 3 * i)
+            break
+          case 'yearly':
+            forecastDate.setFullYear(forecastDate.getFullYear() + i)
+            break
+        }
+        
+        const formattedPeriod = this.formatPeriod(forecastDate, timeframe)
+        
+        processedData.push({
+          period: formattedPeriod,
+          predicted_tickets: predictedTickets,
+          predicted_revenue: predictedRevenue,
+          ticket_confidence_lower: ticketLower,
+          ticket_confidence_upper: ticketUpper,
+          revenue_confidence_lower: revenueLower,
+          revenue_confidence_upper: revenueUpper
+        })
+      }
+      
+      return processedData
+    } catch (error) {
+      console.error('Error fetching forecast data:', error)
+      throw error
+    }
+  },
+
+  // Advanced forecasting with multiple methods
+  async getAdvancedForecastData(timeframe: Timeframe = 'daily', periodsAhead: number = 6) {
+    try {
+      const supabase = getSupabaseBrowserClient() as any
+      const { data, error } = await supabase
+        .rpc('get_daily_ticket_trends')
+      
+      if (error) throw error
+      
+      // Transform data based on selected timeframe
+      let transformedData: any[] = []
+      switch (timeframe) {
+        case 'weekly':
+          transformedData = this.aggregateToWeekly(data)
+          break
+        case 'monthly':
+          transformedData = this.aggregateToMonthly(data)
+          break
+        case 'quarterly':
+          transformedData = this.aggregateToQuarterly(data)
+          break
+        case 'yearly':
+          transformedData = this.aggregateToYearly(data)
+          break
+        default: // daily
+          transformedData = data.map((item: any) => ({
+            period: new Date(item.date).toLocaleDateString(),
+            ticket_count: item.ticket_count,
+            total_revenue: item.total_revenue
+          }))
+      }
+      
+      // Process data for advanced forecasting
+      const processedData: any[] = []
+      
+      if (transformedData.length < 3) {
+        // Not enough data for advanced forecasting
+        return processedData
+      }
+      
+      // Extract ticket counts for forecasting
+      const ticketCounts = transformedData.map((item: any) => item.ticket_count)
+      
+      // Apply different forecasting methods
+      const exponentialSmooth = this.calculateExponentialSmoothing(ticketCounts, 0.3)
+      const doubleExponential = this.calculateDoubleExponentialSmoothing(ticketCounts, 0.3, 0.3)
+      const arimaForecast = this.calculateARIMA011(ticketCounts, 0.3)
+      
+      // Generate forecasts for future periods
+      const lastValue = ticketCounts[ticketCounts.length - 1]
+      const lastTrend = doubleExponential.trend[doubleExponential.trend.length - 1]
+      
+      // Create forecasts for future periods
+      const forecasts: any[] = []
+      for (let i = 1; i <= periodsAhead; i++) {
+        const periodIndex = transformedData.length + i - 1
+        const periodLabel = `Period ${i} after ${transformedData[transformedData.length - 1].period}`
+        
+        // Exponential smoothing forecast (use last smoothed value)
+        const expForecast = exponentialSmooth[exponentialSmooth.length - 1]
+        
+        // Double exponential smoothing forecast (level + i * trend)
+        const holtForecast = doubleExponential.level[doubleExponential.level.length - 1] + 
+                            i * doubleExponential.trend[doubleExponential.trend.length - 1]
+        
+        // ARIMA forecast (use last forecasted value)
+        const arimaValue = arimaForecast[arimaForecast.length - 1]
+        
+        // Ensemble forecast (average of all methods)
+        const ensembleForecast = (expForecast + holtForecast + arimaValue) / 3
+        
+        forecasts.push({
+          period: periodLabel,
+          exponential_smoothing: Math.max(0, Math.round(expForecast)),
+          holt_winters: Math.max(0, Math.round(holtForecast)),
+          arima: Math.max(0, Math.round(arimaValue)),
+          ensemble: Math.max(0, Math.round(ensembleForecast))
+        })
+      }
+      
+      return {
+        historical_data: transformedData.map((item, index) => ({
+          ...item,
+          exponential_smoothed: exponentialSmooth[index],
+          holt_winters_level: doubleExponential.level[index],
+          holt_winters_trend: doubleExponential.trend[index],
+          arima_forecast: arimaForecast[index]
+        })),
+        forecasts: forecasts
+      }
+    } catch (error) {
+      console.error('Error fetching advanced forecast data:', error)
+      throw error
+    }
+  },
+
+  // Simple Exponential Smoothing
+  calculateExponentialSmoothing(data: number[], alpha: number): number[] {
+    if (data.length === 0) return [];
+    const smoothed: number[] = [data[0]];
+    for (let i = 1; i < data.length; i++) {
+      smoothed.push(alpha * data[i] + (1 - alpha) * smoothed[i - 1]);
+    }
+    return smoothed;
+  },
+
+  // Double Exponential Smoothing (Holt's Linear Trend)
+  calculateDoubleExponentialSmoothing(data: number[], alpha: number, beta: number): { level: number[]; trend: number[] } {
+    if (data.length < 2) return { level: [], trend: [] };
+    let level = data[0];
+    let trend = data[1] - data[0];
+    const levels: number[] = [level];
+    const trends: number[] = [trend];
+    for (let i = 1; i < data.length; i++) {
+      const prevLevel = level;
+      level = alpha * data[i] + (1 - alpha) * (level + trend);
+      trend = beta * (level - prevLevel) + (1 - beta) * trend;
+      levels.push(level);
+      trends.push(trend);
+    }
+    return { level: levels, trend: trends };
+  },
+
+  // ARIMA(0,1,1) Implementation
+  calculateARIMA011(data: number[], theta: number): number[] {
+    if (data.length === 0) return [];
+    const fitted: number[] = [data[0]];
+    let e = 0;
+    for (let i = 1; i < data.length; i++) {
+      const pred = fitted[i - 1] + theta * e;
+      e = data[i] - pred;
+      fitted.push(pred);
+    }
+    return fitted;
   },
 
   // Enhanced regression analysis functions
@@ -491,126 +949,6 @@ export const dashboardDb = {
     const result = this.calculateLinearRegression(lnX, y);
     
     return { a: result.slope, b: result.intercept, rSquared: result.rSquared };
-  },
-
-  // Get forecasting data based on historical trends with enhanced models
-  async getForecastData(timeframe: Timeframe = 'daily', periodsAhead: number = 6) {
-    const supabase = getSupabaseBrowserClient();
-    // Using RPC to query materialized views as they're not in the auto-generated types
-    const { data, error } = await (supabase as any)
-      .from('daily_ticket_trends')
-      .select('*')
-      .order('date', { ascending: true });
-    
-    if (error) throw error;
-    
-    // Transform data based on selected timeframe
-    let transformedData: any[] = [];
-    switch (timeframe) {
-      case 'weekly':
-        transformedData = this.aggregateToWeekly(data as DailyTicketTrends[])
-        break
-      case 'monthly':
-        transformedData = this.aggregateToMonthly(data as DailyTicketTrends[])
-        break
-      case 'quarterly':
-        transformedData = this.aggregateToQuarterly(data as DailyTicketTrends[])
-        break
-      case 'yearly':
-        transformedData = this.aggregateToYearly(data as DailyTicketTrends[])
-        break
-      default: // daily
-        transformedData = data.map((item: any) => ({
-          period: new Date(item.date).toLocaleDateString(),
-          ticket_count: item.ticket_count,
-          total_revenue: item.total_revenue
-        }))
-    }
-    
-    // Process data for forecasting
-    const processedData: ForecastData[] = [];
-    
-    if (transformedData.length < 3) {
-      // Not enough data for forecasting
-      return processedData;
-    }
-    
-    // Extract ticket counts and revenue for regression analysis
-    const ticketCounts = transformedData.map((item: any) => item.ticket_count);
-    const revenues = transformedData.map((item: any) => item.total_revenue);
-    const periods = transformedData.map((item: any, index: number) => index + 1); // 1-indexed periods
-    
-    // Calculate different regression models for tickets
-    const linearModel = this.calculateLinearRegression(periods, ticketCounts);
-    const polynomialModel = this.calculatePolynomialRegression(periods, ticketCounts);
-    const logarithmicModel = this.calculateLogarithmicRegression(periods, ticketCounts);
-    
-    // Select best model based on R-squared
-    const models = [
-      { name: 'linear', rSquared: linearModel.rSquared },
-      { name: 'polynomial', rSquared: polynomialModel.rSquared },
-      { name: 'logarithmic', rSquared: logarithmicModel.rSquared }
-    ];
-    
-    const bestModel = models.reduce((best, current) => 
-      current.rSquared > best.rSquared ? current : best
-    );
-    
-    // Generate forecast using the best model
-    const lastPeriod = periods[periods.length - 1];
-    
-    for (let i = 1; i <= periodsAhead; i++) {
-      const forecastPeriod = lastPeriod + i;
-      let predictedTickets = 0;
-      
-      switch (bestModel.name) {
-        case 'linear':
-          predictedTickets = Math.max(0, Math.round(
-            linearModel.slope * forecastPeriod + linearModel.intercept
-          ));
-          break;
-        case 'polynomial':
-          const [a, b, c] = polynomialModel.coefficients;
-          predictedTickets = Math.max(0, Math.round(
-            a * forecastPeriod * forecastPeriod + b * forecastPeriod + c
-          ));
-          break;
-        case 'logarithmic':
-          predictedTickets = Math.max(0, Math.round(
-            logarithmicModel.a * Math.log(forecastPeriod) + logarithmicModel.b
-          ));
-          break;
-        default:
-          // Fallback to linear
-          predictedTickets = Math.max(0, Math.round(
-            linearModel.slope * forecastPeriod + linearModel.intercept
-          ));
-      }
-      
-      // Simple linear regression for revenue (keeping it simple for now)
-      const revenueRegression = this.calculateRegression(periods, revenues);
-      const predictedRevenue = Math.max(0, Math.round(
-        revenueRegression.slope * forecastPeriod + revenueRegression.intercept
-      ));
-      
-      // Calculate confidence interval (simplified)
-      const avgTicketCount = ticketCounts.reduce((sum, count) => sum + count, 0) / ticketCounts.length;
-      const ticketVariance = ticketCounts.reduce((sum, count) => sum + Math.pow(count - avgTicketCount, 2), 0) / ticketCounts.length;
-      const ticketStdDev = Math.sqrt(ticketVariance);
-      
-      const confidenceLower = Math.max(0, predictedTickets - ticketStdDev);
-      const confidenceUpper = predictedTickets + ticketStdDev;
-      
-      processedData.push({
-        period: `Period ${i} after ${transformedData[transformedData.length - 1].period}`,
-        predicted_tickets: predictedTickets,
-        predicted_revenue: predictedRevenue,
-        confidence_lower: Math.round(confidenceLower),
-        confidence_upper: Math.round(confidenceUpper)
-      });
-    }
-    
-    return processedData;
   },
 
   // Helper function for linear regression calculation
@@ -751,7 +1089,7 @@ export const dashboardDb = {
     return sign === 1 ? y : 1 - y;
   },
 
-  // Enhanced linear regression with statistical significance
+  // Enhanced linear regression with statistical significance and additional stats for prediction intervals
   calculateEnhancedLinearRegression(x: number[], y: number[]): { 
     slope: number, 
     intercept: number, 
@@ -759,7 +1097,11 @@ export const dashboardDb = {
     slopePValue: number, 
     interceptPValue: number,
     slopeConfidenceInterval: [number, number],
-    interceptConfidenceInterval: [number, number]
+    interceptConfidenceInterval: [number, number],
+    mse: number,
+    meanX: number,
+    ssxx: number,
+    tValue: number
   } {
     if (x.length !== y.length || x.length < 3) {
       return { 
@@ -769,7 +1111,11 @@ export const dashboardDb = {
         slopePValue: 1, 
         interceptPValue: 1,
         slopeConfidenceInterval: [0, 0],
-        interceptConfidenceInterval: [0, 0]
+        interceptConfidenceInterval: [0, 0],
+        mse: 0,
+        meanX: 0,
+        ssxx: 0,
+        tValue: 0
       };
     }
     
@@ -811,6 +1157,9 @@ export const dashboardDb = {
     const slopeConfidenceInterval: [number, number] = [slope - slopeMargin, slope + slopeMargin];
     const interceptConfidenceInterval: [number, number] = [intercept - interceptMargin, intercept + interceptMargin];
     
+    const meanX = sumX / n;
+    const ssxx = sumXX - (sumX * sumX / n);
+    
     return { 
       slope, 
       intercept, 
@@ -818,17 +1167,23 @@ export const dashboardDb = {
       slopePValue, 
       interceptPValue,
       slopeConfidenceInterval,
-      interceptConfidenceInterval
+      interceptConfidenceInterval,
+      mse,
+      meanX,
+      ssxx,
+      tValue
     };
   },
 
-  // Enhanced correlation with statistical significance
+
+
+  // Enhanced correlation analysis with statistical significance testing and confidence intervals
   calculateEnhancedCorrelation(x: number[], y: number[]): { 
     correlation: number, 
-    pValue: number, 
-    confidenceInterval: [number, number] 
+    pValue: number,
+    confidenceInterval: [number, number]
   } {
-    if (x.length !== y.length || x.length < 3) {
+    if (x.length !== y.length || x.length < 2) {
       return { correlation: 0, pValue: 1, confidenceInterval: [0, 0] };
     }
     
@@ -855,417 +1210,35 @@ export const dashboardDb = {
     const correlation = denominator !== 0 ? numerator / denominator : 0;
     
     // Calculate p-value using t-distribution
-    if (Math.abs(correlation) === 1 || n <= 2) {
-      return { correlation, pValue: correlation === 1 ? 0 : 1, confidenceInterval: [correlation, correlation] };
-    }
-    
+    // t = r * sqrt((n-2)/(1-r^2))
     const df = n - 2;
-    const t = Math.abs(correlation) * Math.sqrt(df / (1 - Math.pow(correlation, 2)));
-    const pValue = 2 * (1 - this.cumulativeNormalDistribution(t));
+    let pValue = 1;
+    
+    if (df > 0 && Math.abs(correlation) < 1) {
+      const tStatistic = correlation * Math.sqrt(df / (1 - correlation * correlation));
+      pValue = this.calculateTTestPValue(Math.abs(tStatistic), df);
+    }
     
     // Calculate confidence interval using Fisher transformation
-    const fisherZ = 0.5 * Math.log((1 + correlation) / (1 - correlation));
-    const se = 1 / Math.sqrt(n - 3);
-    const zCritical = 1.96; // 95% CI
+    // For small samples, we use approximate method
+    let confidenceInterval: [number, number] = [correlation, correlation];
     
-    const zLower = fisherZ - zCritical * se;
-    const zUpper = fisherZ + zCritical * se;
-    
-    const lower = (Math.exp(2 * zLower) - 1) / (Math.exp(2 * zLower) + 1);
-    const upper = (Math.exp(2 * zUpper) - 1) / (Math.exp(2 * zUpper) + 1);
-    
-    const confidenceInterval: [number, number] = [lower, upper];
+    if (n > 3) {
+      // Fisher z-transformation
+      const z = 0.5 * Math.log((1 + correlation) / (1 - correlation));
+      const zSigma = 1 / Math.sqrt(n - 3);
+      
+      // 95% confidence interval
+      const zLower = z - 1.96 * zSigma;
+      const zUpper = z + 1.96 * zSigma;
+      
+      // Transform back to correlation scale
+      const lower = (Math.exp(2 * zLower) - 1) / (Math.exp(2 * zLower) + 1);
+      const upper = (Math.exp(2 * zUpper) - 1) / (Math.exp(2 * zUpper) + 1);
+      
+      confidenceInterval = [lower, upper];
+    }
     
     return { correlation, pValue, confidenceInterval };
-  },
-
-  // Advanced forecasting methods
-  // Simple exponential smoothing (Holt-Winters single parameter)
-  calculateExponentialSmoothing(data: number[], alpha: number = 0.3): number[] {
-    if (data.length === 0) return [];
-    
-    const smoothed: number[] = [data[0]]; // First value is the initial forecast
-    
-    for (let i = 1; i < data.length; i++) {
-      const forecast = alpha * data[i - 1] + (1 - alpha) * smoothed[i - 1];
-      smoothed.push(forecast);
-    }
-    
-    return smoothed;
-  },
-
-  // Double exponential smoothing (Holt's method) for trend
-  calculateDoubleExponentialSmoothing(data: number[], alpha: number = 0.3, beta: number = 0.3): { 
-    level: number[], 
-    trend: number[], 
-    forecast: number[] 
-  } {
-    if (data.length < 2) {
-      return { level: data, trend: Array(data.length).fill(0), forecast: data };
-    }
-    
-    const level: number[] = [data[0]];
-    const trend: number[] = [data[1] - data[0]];
-    const forecast: number[] = [data[0]];
-    
-    for (let i = 1; i < data.length; i++) {
-      const currentLevel = alpha * data[i] + (1 - alpha) * (level[i - 1] + trend[i - 1]);
-      const currentTrend = beta * (currentLevel - level[i - 1]) + (1 - beta) * trend[i - 1];
-      
-      level.push(currentLevel);
-      trend.push(currentTrend);
-      
-      // Forecast for next period
-      const nextForecast = currentLevel + currentTrend;
-      forecast.push(nextForecast);
-    }
-    
-    return { level, trend, forecast };
-  },
-
-  // Simple ARIMA(0,1,1) model (equivalent to exponential smoothing)
-  calculateARIMA011(data: number[], theta: number = 0.3): number[] {
-    if (data.length < 2) return [...data];
-    
-    // First difference the data
-    const diffData: number[] = [];
-    for (let i = 1; i < data.length; i++) {
-      diffData.push(data[i] - data[i - 1]);
-    }
-    
-    // Apply MA(1) model to differenced data
-    const forecasts: number[] = [data[0]]; // Initial forecast
-    
-    for (let i = 0; i < diffData.length; i++) {
-      // ARIMA(0,1,1) forecast: forecast[t+1] = data[t] + (1 - theta) * error[t]
-      const error = i > 0 ? diffData[i - 1] - (forecasts[i] - data[i]) : 0;
-      const forecast = data[i] + theta * error;
-      forecasts.push(forecast);
-    }
-    
-    return forecasts;
-  },
-
-  // Advanced forecasting with multiple methods
-  async getAdvancedForecastData(timeframe: Timeframe = 'daily', periodsAhead: number = 6) {
-    const supabase = getSupabaseBrowserClient();
-    // Using RPC to query materialized views as they're not in the auto-generated types
-    const { data, error } = await (supabase as any)
-      .from('daily_ticket_trends')
-      .select('*')
-      .order('date', { ascending: true });
-    
-    if (error) throw error;
-    
-    // Transform data based on selected timeframe
-    let transformedData: any[] = [];
-    switch (timeframe) {
-      case 'weekly':
-        transformedData = this.aggregateToWeekly(data as DailyTicketTrends[])
-        break
-      case 'monthly':
-        transformedData = this.aggregateToMonthly(data as DailyTicketTrends[])
-        break
-      case 'quarterly':
-        transformedData = this.aggregateToQuarterly(data as DailyTicketTrends[])
-        break
-      case 'yearly':
-        transformedData = this.aggregateToYearly(data as DailyTicketTrends[])
-        break
-      default: // daily
-        transformedData = data.map((item: any) => ({
-          period: new Date(item.date).toLocaleDateString(),
-          ticket_count: item.ticket_count,
-          total_revenue: item.total_revenue
-        }))
-    }
-    
-    // Process data for advanced forecasting
-    const processedData: any[] = [];
-    
-    if (transformedData.length < 3) {
-      // Not enough data for advanced forecasting
-      return processedData;
-    }
-    
-    // Extract ticket counts for forecasting
-    const ticketCounts = transformedData.map((item: any) => item.ticket_count);
-    
-    // Apply different forecasting methods
-    const exponentialSmooth = this.calculateExponentialSmoothing(ticketCounts, 0.3);
-    const doubleExponential = this.calculateDoubleExponentialSmoothing(ticketCounts, 0.3, 0.3);
-    const arimaForecast = this.calculateARIMA011(ticketCounts, 0.3);
-    
-    // Generate forecasts for future periods
-    const lastValue = ticketCounts[ticketCounts.length - 1];
-    const lastTrend = doubleExponential.trend[doubleExponential.trend.length - 1];
-    
-    // Create forecasts for future periods
-    const forecasts: any[] = [];
-    for (let i = 1; i <= periodsAhead; i++) {
-      const periodIndex = transformedData.length + i - 1;
-      const periodLabel = `Period ${i} after ${transformedData[transformedData.length - 1].period}`;
-      
-      // Exponential smoothing forecast (use last smoothed value)
-      const expForecast = exponentialSmooth[exponentialSmooth.length - 1];
-      
-      // Double exponential smoothing forecast (level + i * trend)
-      const holtForecast = doubleExponential.level[doubleExponential.level.length - 1] + 
-                          i * doubleExponential.trend[doubleExponential.trend.length - 1];
-      
-      // ARIMA forecast (use last forecasted value)
-      const arimaValue = arimaForecast[arimaForecast.length - 1];
-      
-      // Ensemble forecast (average of all methods)
-      const ensembleForecast = (expForecast + holtForecast + arimaValue) / 3;
-      
-      forecasts.push({
-        period: periodLabel,
-        exponential_smoothing: Math.max(0, Math.round(expForecast)),
-        holt_winters: Math.max(0, Math.round(holtForecast)),
-        arima: Math.max(0, Math.round(arimaValue)),
-        ensemble: Math.max(0, Math.round(ensembleForecast))
-      });
-    }
-    
-    return {
-      historical_data: transformedData.map((item, index) => ({
-        ...item,
-        exponential_smoothed: exponentialSmooth[index],
-        holt_winters_level: doubleExponential.level[index],
-        holt_winters_trend: doubleExponential.trend[index],
-        arima_forecast: arimaForecast[index]
-      })),
-      forecasts: forecasts
-    };
-  },
-
-  // Outlier detection methods
-  // Z-score method for outlier detection
-  detectOutliersZScore(data: number[], threshold: number = 3): { 
-    outliers: number[], 
-    indices: number[], 
-    zScores: number[] 
-  } {
-    if (data.length === 0) {
-      return { outliers: [], indices: [], zScores: [] };
-    }
-    
-    // Calculate mean and standard deviation
-    const mean = data.reduce((sum, val) => sum + val, 0) / data.length;
-    const variance = data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length;
-    const stdDev = Math.sqrt(variance);
-    
-    // Calculate z-scores and identify outliers
-    const outliers: number[] = [];
-    const indices: number[] = [];
-    const zScores: number[] = [];
-    
-    data.forEach((value, index) => {
-      const zScore = stdDev !== 0 ? Math.abs((value - mean) / stdDev) : 0;
-      zScores.push(zScore);
-      
-      if (zScore > threshold) {
-        outliers.push(value);
-        indices.push(index);
-      }
-    });
-    
-    return { outliers, indices, zScores };
-  },
-
-  // Interquartile Range (IQR) method for outlier detection
-  detectOutliersIQR(data: number[]): { 
-    outliers: number[], 
-    indices: number[], 
-    q1: number, 
-    q3: number, 
-    iqr: number 
-  } {
-    if (data.length === 0) {
-      return { outliers: [], indices: [], q1: 0, q3: 0, iqr: 0 };
-    }
-    
-    // Sort data for quartile calculation
-    const sortedData = [...data].sort((a, b) => a - b);
-    
-    // Calculate quartiles
-    const q1Index = Math.floor(sortedData.length * 0.25);
-    const q3Index = Math.floor(sortedData.length * 0.75);
-    const q1 = sortedData[q1Index];
-    const q3 = sortedData[q3Index];
-    const iqr = q3 - q1;
-    
-    // Calculate outlier bounds
-    const lowerBound = q1 - 1.5 * iqr;
-    const upperBound = q3 + 1.5 * iqr;
-    
-    // Identify outliers
-    const outliers: number[] = [];
-    const indices: number[] = [];
-    
-    data.forEach((value, index) => {
-      if (value < lowerBound || value > upperBound) {
-        outliers.push(value);
-        indices.push(index);
-      }
-    });
-    
-    return { outliers, indices, q1, q3, iqr };
-  },
-
-  // Modified Z-score method using median absolute deviation (MAD)
-  detectOutliersModifiedZScore(data: number[], threshold: number = 3.5): { 
-    outliers: number[], 
-    indices: number[], 
-    modifiedZScores: number[] 
-  } {
-    if (data.length === 0) {
-      return { outliers: [], indices: [], modifiedZScores: [] };
-    }
-    
-    // Calculate median
-    const sortedData = [...data].sort((a, b) => a - b);
-    const median = sortedData[Math.floor(sortedData.length / 2)];
-    
-    // Calculate median absolute deviation (MAD)
-    const deviations = data.map(value => Math.abs(value - median));
-    const mad = deviations.sort((a, b) => a - b)[Math.floor(deviations.length / 2)];
-    
-    // Calculate modified z-scores
-    const outliers: number[] = [];
-    const indices: number[] = [];
-    const modifiedZScores: number[] = [];
-    
-    data.forEach((value, index) => {
-      const modifiedZScore = mad !== 0 ? 0.6745 * (value - median) / mad : 0;
-      modifiedZScores.push(modifiedZScore);
-      
-      if (Math.abs(modifiedZScore) > threshold) {
-        outliers.push(value);
-        indices.push(index);
-      }
-    });
-    
-    return { outliers, indices, modifiedZScores };
-  },
-
-  // Tukey's fences method
-  detectOutliersTukey(data: number[], k: number = 1.5): { 
-    outliers: number[], 
-    indices: number[], 
-    lowerFence: number, 
-    upperFence: number 
-  } {
-    if (data.length === 0) {
-      return { outliers: [], indices: [], lowerFence: 0, upperFence: 0 };
-    }
-    
-    // Calculate quartiles using more precise method
-    const sortedData = [...data].sort((a, b) => a - b);
-    const q1 = this.getQuantile(sortedData, 0.25);
-    const q3 = this.getQuantile(sortedData, 0.75);
-    const iqr = q3 - q1;
-    
-    // Calculate fences
-    const lowerFence = q1 - k * iqr;
-    const upperFence = q3 + k * iqr;
-    
-    // Identify outliers
-    const outliers: number[] = [];
-    const indices: number[] = [];
-    
-    data.forEach((value, index) => {
-      if (value < lowerFence || value > upperFence) {
-        outliers.push(value);
-        indices.push(index);
-      }
-    });
-    
-    return { outliers, indices, lowerFence, upperFence };
-  },
-
-  // Helper function to calculate quantiles
-  getQuantile(sortedData: number[], quantile: number): number {
-    const index = quantile * (sortedData.length - 1);
-    const lowerIndex = Math.floor(index);
-    const upperIndex = Math.ceil(index);
-    
-    if (lowerIndex === upperIndex) {
-      return sortedData[lowerIndex];
-    }
-    
-    const weight = index - lowerIndex;
-    return sortedData[lowerIndex] * (1 - weight) + sortedData[upperIndex] * weight;
-  },
-
-  // Outlier detection for ticket data
-  async getTicketDataWithOutlierDetection(timeframe: Timeframe = 'daily') {
-    const supabase = getSupabaseBrowserClient();
-    // Using RPC to query materialized views as they're not in the auto-generated types
-    const { data, error } = await (supabase as any)
-      .from('daily_ticket_trends')
-      .select('*')
-      .order('date', { ascending: true });
-    
-    if (error) throw error;
-    
-    // Transform data based on selected timeframe
-    let transformedData: any[] = [];
-    switch (timeframe) {
-      case 'weekly':
-        transformedData = this.aggregateToWeekly(data as DailyTicketTrends[])
-        break
-      case 'monthly':
-        transformedData = this.aggregateToMonthly(data as DailyTicketTrends[])
-        break
-      case 'quarterly':
-        transformedData = this.aggregateToQuarterly(data as DailyTicketTrends[])
-        break
-      case 'yearly':
-        transformedData = this.aggregateToYearly(data as DailyTicketTrends[])
-        break
-      default: // daily
-        transformedData = data.map((item: any) => ({
-          period: new Date(item.date).toLocaleDateString(),
-          ticket_count: item.ticket_count,
-          unique_customers: item.unique_customers,
-          total_revenue: item.total_revenue
-        }))
-    }
-    
-    if (transformedData.length === 0) {
-      return { data: [], outliers: { zScore: [], iqr: [], modifiedZScore: [], tukey: [] } };
-    }
-    
-    // Extract ticket counts for outlier detection
-    const ticketCounts = transformedData.map((item: any) => item.ticket_count);
-    
-    // Apply different outlier detection methods
-    const zScoreOutliers = this.detectOutliersZScore(ticketCounts);
-    const iqrOutliers = this.detectOutliersIQR(ticketCounts);
-    const modifiedZScoreOutliers = this.detectOutliersModifiedZScore(ticketCounts);
-    const tukeyOutliers = this.detectOutliersTukey(ticketCounts);
-    
-    // Enhance data with outlier information
-    const enhancedData = transformedData.map((item: any, index: number) => ({
-      ...item,
-      isZScoreOutlier: zScoreOutliers.indices.includes(index),
-      isIQROutlier: iqrOutliers.indices.includes(index),
-      isModifiedZScoreOutlier: modifiedZScoreOutliers.indices.includes(index),
-      isTukeyOutlier: tukeyOutliers.indices.includes(index),
-      zScore: zScoreOutliers.zScores[index] || 0,
-      modifiedZScore: modifiedZScoreOutliers.modifiedZScores[index] || 0
-    }));
-    
-    return {
-      data: enhancedData,
-      outliers: {
-        zScore: zScoreOutliers,
-        iqr: iqrOutliers,
-        modifiedZScore: modifiedZScoreOutliers,
-        tukey: tukeyOutliers
-      }
-    };
   }
 }

@@ -31,8 +31,15 @@ export default function AdminRootLayout({
         console.log('AdminLayout: No user authenticated, redirecting to login');
         router.push('/login');
       } else if (user && role !== 'admin') {
-        console.log('AdminLayout: User authenticated but not admin, redirecting to home. User role:', role);
-        router.push('/');
+        // Only redirect if role is explicitly not admin
+        // If role is null, we might still be fetching it
+        if (role !== null) {
+          console.log('AdminLayout: User authenticated but not admin, redirecting to home. User role:', role);
+          router.push('/');
+        } else {
+          console.log('AdminLayout: User authenticated but role still loading');
+          // Don't redirect yet, wait for role to load
+        }
       } else if (user && role === 'admin') {
         console.log('AdminLayout: User authorized, rendering admin layout for user:', user.id);
         setIsCheckingAuth(false);

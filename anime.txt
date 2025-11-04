@@ -1,1269 +1,915 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jay's Shop - AI-Powered Repairs</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0a1628 0%, #1a2332 50%, #0a1628 100%);
-            color: #fff;
-            overflow-x: hidden;
-        }
-
-        /* Animated background particles */
-        .particles {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        .particle {
-            position: absolute;
-            width: 3px;
-            height: 3px;
-            background: rgba(59, 130, 246, 0.5);
-            border-radius: 50%;
-            animation: float 15s infinite;
-            box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { transform: translate(100px, -1000px) scale(0); opacity: 0; }
-        }
-
-        /* Navigation */
-        nav {
-            position: fixed;
-            top: 0;
-            width: 100%;
-            padding: 20px 50px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 1000;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(59, 130, 246, 0.2);
-        }
-
-        .logo {
-            font-size: 28px;
-            font-weight: bold;
-            background: linear-gradient(45deg, #3b82f6, #60a5fa, #3b82f6);
-            background-size: 200% 200%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: gradientFlow 3s ease infinite;
-            text-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .logo::before {
-            content: '📱';
-            -webkit-text-fill-color: initial;
-            text-shadow: none;
-        }
-
-        @keyframes gradientFlow {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 30px;
-            list-style: none;
-        }
-
-        .nav-links a {
-            color: #fff;
-            text-decoration: none;
-            font-size: 16px;
-            transition: all 0.3s;
-            position: relative;
-        }
-
-        .nav-links a::after {
-            content: '';
-            position: absolute;
-            bottom: -5px;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: linear-gradient(90deg, #3b82f6, #60a5fa);
-            transition: width 0.3s;
-        }
-
-        .nav-links a:hover::after {
-            width: 100%;
-        }
-
-        /* Hero Section */
-        .hero {
-            position: relative;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 100px 20px 50px;
-            z-index: 1;
-        }
-
-        .hero h1 {
-            font-size: 72px;
-            margin-bottom: 20px;
-            background: linear-gradient(45deg, #3b82f6, #60a5fa, #93c5fd, #3b82f6);
-            background-size: 300% 300%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: gradientShift 5s ease infinite;
-            text-shadow: 0 0 80px rgba(59, 130, 246, 0.5);
-        }
-
-        @keyframes gradientShift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-
-        .hero p {
-            font-size: 24px;
-            margin-bottom: 40px;
-            color: #93c5fd;
-            text-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
-        }
-
-        /* 3D Phone Model */
-        .phone-container {
-            position: relative;
-            width: 320px;
-            height: 550px;
-            margin: 40px auto;
-            perspective: 1200px;
-        }
-
-        .phone-3d {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            transform-style: preserve-3d;
-            animation: phoneFloat 6s ease-in-out infinite;
-        }
-
-        @keyframes phoneFloat {
-            0%, 100% { 
-                transform: translateY(0) rotateY(-15deg) rotateX(5deg);
-            }
-            50% { 
-                transform: translateY(-20px) rotateY(15deg) rotateX(5deg);
-            }
-        }
-
-        .phone-screen {
-            width: 280px;
-            height: 500px;
-            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-            border-radius: 45px;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border: 8px solid #1e293b;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4),
-                        0 0 0 2px #3b82f6,
-                        inset 0 0 0 2px rgba(255, 255, 255, 0.1);
-            overflow: hidden;
-        }
-
-        .phone-screen::before {
-            content: '';
-            position: absolute;
-            width: 120px;
-            height: 28px;
-            background: #1e293b;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            border-radius: 0 0 20px 20px;
-            z-index: 10;
-        }
-
-        .phone-screen::after {
-            content: '';
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            background: #334155;
-            top: 8px;
-            left: 50%;
-            transform: translateX(-50%);
-            border-radius: 50%;
-            z-index: 11;
-        }
-
-        /* Phone Crack */
-        .phone-crack {
-            position: absolute;
-            top: 40%;
-            left: 30%;
-            width: 150px;
-            height: 150px;
-            z-index: 5;
-            opacity: 0.7;
-        }
-
-        .crack-line {
-            position: absolute;
-            background: linear-gradient(45deg, transparent, rgba(0, 0, 0, 0.3), transparent);
-            transform-origin: center;
-        }
-
-        .crack-line:nth-child(1) {
-            width: 100px;
-            height: 2px;
-            top: 50%;
-            left: 20%;
-            transform: rotate(45deg);
-        }
-
-        .crack-line:nth-child(2) {
-            width: 80px;
-            height: 2px;
-            top: 40%;
-            left: 30%;
-            transform: rotate(-30deg);
-        }
-
-        .crack-line:nth-child(3) {
-            width: 60px;
-            height: 2px;
-            top: 60%;
-            left: 25%;
-            transform: rotate(20deg);
-        }
-
-        /* Robot Agents */
-        .robot-agent {
-            position: absolute;
-            z-index: 15;
-            animation: robotWork 4s ease-in-out infinite;
-        }
-
-        .robot-agent.robot-1 {
-            top: 35%;
-            left: -60px;
-            animation-delay: 0s;
-        }
-
-        .robot-agent.robot-2 {
-            top: 45%;
-            right: -60px;
-            animation-delay: 1s;
-        }
-
-        @keyframes robotWork {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-5px) scale(1.05); }
-        }
-
-        .robot-body {
-            width: 50px;
-            height: 60px;
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            border-radius: 10px;
-            position: relative;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.5);
-            animation: robotGlow 2s ease-in-out infinite;
-        }
-
-        @keyframes robotGlow {
-            0%, 100% { box-shadow: 0 4px 15px rgba(59, 130, 246, 0.5); }
-            50% { box-shadow: 0 4px 25px rgba(59, 130, 246, 0.8); }
-        }
-
-        .robot-head {
-            width: 35px;
-            height: 30px;
-            background: linear-gradient(135deg, #60a5fa, #3b82f6);
-            border-radius: 8px;
-            position: absolute;
-            top: -25px;
-            left: 50%;
-            transform: translateX(-50%);
-            box-shadow: 0 2px 10px rgba(59, 130, 246, 0.4);
-        }
-
-        .robot-eye {
-            width: 6px;
-            height: 6px;
-            background: #fff;
-            border-radius: 50%;
-            position: absolute;
-            top: 10px;
-            animation: blink 3s infinite;
-        }
-
-        .robot-eye.left {
-            left: 8px;
-        }
-
-        .robot-eye.right {
-            right: 8px;
-        }
-
-        @keyframes blink {
-            0%, 48%, 52%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-
-        .robot-antenna {
-            width: 2px;
-            height: 10px;
-            background: #60a5fa;
-            position: absolute;
-            top: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-
-        .robot-antenna::after {
-            content: '';
-            width: 6px;
-            height: 6px;
-            background: #3b82f6;
-            border-radius: 50%;
-            position: absolute;
-            top: -6px;
-            left: 50%;
-            transform: translateX(-50%);
-            box-shadow: 0 0 10px #3b82f6;
-            animation: antennaBlink 1.5s infinite;
-        }
-
-        @keyframes antennaBlink {
-            0%, 100% { opacity: 1; box-shadow: 0 0 10px #3b82f6; }
-            50% { opacity: 0.3; box-shadow: 0 0 5px #3b82f6; }
-        }
-
-        .robot-arm {
-            width: 40px;
-            height: 4px;
-            background: #2563eb;
-            position: absolute;
-            top: 20px;
-            border-radius: 2px;
-        }
-
-        .robot-1 .robot-arm {
-            right: -35px;
-            transform-origin: left center;
-            animation: armWork1 2s ease-in-out infinite;
-        }
-
-        .robot-2 .robot-arm {
-            left: -35px;
-            transform-origin: right center;
-            animation: armWork2 2s ease-in-out infinite;
-        }
-
-        @keyframes armWork1 {
-            0%, 100% { transform: rotate(-20deg); }
-            50% { transform: rotate(-40deg); }
-        }
-
-        @keyframes armWork2 {
-            0%, 100% { transform: rotate(20deg); }
-            50% { transform: rotate(40deg); }
-        }
-
-        /* Welding Torch */
-        .welding-torch {
-            width: 20px;
-            height: 30px;
-            background: linear-gradient(180deg, #64748b, #475569);
-            border-radius: 3px;
-            position: absolute;
-            top: 15px;
-        }
-
-        .robot-1 .welding-torch {
-            right: -55px;
-            transform: rotate(-45deg);
-        }
-
-        .robot-2 .welding-torch {
-            left: -55px;
-            transform: rotate(45deg);
-        }
-
-        .torch-flame {
-            width: 8px;
-            height: 15px;
-            background: linear-gradient(180deg, #fbbf24, #f59e0b, #ef4444);
-            position: absolute;
-            bottom: -12px;
-            left: 50%;
-            transform: translateX(-50%);
-            border-radius: 50% 50% 0 0;
-            animation: flameFlicker 0.3s infinite;
-            box-shadow: 0 0 20px #f59e0b, 0 0 30px #ef4444;
-        }
-
-        @keyframes flameFlicker {
-            0%, 100% { 
-                height: 15px; 
-                opacity: 1;
-                box-shadow: 0 0 20px #f59e0b, 0 0 30px #ef4444;
-            }
-            50% { 
-                height: 12px; 
-                opacity: 0.8;
-                box-shadow: 0 0 15px #f59e0b, 0 0 20px #ef4444;
-            }
-        }
-
-        /* Welding Sparks */
-        .spark {
-            position: absolute;
-            width: 3px;
-            height: 3px;
-            background: #fbbf24;
-            border-radius: 50%;
-            box-shadow: 0 0 8px #f59e0b;
-            animation: sparkFly 1s infinite;
-        }
-
-        .spark:nth-child(1) {
-            top: 40%;
-            left: 35%;
-            animation-delay: 0s;
-        }
-
-        .spark:nth-child(2) {
-            top: 42%;
-            left: 40%;
-            animation-delay: 0.2s;
-        }
-
-        .spark:nth-child(3) {
-            top: 38%;
-            left: 38%;
-            animation-delay: 0.4s;
-        }
-
-        .spark:nth-child(4) {
-            top: 45%;
-            left: 42%;
-            animation-delay: 0.6s;
-        }
-
-        @keyframes sparkFly {
-            0% { 
-                opacity: 1; 
-                transform: translate(0, 0) scale(1);
-            }
-            100% { 
-                opacity: 0; 
-                transform: translate(var(--tx, 20px), var(--ty, 20px)) scale(0);
-            }
-        }
-
-        .spark:nth-child(1) { --tx: -15px; --ty: -15px; }
-        .spark:nth-child(2) { --tx: 20px; --ty: -10px; }
-        .spark:nth-child(3) { --tx: -10px; --ty: 15px; }
-        .spark:nth-child(4) { --tx: 15px; --ty: 20px; }
-
-        .screen-content {
-            position: absolute;
-            top: 50px;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: white;
-            padding: 20px;
-            overflow: hidden;
-        }
-
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            color: #1e293b;
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 30px;
-        }
-
-        .app-icon {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            border-radius: 15px;
-            margin: 10px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 30px;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-            animation: iconPulse 3s ease-in-out infinite;
-        }
-
-        @keyframes iconPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        .app-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .repair-status {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            padding: 15px;
-            border-radius: 20px;
-            margin: 20px 0;
-            text-align: center;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-            animation: statusGlow 2s ease-in-out infinite;
-        }
-
-        @keyframes statusGlow {
-            0%, 100% { box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
-            50% { box-shadow: 0 4px 25px rgba(59, 130, 246, 0.7); }
-        }
-
-        .screen-glow {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at 50% 30%, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
-            pointer-events: none;
-        }
-
-        /* CTA Buttons */
-        .cta-buttons {
-            display: flex;
-            gap: 20px;
-            margin-top: 40px;
-        }
-
-        .cta-btn {
-            padding: 15px 40px;
-            font-size: 18px;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            font-weight: bold;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .cta-primary {
-            background: linear-gradient(45deg, #3b82f6, #2563eb);
-            color: #fff;
-            box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
-        }
-
-        .cta-primary:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 40px rgba(59, 130, 246, 0.8);
-        }
-
-        .cta-secondary {
-            background: transparent;
-            color: #3b82f6;
-            border: 2px solid #3b82f6;
-        }
-
-        .cta-secondary:hover {
-            background: rgba(59, 130, 246, 0.1);
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
-        }
-
-        /* Services Section */
-        .services {
-            padding: 100px 50px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .services h2 {
-            text-align: center;
-            font-size: 48px;
-            margin-bottom: 60px;
-            background: linear-gradient(45deg, #3b82f6, #60a5fa);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .services-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 40px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .service-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 20px;
-            padding: 40px;
-            text-align: center;
-            transition: all 0.5s;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .service-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
-            animation: cardGlow 4s linear infinite;
-        }
-
-        @keyframes cardGlow {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .service-card:hover {
-            transform: translateY(-20px) scale(1.05);
-            box-shadow: 0 20px 60px rgba(59, 130, 246, 0.4);
-            border-color: #3b82f6;
-        }
-
-        .service-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-            filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.8));
-        }
-
-        .service-card h3 {
-            font-size: 24px;
-            margin-bottom: 15px;
-            color: #60a5fa;
-        }
-
-        .service-card p {
-            color: #aaa;
-            line-height: 1.6;
-        }
-
-        /* Features Section */
-        .features {
-            padding: 100px 50px;
-            background: rgba(0, 0, 0, 0.5);
-            position: relative;
-            z-index: 1;
-        }
-
-        .features h2 {
-            text-align: center;
-            font-size: 48px;
-            margin-bottom: 60px;
-            background: linear-gradient(45deg, #3b82f6, #60a5fa);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 30px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .feature-item {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 15px;
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            transition: all 0.3s;
-        }
-
-        .feature-item:hover {
-            border-color: #3b82f6;
-            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
-        }
-
-        .feature-icon {
-            font-size: 36px;
-            color: #3b82f6;
-        }
-
-        .ai-badge {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(45deg, #3b82f6, #2563eb);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            font-weight: bold;
-            color: #fff;
-            box-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
-            animation: float-badge 3s ease-in-out infinite;
-            z-index: 1000;
-            cursor: pointer;
-        }
-
-        @keyframes float-badge {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
-        }
-
-        /* Chatbot Styles */
-        .chatbot-container {
-            position: fixed;
-            bottom: 30px;
-            right: 130px;
-            width: 400px;
-            height: 600px;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 25px;
-            border: 2px solid rgba(59, 130, 246, 0.5);
-            box-shadow: 0 0 60px rgba(59, 130, 246, 0.4);
-            z-index: 999;
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-            animation: slideIn 0.4s ease-out;
-        }
-
-        .chatbot-container.active {
-            display: flex;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateY(100px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        .chatbot-header {
-            padding: 20px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.2));
-            border-bottom: 2px solid rgba(59, 130, 246, 0.3);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .chatbot-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 20px;
-            font-weight: bold;
-        }
-
-        .gemini-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(45deg, #3b82f6, #2563eb);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            animation: spin 10s linear infinite;
-        }
-
-        @keyframes spin {
-            100% { transform: rotate(360deg); }
-        }
-
-        .close-chat {
-            background: none;
-            border: none;
-            color: #3b82f6;
-            font-size: 24px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .close-chat:hover {
-            color: #60a5fa;
-            transform: rotate(90deg);
-        }
-
-        .chatbot-messages {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .chatbot-messages::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .chatbot-messages::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .chatbot-messages::-webkit-scrollbar-thumb {
-            background: linear-gradient(45deg, #3b82f6, #2563eb);
-            border-radius: 10px;
-        }
-
-        .message {
-            padding: 15px;
-            border-radius: 15px;
-            max-width: 80%;
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .message.bot {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.1));
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            align-self: flex-start;
-        }
-
-        .message.user {
-            background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(59, 130, 246, 0.1));
-            border: 1px solid rgba(96, 165, 250, 0.3);
-            align-self: flex-end;
-        }
-
-        .typing-indicator {
-            display: none;
-            padding: 15px;
-            border-radius: 15px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.1));
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            width: fit-content;
-        }
-
-        .typing-indicator.active {
-            display: block;
-        }
-
-        .typing-dots {
-            display: flex;
-            gap: 5px;
-        }
-
-        .typing-dots span {
-            width: 8px;
-            height: 8px;
-            background: #3b82f6;
-            border-radius: 50%;
-            animation: typing 1.4s infinite;
-        }
-
-        .typing-dots span:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-
-        .typing-dots span:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-
-        @keyframes typing {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-10px); }
-        }
-
-        .chatbot-input-container {
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border-top: 2px solid rgba(59, 130, 246, 0.3);
-            display: flex;
-            gap: 10px;
-        }
-
-        .chatbot-input {
-            flex: 1;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(59, 130, 246, 0.3);
-            border-radius: 15px;
-            color: #fff;
-            font-size: 14px;
-            outline: none;
-            transition: all 0.3s;
-        }
-
-        .chatbot-input:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-        }
-
-        .send-btn {
-            padding: 15px 25px;
-            background: linear-gradient(45deg, #3b82f6, #2563eb);
-            border: none;
-            border-radius: 15px;
-            color: #fff;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .send-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
-        }
-
-        .quick-actions {
-            display: flex;
-            gap: 10px;
-            padding: 15px;
-            flex-wrap: wrap;
-        }
-
-        .quick-action-btn {
-            padding: 8px 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 20px;
-            color: #60a5fa;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .quick-action-btn:hover {
-            background: rgba(59, 130, 246, 0.2);
-            border-color: #3b82f6;
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
-        }
-    </style>
-</head>
-<body>
-    <!-- Animated Background Particles -->
-    <div class="particles" id="particles"></div>
-
-    <!-- Navigation -->
-    <nav>
-        <div class="logo">REPAIRHUB</div>
-        <ul class="nav-links">
-            <li><a href="#home">Home</a></li>
-            <li><a href="#services">Products</a></li>
-            <li><a href="#ai-repair">Marketplace</a></li>
-            <li><a href="#track">Track Repair</a></li>
-        </ul>
-    </nav>
-
-    <!-- Hero Section -->
-    <section class="hero" id="home">
-        <h1>PROFESSIONAL PHONE REPAIR SERVICES</h1>
-        <p>Fast, reliable repairs for all your devices. Track your repair status in real-time.</p>
+import { getSupabaseBrowserClient } from '@/server/supabase/client'
+import { Database } from '../../../types/database.types'
+
+// Define types for materialized views that may not be in the auto-generated types
+interface TrendsData {
+  period: string;
+  ticket_count: number;
+  unique_customers: number;
+  total_revenue: number;
+  average_ticket_value: number;
+  revenue_per_customer: number;
+}
+
+interface TicketStatusDistribution {
+  status: string
+  count: number
+  percentage: number
+}
+
+interface TopProductsBySales {
+  id: string
+  name: string
+  category: string
+  total_orders: number
+  total_quantity_sold: number
+  total_revenue: number
+  average_price: number
+}
+
+interface InventoryStatus {
+  category: string | null
+  total_products: number | null
+  out_of_stock: number | null
+  low_stock: number | null
+  avg_stock_level: number | null
+  total_inventory_value: number | null
+}
+
+interface YearOverYearData {
+  period: string;
+  current_period_tickets: number;
+  previous_period_tickets: number;
+  current_period_revenue: number;
+  previous_period_revenue: number;
+  ticket_growth_rate: number;
+  revenue_growth_rate: number;
+  ticket_significant?: boolean;
+  revenue_significant?: boolean;
+}
+
+interface ForecastData {
+  period: string;
+  predicted_tickets: number;
+  predicted_revenue: number;
+  ticket_confidence_lower: number;
+  ticket_confidence_upper: number;
+  revenue_confidence_lower: number;
+  revenue_confidence_upper: number;
+}
+
+interface CustomerLifetimeValue {
+  id: string;
+  name: string | null;
+  email: string | null;
+  total_tickets: number;
+  total_orders: number;
+  repair_revenue: number;
+  product_revenue: number;
+  total_lifetime_value: number;
+  last_activity: string | null;
+}
+
+// Timeframe enum for configurable timeframes
+export type Timeframe = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+
+export const dashboardDb = {
+  // Helper function to format period based on timeframe
+  formatPeriod(date: Date, timeframe: Timeframe): string {
+    switch (timeframe) {
+      case 'daily':
+        return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      case 'weekly': {
+        const day = date.getDay();
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(date);
+        monday.setDate(diff);
+        return `Week of ${monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      }
+      case 'monthly':
+        return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      case 'quarterly': {
+        const quarter = Math.floor(date.getMonth() / 3) + 1;
+        return `Q${quarter} ${date.getFullYear()}`;
+      }
+      case 'yearly':
+        return date.getFullYear().toString();
+      default:
+        return date.toLocaleDateString();
+    }
+  },
+
+  // Get admin dashboard metrics
+  async getAdminMetrics() {
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('admin_dashboard_metrics')
+        .select('*')
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching admin metrics:', error)
+      throw error
+    }
+  },
+
+  // Get ticket summary
+  async getTicketSummary() {
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('ticket_summary')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10)
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching ticket summary:', error)
+      throw error
+    }
+  },
+
+  // Get customer summary
+  async getCustomerSummary() {
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('customer_summary')
+        .select('*')
+        .order('last_activity', { ascending: false })
+        .limit(10)
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching customer summary:', error)
+      throw error
+    }
+  },
+
+  // Get product sales summary
+  async getProductSalesSummary() {
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('product_sales_summary')
+        .select('*')
+        .order('total_revenue', { ascending: false })
+        .limit(10)
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching product sales summary:', error)
+      throw error
+    }
+  },
+
+  // Get revenue trends with proper aggregation for the selected timeframe
+  async getRevenueTrends(timeframe: Timeframe = 'daily', startDate?: string, endDate?: string) {
+    try {
+      const supabase = getSupabaseBrowserClient()
+      let trunc: string;
+      switch (timeframe) {
+        case 'weekly':
+          trunc = 'week';
+          break;
+        case 'monthly':
+          trunc = 'month';
+          break;
+        case 'quarterly':
+          trunc = 'quarter';
+          break;
+        case 'yearly':
+          trunc = 'year';
+          break;
+        default: // daily
+          trunc = 'day';
+      }
+
+      let query = supabase
+        .from('tickets')
+        .select(`
+          date_trunc('${trunc}', created_at) as period,
+          count(id) as ticket_count,
+          count(distinct customer_id) as unique_customers,
+          sum(total_amount) as total_revenue
+        `)
+        .order('period', { ascending: true });
+
+      if (startDate) {
+        query = query.gte('created_at', startDate);
+      }
+      if (endDate) {
+        query = query.lte('created_at', endDate);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) throw error;
+
+      // Format the period strings for better UI readability
+      const formattedData: TrendsData[] = (data as any[]).map(item => {
+        const date = new Date(item.period);
+        const formattedPeriod = dashboardDb.formatPeriod(date, timeframe);
+        const ticketCount = item.ticket_count || 0;
+        const uniqueCustomers = item.unique_customers || 0;
+        const totalRevenue = item.total_revenue || 0;
+        return {
+          period: formattedPeriod,
+          ticket_count: ticketCount,
+          unique_customers: uniqueCustomers,
+          total_revenue: totalRevenue,
+          average_ticket_value: ticketCount > 0 ? totalRevenue / ticketCount : 0,
+          revenue_per_customer: uniqueCustomers > 0 ? totalRevenue / uniqueCustomers : 0
+        };
+      });
+
+      return formattedData;
+    } catch (error) {
+      console.error('Error fetching revenue trends:', error)
+      throw error
+    }
+  },
+
+  // Get ticket status distribution
+  async getTicketStatusDistribution() {
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('ticket_status_distribution')
+        .select('*')
+      
+      if (error) throw error
+      return data as TicketStatusDistribution[]
+    } catch (error) {
+      console.error('Error fetching ticket status distribution:', error)
+      throw error
+    }
+  },
+
+  // Get top products by sales
+  async getTopProductsBySales() {
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('top_products_by_sales')
+        .select('*')
+        .order('total_revenue', { ascending: false })
+        .limit(10)
+      
+      if (error) throw error
+      return data as TopProductsBySales[]
+    } catch (error) {
+      console.error('Error fetching top products by sales:', error)
+      throw error
+    }
+  },
+
+  // Get inventory status
+  async getInventoryStatus() {
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('inventory_status')
+        .select('*')
+        .order('total_inventory_value', { ascending: false })
+      
+      if (error) throw error
+      return data as InventoryStatus[]
+    } catch (error) {
+      console.error('Error fetching inventory status:', error)
+      throw error
+    }
+  },
+
+  // Get customer lifetime value
+  async getCustomerLifetimeValue() {
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('customer_lifetime_value')
+        .select('*')
+        .order('total_lifetime_value', { ascending: false })
+        .limit(10)
+      
+      if (error) throw error
+      return data as CustomerLifetimeValue[]
+    } catch (error) {
+      console.error('Error fetching customer lifetime value:', error)
+      throw error
+    }
+  },
+
+  // Get period-over-period comparison data (replacing year-over-year)
+  async getPeriodOverPeriodComparison(timeframe: Timeframe = 'daily') {
+    try {
+      const data = await this.getRevenueTrends(timeframe);
+      
+      // Process data for period-over-period comparison
+      const processedData: YearOverYearData[] = [];
+      
+      // For period-over-period comparison, we'll compare each period with the previous one
+      for (let i = 1; i < data.length; i++) {
+        const currentPeriod = data[i]
+        const previousPeriod = data[i - 1]
         
-        <div class="phone-container">
-            <div class="phone-3d">
-                <div class="phone-screen">
-                    <div class="screen-content">
-                        <div class="status-bar">
-                            <span>9:41</span>
-                            <span>📶 🔋</span>
-                        </div>
-                        <div class="repair-status">
-                            🔧 Repair In Progress
-                        </div>
-                        <div class="app-grid">
-                            <div class="app-icon">📱</div>
-                            <div class="app-icon">⚙️</div>
-                            <div class="app-icon">📍</div>
-                            <div class="app-icon">💬</div>
-                            <div class="app-icon">🛒</div>
-                            <div class="app-icon">📊</div>
-                            <div class="app-icon">🔔</div>
-                            <div class="app-icon">⭐</div>
-                        </div>
-                    </div>
-                    <div class="screen-glow"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="cta-buttons">
-            <button class="cta-btn cta-primary">Track Your Repair</button>
-            <button class="cta-btn cta-secondary">Shop Products</button>
-        </div>
-    </section>
-
-    <!-- Services Section -->
-    <section class="services" id="services">
-        <h2>OUR SERVICES</h2>
-        <div class="services-grid">
-            <div class="service-card">
-                <div class="service-icon">🔧</div>
-                <h3>Repair Services</h3>
-                <p>Expert repairs for phones, tablets, and laptops with warranty</p>
-            </div>
-            <div class="service-card">
-                <div class="service-icon">📱</div>
-                <h3>Quality Products</h3>
-                <p>Genuine parts and accessories for all major brands</p>
-            </div>
-            <div class="service-card">
-                <div class="service-icon">♻️</div>
-                <h3>Trade-In Program</h3>
-                <p>Buy and sell second-hand devices in our marketplace</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- Features Section -->
-    <section class="features">
-        <h2>WHY CHOOSE US</h2>
-        <div class="features-grid">
-            <div class="feature-item">
-                <div class="feature-icon">⚡</div>
-                <div>
-                    <h4>Fast Turnaround</h4>
-                    <p>Most repairs within 24-48 hours</p>
-                </div>
-            </div>
-            <div class="feature-item">
-                <div class="feature-icon">🤖</div>
-                <div>
-                    <h4>Expert Technicians</h4>
-                    <p>Certified professionals</p>
-                </div>
-            </div>
-            <div class="feature-item">
-                <div class="feature-icon">🌟</div>
-                <div>
-                    <h4>Premium Parts</h4>
-                    <p>Genuine parts only</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Chatbot Container -->
-    <div class="chatbot-container" id="chatbot">
-        <div class="chatbot-header">
-            <div class="chatbot-title">
-                <div class="gemini-icon">✦</div>
-                <span>Gemini AI Assistant</span>
-            </div>
-            <button class="close-chat" onclick="toggleChat()">✕</button>
-        </div>
+        // Calculate growth rates
+        const ticketGrowthRate = previousPeriod.ticket_count !== 0 
+          ? parseFloat(((currentPeriod.ticket_count - previousPeriod.ticket_count) / previousPeriod.ticket_count * 100).toFixed(2))
+          : (currentPeriod.ticket_count > 0 ? 100 : 0)
+          
+        const revenueGrowthRate = previousPeriod.total_revenue !== 0
+          ? parseFloat(((currentPeriod.total_revenue - previousPeriod.total_revenue) / previousPeriod.total_revenue * 100).toFixed(2))
+          : (currentPeriod.total_revenue > 0 ? 100 : 0)
         
-        <div class="quick-actions">
-            <button class="quick-action-btn" onclick="quickMessage('repair cost')">💰 Repair Costs</button>
-            <button class="quick-action-btn" onclick="quickMessage('repair time')">⏱️ Repair Time</button>
-            <button class="quick-action-btn" onclick="quickMessage('warranty')">🛡️ Warranty Info</button>
-            <button class="quick-action-btn" onclick="quickMessage('track order')">📍 Track Order</button>
-        </div>
+        // Calculate statistical significance of growth rates
+        // Simple approach: if the absolute difference is greater than 2 standard deviations, consider it significant
+        const ticketDiff = Math.abs(currentPeriod.ticket_count - previousPeriod.ticket_count)
+        const avgTicketCount = (currentPeriod.ticket_count + previousPeriod.ticket_count) / 2
+        const ticketStdDev = Math.sqrt(avgTicketCount) // Poisson approximation for count data
         
-        <div class="chatbot-messages" id="chatMessages">
-            <div class="message bot">
-                👋 Welcome to Jay's Shop! I'm Gemini, your AI repair assistant. How can I help you with your device today?
-            </div>
-        </div>
+        const revenueDiff = Math.abs(currentPeriod.total_revenue - previousPeriod.total_revenue)
+        const avgRevenue = (currentPeriod.total_revenue + previousPeriod.total_revenue) / 2
+        const revenueStdDev = avgRevenue * 0.1 // Simplified assumption
         
-        <div class="typing-indicator" id="typingIndicator">
-            <div class="typing-dots">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-        </div>
+        const ticketSignificant = ticketDiff > 2 * ticketStdDev
+        const revenueSignificant = revenueDiff > 2 * revenueStdDev
         
-        <div class="chatbot-input-container">
-            <input 
-                type="text" 
-                class="chatbot-input" 
-                id="chatInput" 
-                placeholder="Ask me anything about repairs..."
-                onkeypress="handleKeyPress(event)"
-            >
-            <button class="send-btn" onclick="sendMessage()">🚀</button>
-        </div>
-    </div>
+        processedData.push({
+          period: currentPeriod.period,
+          current_period_tickets: currentPeriod.ticket_count,
+          previous_period_tickets: previousPeriod.ticket_count,
+          current_period_revenue: currentPeriod.total_revenue,
+          previous_period_revenue: previousPeriod.total_revenue,
+          ticket_growth_rate: ticketGrowthRate,
+          revenue_growth_rate: revenueGrowthRate,
+          ticket_significant: ticketSignificant,
+          revenue_significant: revenueSignificant
+        })
+      }
+      
+      return processedData
+    } catch (error) {
+      console.error('Error fetching period-over-period comparison data:', error)
+      throw error
+    }
+  },
 
-    <!-- AI Badge -->
-    <div class="ai-badge" onclick="toggleChat()">
-        AI<br>POWERED
-    </div>
-
-    <script>
-        // Create animated particles
-        const particlesContainer = document.getElementById('particles');
-        for (let i = 0; i < 50; i++) {
-            const particle = document.createElement('div');
-            particle.className = 'particle';
-            particle.style.left = Math.random() * 100 + '%';
-            particle.style.animationDelay = Math.random() * 15 + 's';
-            particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
-            particlesContainer.appendChild(particle);
+  // Get forecasting data based on historical trends with enhanced models
+  async getForecastData(timeframe: Timeframe = 'daily', periodsAhead: number = 6) {
+    try {
+      const data = await this.getRevenueTrends(timeframe);
+      
+      // Process data for forecasting
+      const processedData: ForecastData[] = []
+      
+      if (data.length < 3) {
+        // Not enough data for forecasting
+        return processedData
+      }
+      
+      // Extract ticket counts and revenue for regression analysis
+      const ticketCounts = data.map((item: any) => item.ticket_count)
+      const revenues = data.map((item: any) => item.total_revenue)
+      const periods = data.map((item: any, index: number) => index + 1) // 1-indexed periods
+      
+      // Calculate different regression models for tickets
+      const linearModel = this.calculateEnhancedLinearRegression(periods, ticketCounts)
+      const polynomialModel = this.calculatePolynomialRegression(periods, ticketCounts)
+      const logarithmicModel = this.calculateLogarithmicRegression(periods, ticketCounts)
+      
+      // Select best model based on R-squared
+      const models = [
+        { name: 'linear', rSquared: linearModel.rSquared, model: linearModel },
+        { name: 'polynomial', rSquared: polynomialModel.rSquared, model: polynomialModel },
+        { name: 'logarithmic', rSquared: logarithmicModel.rSquared, model: logarithmicModel }
+      ]
+      
+      const best = models.reduce((best, current) => 
+        current.rSquared > best.rSquared ? current : best
+      )
+      
+      // Calculate revenue model (always linear)
+      const revenueModel = this.calculateEnhancedLinearRegression(periods, revenues)
+      
+      // Calculate simple stddev for non-linear models
+      const avgTicketCount = ticketCounts.reduce((sum, count) => sum + count, 0) / ticketCounts.length
+      const ticketVariance = ticketCounts.reduce((sum, count) => sum + Math.pow(count - avgTicketCount, 2), 0) / ticketCounts.length
+      const ticketStdDev = Math.sqrt(ticketVariance)
+      
+      // Get last date for forecasting periods
+      const lastDate = new Date(data[data.length - 1].period)
+      const lastPeriodIndex = periods[periods.length - 1]
+      
+      for (let i = 1; i <= periodsAhead; i++) {
+        const forecastPeriodIndex = lastPeriodIndex + i
+        let predictedTickets = 0
+        
+        let ticketLower = 0
+        let ticketUpper = 0
+        
+        switch (best.name) {
+          case 'linear':
+            predictedTickets = Math.max(0, Math.round(
+              linearModel.slope * forecastPeriodIndex + linearModel.intercept
+            ))
+            const sePredTicket = Math.sqrt(linearModel.mse * (1 + 1 / periods.length + Math.pow(forecastPeriodIndex - linearModel.meanX, 2) / linearModel.ssxx))
+            const marginTicket = linearModel.tValue * sePredTicket
+            ticketLower = Math.max(0, Math.round(predictedTickets - marginTicket))
+            ticketUpper = Math.round(predictedTickets + marginTicket)
+            break
+          case 'polynomial':
+            const [a, b, c] = polynomialModel.coefficients
+            predictedTickets = Math.max(0, Math.round(
+              a * forecastPeriodIndex * forecastPeriodIndex + b * forecastPeriodIndex + c
+            ))
+            ticketLower = Math.max(0, predictedTickets - ticketStdDev)
+            ticketUpper = predictedTickets + ticketStdDev
+            break
+          case 'logarithmic':
+            predictedTickets = Math.max(0, Math.round(
+              logarithmicModel.a * Math.log(forecastPeriodIndex) + logarithmicModel.b
+            ))
+            ticketLower = Math.max(0, predictedTickets - ticketStdDev)
+            ticketUpper = predictedTickets + ticketStdDev
+            break
         }
-
-        // Smooth scrolling
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth' });
-                }
-            });
-        });
-
-        // Add interactive hover effects to service cards
-        document.querySelectorAll('.service-card').forEach(card => {
-            card.addEventListener('mousemove', (e) => {
-                const rect = card.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
-                card.style.background = `
-                    radial-gradient(circle at ${x}px ${y}px, 
-                    rgba(0, 255, 255, 0.15), 
-                    rgba(255, 255, 255, 0.05))
-                `;
-            });
-            
-            card.addEventListener('mouseleave', () => {
-                card.style.background = 'rgba(255, 255, 255, 0.05)';
-            });
-        });
-
-        // Chatbot functionality
-        const chatbot = document.getElementById('chatbot');
-        const chatMessages = document.getElementById('chatMessages');
-        const chatInput = document.getElementById('chatInput');
-        const typingIndicator = document.getElementById('typingIndicator');
-
-        function toggleChat() {
-            chatbot.classList.toggle('active');
+        
+        const predictedRevenue = Math.max(0, Math.round(
+          revenueModel.slope * forecastPeriodIndex + revenueModel.intercept
+        ))
+        
+        const sePredRevenue = Math.sqrt(revenueModel.mse * (1 + 1 / periods.length + Math.pow(forecastPeriodIndex - revenueModel.meanX, 2) / revenueModel.ssxx))
+        const marginRevenue = revenueModel.tValue * sePredRevenue
+        const revenueLower = Math.max(0, Math.round(predictedRevenue - marginRevenue))
+        const revenueUpper = Math.round(predictedRevenue + marginRevenue)
+        
+        // Calculate forecast date
+        const forecastDate = new Date(lastDate)
+        switch (timeframe) {
+          case 'daily':
+            forecastDate.setDate(forecastDate.getDate() + i)
+            break
+          case 'weekly':
+            forecastDate.setDate(forecastDate.getDate() + 7 * i)
+            break
+          case 'monthly':
+            forecastDate.setMonth(forecastDate.getMonth() + i)
+            break
+          case 'quarterly':
+            forecastDate.setMonth(forecastDate.getMonth() + 3 * i)
+            break
+          case 'yearly':
+            forecastDate.setFullYear(forecastDate.getFullYear() + i)
+            break
         }
+        
+        const formattedPeriod = this.formatPeriod(forecastDate, timeframe)
+        
+        processedData.push({
+          period: formattedPeriod,
+          predicted_tickets: predictedTickets,
+          predicted_revenue: predictedRevenue,
+          ticket_confidence_lower: ticketLower,
+          ticket_confidence_upper: ticketUpper,
+          revenue_confidence_lower: revenueLower,
+          revenue_confidence_upper: revenueUpper
+        })
+      }
+      
+      return processedData
+    } catch (error) {
+      console.error('Error fetching forecast data:', error)
+      throw error
+    }
+  },
 
-        function addMessage(message, isBot = false) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isBot ? 'bot' : 'user'}`;
-            messageDiv.textContent = message;
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+  // Advanced forecasting with multiple methods
+  async getAdvancedForecastData(timeframe: Timeframe = 'daily', periodsAhead: number = 6) {
+    try {
+      const data = await this.getRevenueTrends(timeframe);
+      
+      // Process data for advanced forecasting
+      const processedData: any[] = []
+      
+      if (data.length < 3) {
+        // Not enough data for advanced forecasting
+        return processedData
+      }
+      
+      // Extract ticket counts for forecasting
+      const ticketCounts = data.map((item: any) => item.ticket_count)
+      
+      // Apply different forecasting methods
+      const exponentialSmooth = this.calculateExponentialSmoothing(ticketCounts, 0.3)
+      const doubleExponential = this.calculateDoubleExponentialSmoothing(ticketCounts, 0.3, 0.3)
+      const arimaForecast = this.calculateARIMA011(ticketCounts, 0.3)
+      
+      // Generate forecasts for future periods
+      const lastValue = ticketCounts[ticketCounts.length - 1]
+      const lastTrend = doubleExponential.trend[doubleExponential.trend.length - 1]
+      
+      // Create forecasts for future periods
+      const forecasts: any[] = []
+      const lastDate = new Date(data[data.length - 1].period)
+      for (let i = 1; i <= periodsAhead; i++) {
+        const periodLabel = `Forecast ${i} (${timeframe}) after ${data[data.length - 1].period}`
+        
+        // Exponential smoothing forecast (use last smoothed value)
+        const expForecast = exponentialSmooth[exponentialSmooth.length - 1]
+        
+        // Double exponential smoothing forecast (level + i * trend)
+        const holtForecast = doubleExponential.level[doubleExponential.level.length - 1] + 
+                            i * doubleExponential.trend[doubleExponential.trend.length - 1]
+        
+        // ARIMA forecast (use last forecasted value)
+        const arimaValue = arimaForecast[arimaForecast.length - 1]
+        
+        // Ensemble forecast (average of all methods)
+        const ensembleForecast = (expForecast + holtForecast + arimaValue) / 3
+        
+        // Calculate forecast date
+        const forecastDate = new Date(lastDate)
+        switch (timeframe) {
+          case 'daily':
+            forecastDate.setDate(forecastDate.getDate() + i)
+            break
+          case 'weekly':
+            forecastDate.setDate(forecastDate.getDate() + 7 * i)
+            break
+          case 'monthly':
+            forecastDate.setMonth(forecastDate.getMonth() + i)
+            break
+          case 'quarterly':
+            forecastDate.setMonth(forecastDate.getMonth() + 3 * i)
+            break
+          case 'yearly':
+            forecastDate.setFullYear(forecastDate.getFullYear() + i)
+            break
         }
+        
+        const formattedPeriod = this.formatPeriod(forecastDate, timeframe)
+        
+        forecasts.push({
+          period: formattedPeriod,
+          exponential_smoothing: Math.max(0, Math.round(expForecast)),
+          holt_winters: Math.max(0, Math.round(holtForecast)),
+          arima: Math.max(0, Math.round(arimaValue)),
+          ensemble: Math.max(0, Math.round(ensembleForecast))
+        })
+      }
+      
+      return {
+        historical_data: data.map((item, index) => ({
+          ...item,
+          exponential_smoothed: exponentialSmooth[index],
+          holt_winters_level: doubleExponential.level[index],
+          holt_winters_trend: doubleExponential.trend[index],
+          arima_forecast: arimaForecast[index]
+        })),
+        forecasts: forecasts
+      }
+    } catch (error) {
+      console.error('Error fetching advanced forecast data:', error)
+      throw error
+    }
+  },
 
-        function showTyping() {
-            typingIndicator.classList.add('active');
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
+  // Simple Exponential Smoothing
+  calculateExponentialSmoothing(data: number[], alpha: number): number[] {
+    if (data.length === 0) return [];
+    const smoothed: number[] = [data[0]];
+    for (let i = 1; i < data.length; i++) {
+      smoothed.push(alpha * data[i] + (1 - alpha) * smoothed[i - 1]);
+    }
+    return smoothed;
+  },
 
-        function hideTyping() {
-            typingIndicator.classList.remove('active');
-        }
+  // Double Exponential Smoothing (Holt's Linear Trend)
+  calculateDoubleExponentialSmoothing(data: number[], alpha: number, beta: number): { level: number[]; trend: number[] } {
+    if (data.length < 2) return { level: [], trend: [] };
+    let level = data[0];
+    let trend = data[1] - data[0];
+    const levels: number[] = [level];
+    const trends: number[] = [trend];
+    for (let i = 1; i < data.length; i++) {
+      const prevLevel = level;
+      level = alpha * data[i] + (1 - alpha) * (level + trend);
+      trend = beta * (level - prevLevel) + (1 - beta) * trend;
+      levels.push(level);
+      trends.push(trend);
+    }
+    return { level: levels, trend: trends };
+  },
 
-        function getBotResponse(userMessage) {
-            const msg = userMessage.toLowerCase();
-            
-            if (msg.includes('repair cost') || msg.includes('price') || msg.includes('cost')) {
-                return "💰 Our AI diagnostics start at $29! Screen repairs range from $79-$299 depending on your device. Upload a photo and I'll give you an instant quote!";
-            } else if (msg.includes('repair time') || msg.includes('how long')) {
-                return "⚡ Our quantum repair technology completes most repairs in just 15-30 minutes! Complex repairs take 2-4 hours max. We're FAST!";
-            } else if (msg.includes('warranty') || msg.includes('guarantee')) {
-                return "🛡️ Every repair comes with our AI-backed lifetime warranty! If anything goes wrong, we'll fix it free. Zero human error = 100% confidence!";
-            } else if (msg.includes('track') || msg.includes('status') || msg.includes('order')) {
-                return "📍 You can track your repair in real-time! Just enter your ticket number in the Track Repair section. Our AI keeps you updated every step of the way!";
-            } else if (msg.includes('hello') || msg.includes('hi') || msg.includes('hey')) {
-                return "👋 Hello! I'm Gemini, your AI repair expert. Ready to fix your device with cutting-edge technology. What can I help you with?";
-            } else if (msg.includes('thank')) {
-                return "✨ You're welcome! Jay's Shop is here 24/7 with AI-powered support. Need anything else?";
-            } else if (msg.includes('phone') || msg.includes('iphone') || msg.includes('android')) {
-                return "📱 We repair all phones! iPhone, Samsung, Google Pixel, OnePlus - you name it! Our nano-tech robots handle every brand with precision. What issue are you experiencing?";
-            } else {
-                return "🤖 Great question! I can help you with repair costs, timing, warranty info, and device issues. Or you can speak with our human team at (555) JAYS-SHOP. How can I assist you today?";
-            }
-        }
+  // ARIMA(0,1,1) Implementation
+  calculateARIMA011(data: number[], theta: number): number[] {
+    if (data.length === 0) return [];
+    const fitted: number[] = [data[0]];
+    let e = 0;
+    for (let i = 1; i < data.length; i++) {
+      const pred = fitted[i - 1] + theta * e;
+      e = data[i] - pred;
+      fitted.push(pred);
+    }
+    return fitted;
+  },
 
-        function sendMessage() {
-            const message = chatInput.value.trim();
-            if (!message) return;
+  // Enhanced linear regression with statistical significance and additional stats for prediction intervals
+  calculateEnhancedLinearRegression(x: number[], y: number[]): { 
+    slope: number, 
+    intercept: number, 
+    rSquared: number, 
+    slopePValue: number, 
+    interceptPValue: number,
+    slopeConfidenceInterval: [number, number],
+    interceptConfidenceInterval: [number, number],
+    mse: number,
+    meanX: number,
+    ssxx: number,
+    tValue: number
+  } {
+    if (x.length !== y.length || x.length < 3) {
+      return { 
+        slope: 0, 
+        intercept: 0, 
+        rSquared: 0, 
+        slopePValue: 1, 
+        interceptPValue: 1,
+        slopeConfidenceInterval: [0, 0],
+        interceptConfidenceInterval: [0, 0],
+        mse: 0,
+        meanX: 0,
+        ssxx: 0,
+        tValue: 0
+      };
+    }
+    
+    const n = x.length;
+    const sumX = x.reduce((sum, value) => sum + value, 0);
+    const sumY = y.reduce((sum, value) => sum + value, 0);
+    const sumXY = x.reduce((sum, value, i) => sum + value * y[i], 0);
+    const sumXX = x.reduce((sum, value) => sum + value * value, 0);
+    const sumYY = y.reduce((sum, value) => sum + value * value, 0);
+    
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    
+    // Calculate R-squared
+    const yMean = sumY / n;
+    const totalSumSquares = sumYY - n * yMean * yMean;
+    const residualSumSquares = y.reduce((sum, yi, i) => {
+      const predicted = slope * x[i] + intercept;
+      return sum + Math.pow(yi - predicted, 2);
+    }, 0);
+    const rSquared = 1 - (residualSumSquares / totalSumSquares);
+    
+    // Calculate standard errors
+    const mse = residualSumSquares / (n - 2); // Mean squared error
+    const seSlope = Math.sqrt(mse / (sumXX - sumX * sumX / n));
+    const seIntercept = Math.sqrt(mse * sumXX / (n * (sumXX - sumX * sumX / n)));
+    
+    // Calculate p-values
+    const df = n - 2;
+    const slopePValue = this.calculateTTestPValue(Math.abs(slope) / seSlope, df);
+    const interceptPValue = this.calculateTTestPValue(Math.abs(intercept) / seIntercept, df);
+    
+    // Calculate 95% confidence intervals (t-value for 95% CI with n-2 df)
+    // For simplicity, using approximate t-value of 2 for large samples
+    const tValue = df > 30 ? 1.96 : 2.0; // Approximate 95% CI t-value
+    const slopeMargin = tValue * seSlope;
+    const interceptMargin = tValue * seIntercept;
+    
+    const slopeConfidenceInterval: [number, number] = [slope - slopeMargin, slope + slopeMargin];
+    const interceptConfidenceInterval: [number, number] = [intercept - interceptMargin, intercept + interceptMargin];
+    
+    const meanX = sumX / n;
+    const ssxx = sumXX - (sumX * sumX / n);
+    
+    return { 
+      slope, 
+      intercept, 
+      rSquared, 
+      slopePValue, 
+      interceptPValue,
+      slopeConfidenceInterval,
+      interceptConfidenceInterval,
+      mse,
+      meanX,
+      ssxx,
+      tValue
+    };
+  },
 
-            addMessage(message, false);
-            chatInput.value = '';
+  // Linear regression (simple version for fallback)
+  calculateLinearRegression(x: number[], y: number[]): { slope: number, intercept: number, rSquared: number } {
+    if (x.length !== y.length || x.length < 2) return { slope: 0, intercept: 0, rSquared: 0 };
+    
+    const n = x.length;
+    const sumX = x.reduce((sum, value) => sum + value, 0);
+    const sumY = y.reduce((sum, value) => sum + value, 0);
+    const sumXY = x.reduce((sum, value, i) => sum + value * y[i], 0);
+    const sumXX = x.reduce((sum, value) => sum + value * value, 0);
+    const sumYY = y.reduce((sum, value) => sum + value * value, 0);
+    
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    
+    // Calculate R-squared
+    const yMean = sumY / n;
+    const totalSumSquares = sumYY - n * yMean * yMean;
+    const residualSumSquares = y.reduce((sum, yi, i) => {
+      const predicted = slope * x[i] + intercept;
+      return sum + Math.pow(yi - predicted, 2);
+    }, 0);
+    const rSquared = 1 - (residualSumSquares / totalSumSquares);
+    
+    return { slope, intercept, rSquared };
+  },
 
-            showTyping();
-            
-            setTimeout(() => {
-                hideTyping();
-                const response = getBotResponse(message);
-                addMessage(response, true);
-            }, 1000 + Math.random() * 1000);
-        }
+  // Polynomial regression (quadratic)
+  calculatePolynomialRegression(x: number[], y: number[]): { coefficients: number[], rSquared: number } {
+    if (x.length !== y.length || x.length < 3) return { coefficients: [0, 0, 0], rSquared: 0 };
+    
+    const n = x.length;
+    let sumX = 0, sumX2 = 0, sumX3 = 0, sumX4 = 0;
+    let sumY = 0, sumXY = 0, sumX2Y = 0;
+    
+    for (let i = 0; i < n; i++) {
+      const xi = x[i];
+      const yi = y[i];
+      const xi2 = xi * xi;
+      
+      sumX += xi;
+      sumX2 += xi2;
+      sumX3 += xi2 * xi;
+      sumX4 += xi2 * xi2;
+      sumY += yi;
+      sumXY += xi * yi;
+      sumX2Y += xi2 * yi;
+    }
+    
+    const det = n * (sumX2 * sumX4 - sumX3 * sumX3) - 
+                sumX * (sumX * sumX4 - sumX3 * sumX2) + 
+                sumX2 * (sumX * sumX3 - sumX2 * sumX2);
+    
+    if (Math.abs(det) < 1e-10) {
+      return { coefficients: [0, 0, 0], rSquared: 0 };
+    }
+    
+    const a = (sumY * (sumX2 * sumX4 - sumX3 * sumX3) - 
+               sumX * (sumXY * sumX4 - sumX3 * sumX2Y) + 
+               sumX2 * (sumXY * sumX3 - sumX2 * sumX2Y)) / det;
+    
+    const b = (n * (sumXY * sumX4 - sumX3 * sumX2Y) - 
+               sumY * (sumX * sumX4 - sumX3 * sumX2) + 
+               sumX2 * (sumX * sumX2Y - sumXY * sumX2)) / det;
+    
+    const c = (n * (sumX2 * sumX2Y - sumXY * sumX3) - 
+               sumX * (sumX * sumX2Y - sumXY * sumX2) + 
+               sumY * (sumX * sumX3 - sumX2 * sumX2)) / det;
+    
+    const yMean = sumY / n;
+    let totalSumSquares = 0;
+    let residualSumSquares = 0;
+    
+    for (let i = 0; i < n; i++) {
+      const xi = x[i];
+      const yi = y[i];
+      const predicted = a * xi * xi + b * xi + c;
+      totalSumSquares += Math.pow(yi - yMean, 2);
+      residualSumSquares += Math.pow(yi - predicted, 2);
+    }
+    
+    const rSquared = 1 - (residualSumSquares / totalSumSquares);
+    
+    return { coefficients: [a, b, c], rSquared };
+  },
 
-        function quickMessage(type) {
-            const messages = {
-                'repair cost': 'What are your repair costs?',
-                'repair time': 'How long do repairs take?',
-                'warranty': 'Tell me about your warranty',
-                'track order': 'How do I track my repair?'
-            };
-            
-            chatInput.value = messages[type];
-            sendMessage();
-        }
+  // Logarithmic regression (y = a*ln(x) + b)
+  calculateLogarithmicRegression(x: number[], y: number[]): { a: number, b: number, rSquared: number } {
+    if (x.length !== y.length || x.length < 2) return { a: 0, b: 0, rSquared: 0 };
+    
+    if (x.some(xi => xi <= 0)) return { a: 0, b: 0, rSquared: 0 };
+    
+    const lnX = x.map(xi => Math.log(xi));
+    
+    const result = this.calculateLinearRegression(lnX, y);
+    
+    return { a: result.slope, b: result.intercept, rSquared: result.rSquared };
+  },
 
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
-        }
-    </script>
-</body>
-</html>
+  // Statistical significance testing functions
+  calculateRegressionPValue(slope: number, standardError: number, degreesOfFreedom: number): number {
+    if (standardError === 0 || degreesOfFreedom <= 0) return 1;
+    
+    const tStatistic = Math.abs(slope) / standardError;
+    return this.calculateTTestPValue(tStatistic, degreesOfFreedom);
+  },
+
+  calculateTTestPValue(tStatistic: number, degreesOfFreedom: number): number {
+    if (degreesOfFreedom <= 0) return 1;
+    
+    if (degreesOfFreedom > 30) {
+      return 2 * (1 - this.cumulativeNormalDistribution(Math.abs(tStatistic)));
+    }
+    
+    return this.approximateTPValue(tStatistic, degreesOfFreedom);
+  },
+
+  approximateTPValue(t: number, df: number): number {
+    const x = df / (df + t * t);
+    const a = 0.5;
+    const b = 0.5 * df;
+    const beta = this.incompleteBeta(a, b, x);
+    return 1 - beta;
+  },
+
+  incompleteBeta(a: number, b: number, x: number): number {
+    if (x < 0 || x > 1) return 0;
+    if (x === 0 || x === 1) return x;
+    
+    const lbeta = this.logBeta(a, b);
+    const front = Math.exp(a * Math.log(x) + b * Math.log(1 - x) - lbeta) / a;
+    
+    let f = 1;
+    let c = 1;
+    let d = 0;
+    
+    for (let i = 0; i <= 200; i++) {
+      const m = Math.floor(i / 2);
+      let numerator;
+      
+      if (i === 0) {
+        numerator = 1;
+      } else if (i % 2 === 0) {
+        numerator = (m * (b - m) * x) / ((a + 2 * m - 1) * (a + 2 * m));
+      } else {
+        numerator = -((a + m) * (a + b + m) * x) / ((a + 2 * m) * (a + 2 * m + 1));
+      }
+      
+      c = 1 + numerator / c;
+      if (Math.abs(c) < 1e-30) c = 1e-30;
+      
+      d = 1 + numerator * d;
+      if (Math.abs(d) < 1e-30) d = 1e-30;
+      
+      d = 1 / d;
+      const delta = c * d;
+      f *= delta;
+      
+      if (Math.abs(delta - 1) < 1e-15) break;
+    }
+    
+    return front * f;
+  },
+
+  logBeta(a: number, b: number): number {
+    return this.logGamma(a) + this.logGamma(b) - this.logGamma(a + b);
+  },
+
+  logGamma(x: number): number {
+    if (x <= 0) return Infinity;
+    if (x === 1 || x === 2) return 0;
+    
+    const cof = [
+      76.18009172947146, -86.50532032941677, 24.01409824083091,
+      -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5
+    ];
+    
+    let y = x;
+    let tmp = x + 5.5;
+    tmp = (x + 0.5) * Math.log(tmp) - tmp;
+    let ser = 1.000000000190015;
+    
+    for (let j = 0; j <= 5; j++) {
+      ser += cof[j] / ++y;
+    }
+    
+    return tmp + Math.log(2.5066282746310005 * ser / x);
+  },
+
+  cumulativeNormalDistribution(x: number): number {
+    const a1 = 0.31938153;
+    const a2 = -0.356563782;
+    const a3 = 1.781477937;
+    const a4 = -1.821255978;
+    const a5 = 1.330274429;
+    
+    const p = 0.2316419;
+    const sign = x < 0 ? -1 : 1;
+    const absX = Math.abs(x);
+    
+    const t = 1.0 / (1.0 + p * absX);
+    const polynomial = a1 + t * (a2 + t * (a3 + t * (a4 + t * a5)));
+    const y = 1.0 - (1.0 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * absX * absX) * t * polynomial;
+    
+    return sign === 1 ? y : 1 - y;
+  }
+}

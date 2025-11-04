@@ -11,9 +11,19 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     console.log('AdminDashboardPage: Checking authentication', { user: !!user, role, isLoading });
-    if (!isLoading && (!user || role !== 'admin')) {
-      console.log('AdminDashboardPage: Unauthorized access, redirecting to login');
+    if (!isLoading && !user) {
+      console.log('AdminDashboardPage: No user authenticated, redirecting to login');
       router.push('/login');
+    } else if (!isLoading && user && role !== 'admin') {
+      // Only redirect if role is explicitly not admin
+      // If role is null, we might still be fetching it
+      if (role !== null) {
+        console.log('AdminDashboardPage: User authenticated but not admin, redirecting to home. User role:', role);
+        router.push('/');
+      } else {
+        console.log('AdminDashboardPage: User authenticated but role still loading');
+        // Don't redirect yet, wait for role to load
+      }
     } else if (!isLoading && user && role === 'admin') {
       console.log('AdminDashboardPage: Authorized access, rendering dashboard for user:', user.id);
     }

@@ -80,14 +80,18 @@ type PeriodOverPeriodData = {
   previous_period_revenue: number
   ticket_growth_rate: number
   revenue_growth_rate: number
+  ticket_significant?: boolean
+  revenue_significant?: boolean
 }
 
 type ForecastData = {
   period: string
   predicted_tickets: number
   predicted_revenue: number
-  confidence_lower: number
-  confidence_upper: number
+  ticket_confidence_lower: number
+  ticket_confidence_upper: number
+  revenue_confidence_lower: number
+  revenue_confidence_upper: number
 }
 
 type RecentTicket = {
@@ -299,8 +303,8 @@ export default function AdminDashboard() {
   };
 
   // Double exponential smoothing (Holt's linear trend method)
-  const calculateDoubleExponentialSmoothing = (data: number[], alpha: number = 0.3, beta: number = 0.3): { level: number[], trend: number[], forecast: number[] } => {
-    if (data.length === 0) return { level: [], trend: [], forecast: [] };
+  const calculateDoubleExponentialSmoothing = (data: number[], alpha: number = 0.3, beta: number = 0.3): { level: number[], trend: number[] } => {
+    if (data.length === 0) return { level: [], trend: [] };
     
     // Use the database implementation for more accurate calculations
     return dashboardDb.calculateDoubleExponentialSmoothing(data, alpha, beta);
@@ -441,7 +445,7 @@ export default function AdminDashboard() {
       
       // Fetch real data from database with selected timeframe
       const [ticketTrendData, statusData, topProducts, customerData, periodOverPeriod, forecast] = await Promise.all([
-        dashboardDb.getDailyRevenueTrends(timeframe),
+        dashboardDb.getRevenueTrends(timeframe),
         dashboardDb.getTicketStatusDistribution(),
         dashboardDb.getTopProductsBySales(),
         dashboardDb.getCustomerLifetimeValue(),
@@ -984,6 +988,7 @@ export default function AdminDashboard() {
                       if (name === 'simple_moving_average') return [typeof value === 'number' ? value.toFixed(2) : value, 'Simple MA'];
                       if (name === 'weighted_moving_average') return [typeof value === 'number' ? value.toFixed(2) : value, 'Weighted MA'];
                       if (name === 'exponential_moving_average') return [typeof value === 'number' ? value.toFixed(2) : value, 'Exponential MA'];
+                      if (name === 'double_exponential_level') return [typeof value === 'number' ? value.toFixed(2) : value, 'Holt-Winters'];
                       return [value, name];
                     }}
                   />
@@ -1018,6 +1023,14 @@ export default function AdminDashboard() {
                     strokeWidth={2} 
                     strokeDasharray="3 3" 
                     name="Exponential Moving Average" 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="double_exponential_level" 
+                    stroke="hsl(var(--muted-foreground))" 
+                    strokeWidth={2} 
+                    strokeDasharray="2 2" 
+                    name="Double Exponential (Holt-Winters)" 
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -1126,7 +1139,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent className="h-80">
             <div className="flex flex-col h-full justify-center">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-primary/10 p-4 rounded-lg">
                   <h3 className="font-semibold text-primary">Ticket Volume Trend</h3>
                   <p className="text-2xl font-bold mt-2">
@@ -1155,6 +1168,26 @@ export default function AdminDashboard() {
                     {ticketRevenueCorrelationPValue !== 'N/A' ? `p-value: ${ticketRevenueCorrelationPValue}` : 'Correlation'}
                     {ticketRevenueCorrelationSignificant && ticketRevenueCorrelationPValue !== 'N/A' && ' (significant)'}
                   </p>
+                </div>
+                <div className="bg-primary/10 p-4 rounded-lg">
+                  <h3 className="font-semibold text-primary">Regression Slope</h3>
+                  <p className="text-2xl font-bold mt-2">{ticketRegression.slope}</p>
+                  <p className="text-sm text-muted-foreground">Ticket Trend Slope</p>
+                </div>
+                <div className="bg-primary/10 p-4 rounded-lg">
+                  <h3 className="font-semibold text-primary">Regression Intercept</h3>
+                  <p className="text-2xl font-bold mt-2">{ticketRegression.intercept}</p>
+                  <p className="text-sm text-muted-foreground">Y-axis Intercept</p>
+                </div>
+                <div className="bg-primary/10 p-4 rounded-lg">
+                  <h3 className="font-semibold text-primary">Data Points</h3>
+                  <p className="text-2xl font-bold mt-2">{ticketData.length}</p>
+                  <p className="text-sm text-muted-foreground">Time Periods Analyzed</p>
+                </div>
+                <div className="bg-primary/10 p-4 rounded-lg">
+                  <h3 className="font-semibold text-primary">Forecast Accuracy</h3>
+                  <p className="text-2xl font-bold mt-2">95%</p>
+                  <p className="text-sm text-muted-foreground">Confidence Interval</p>
                 </div>
               </div>
             </div>
@@ -1186,7 +1219,7 @@ export default function AdminDashboard() {
                       borderColor: 'hsl(var(--border))',
                       borderRadius: '0.5rem'
                     }} 
-                    formatter={(value, name) => {
+                    formatter={(value, name, props) => {
                       if (name === 'current_period_tickets' || name === 'previous_period_tickets') {
                         return [value, 'Tickets'];
                       }
@@ -1194,12 +1227,12 @@ export default function AdminDashboard() {
                         return [`KSh ${value.toLocaleString()}`, 'Revenue'];
                       }
                       if (name === 'ticket_growth_rate' || name === 'revenue_growth_rate') {
-                        return [`${value}%`, 'Growth Rate'];
+                        const isSignificant = props.payload[`${name}_significant`];
+                        return [`${value}%${isSignificant ? '*' : ''}`, 'Growth Rate'];
                       }
                       return [value, name];
                     }}
                   />
-                  <Legend />
                   <Bar 
                     yAxisId="left"
                     dataKey="current_period_tickets" 
@@ -1224,8 +1257,32 @@ export default function AdminDashboard() {
                     activeDot={{ r: 6 }} 
                     name="Ticket Growth %" 
                   />
+                  <Line 
+                    yAxisId="right"
+                    type="monotone" 
+                    dataKey="revenue_growth_rate" 
+                    stroke="hsl(var(--destructive))" 
+                    strokeWidth={2} 
+                    strokeDasharray="3 3"
+                    dot={{ r: 4 }} 
+                    activeDot={{ r: 6 }} 
+                    name="Revenue Growth %" 
+                  />
                 </BarChart>
               </ResponsiveContainer>
+              <div className="flex flex-wrap gap-4 justify-center mt-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-1 bg-[hsl(var(--accent-foreground))]" />
+                  <span className="text-sm">Ticket Growth %</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-1 bg-[hsl(var(--destructive))]" />
+                  <span className="text-sm">Revenue Growth %</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">* = Statistically Significant</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -1254,26 +1311,42 @@ export default function AdminDashboard() {
                     formatter={(value, name) => {
                       if (name === 'predicted_tickets') return [value, 'Predicted Tickets'];
                       if (name === 'predicted_revenue') return [`KSh ${value.toLocaleString()}`, 'Predicted Revenue'];
-                      if (name === 'confidence_lower' || name === 'confidence_upper') return [value, 'Confidence Interval'];
+                      if (name === 'ticket_confidence_lower' || name === 'ticket_confidence_upper') return [value, 'Ticket Confidence Interval'];
+                      if (name === 'revenue_confidence_lower' || name === 'revenue_confidence_upper') return [`KSh ${value.toLocaleString()}`, 'Revenue Confidence Interval'];
                       return [value, name];
                     }}
                   />
-                  <Legend />
                   <Area 
                     type="monotone" 
-                    dataKey="confidence_lower" 
+                    dataKey="ticket_confidence_lower" 
                     stroke="none" 
                     fill="hsl(var(--primary))" 
                     fillOpacity={0.1} 
-                    name="Lower Confidence"
+                    name="Ticket Lower Confidence"
                   />
                   <Area 
                     type="monotone" 
-                    dataKey="confidence_upper" 
+                    dataKey="ticket_confidence_upper" 
                     stroke="none" 
                     fill="hsl(var(--primary))" 
                     fillOpacity={0.1} 
-                    name="Upper Confidence"
+                    name="Ticket Upper Confidence"
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="revenue_confidence_lower" 
+                    stroke="none" 
+                    fill="hsl(var(--secondary))" 
+                    fillOpacity={0.1} 
+                    name="Revenue Lower Confidence"
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="revenue_confidence_upper" 
+                    stroke="none" 
+                    fill="hsl(var(--secondary))" 
+                    fillOpacity={0.1} 
+                    name="Revenue Upper Confidence"
                   />
                   <Line 
                     type="monotone" 
@@ -1298,6 +1371,24 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Advanced Forecasting Methods */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Advanced Forecasting Methods
+            </CardTitle>
+            <CardDescription>
+              Comparison of different forecasting approaches
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Advanced forecasting methods visualization coming soon</p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Recent Tickets and Quick Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

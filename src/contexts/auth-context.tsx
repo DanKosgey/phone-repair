@@ -116,6 +116,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (error: any) {
         logger.error('AuthProvider: Error initializing auth:', error.message);
+        // Even if there's an error, we still want to finish loading
+        // This prevents infinite loading states
       } finally {
         // Set loading to false after a small delay to ensure role is fetched
         setTimeout(() => {
