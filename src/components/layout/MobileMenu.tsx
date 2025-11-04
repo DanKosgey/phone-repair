@@ -27,6 +27,8 @@ export function MobileMenu() {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-64 p-0">
+        <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+        <SheetDescription className="sr-only">Main navigation menu for mobile devices</SheetDescription>
         <div className="flex flex-col h-full">
           <div className="border-b p-4">
             <Link href="/" className="flex items-center gap-2" onClick={closeMenu}>

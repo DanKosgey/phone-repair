@@ -10,6 +10,7 @@ interface AuthContextType {
   session: Session | null;
   role: string | null;
   isLoading: boolean;
+  isFetchingRole: boolean; // Add this to the context type
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<Session | null>;
@@ -426,6 +427,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         session,
         role,
         isLoading,
+        isFetchingRole, // Expose this state
         signIn,
         signOut,
         refreshSession,

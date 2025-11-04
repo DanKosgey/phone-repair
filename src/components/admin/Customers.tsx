@@ -50,7 +50,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 // Use the customers DB module
-import { customersDb } from '@/lib/db/customers'
+import { useCustomers } from '@/hooks/use-customers'
 import { dashboardDb } from '@/lib/db/dashboard'
 import { useAuth } from '@/contexts/auth-context'
 import { redirect } from 'next/navigation'
@@ -71,6 +71,7 @@ type CustomerSummary = {
 
 export default function AdminCustomers() {
   const { user, role, isLoading: authLoading } = useAuth()
+  const { getAllCustomers, deleteCustomer, restoreCustomer } = useCustomers()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([])
   const [customerSummary, setCustomerSummary] = useState<CustomerSummary[]>([])
@@ -109,9 +110,10 @@ export default function AdminCustomers() {
     }
     
     // Apply status filter
-    if (statusFilter !== 'all') {
-      // For now, all customers are considered active
-      // In a real implementation, you might have different status filters
+    if (statusFilter === 'active') {
+      result = result.filter(customer => !customer.deleted_at)
+    } else if (statusFilter === 'deleted') {
+      result = result.filter(customer => customer.deleted_at)
     }
     
     // Apply sorting
@@ -135,7 +137,8 @@ export default function AdminCustomers() {
   const fetchCustomers = async () => {
     try {
       setIsLoading(true)
-      const data = await customersDb.getAll()
+      // Fetch all customers including deleted ones
+      const data = await getAllCustomers(true)
       setCustomers(data || [])
       setFilteredCustomers(data || [])
     } catch (error: any) {
@@ -205,7 +208,7 @@ export default function AdminCustomers() {
 
   const handleDeleteCustomer = async (customerId: string) => {
     try {
-      await customersDb.delete(customerId)
+      await deleteCustomer(customerId)
       toast({
         title: "Success",
         description: "Customer deleted successfully",
@@ -221,8 +224,28 @@ export default function AdminCustomers() {
     }
   }
 
+  const handleRestoreCustomer = async (customerId: string) => {
+    try {
+      await restoreCustomer(customerId)
+      toast({
+        title: "Success",
+        description: "Customer restored successfully",
+      })
+      // Refresh the customers list
+      fetchCustomers()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to restore customer",
+        variant: "destructive",
+      })
+    }
+  }
+
   // Calculate summary statistics
   const totalCustomers = customers.length
+  const activeCustomers = customers.filter(c => !c.deleted_at).length
+  const deletedCustomers = customers.filter(c => c.deleted_at).length
   const totalLifetimeValue = customerSummary.reduce((sum, customer) => sum + (customer.total_lifetime_value || 0), 0)
   const avgLifetimeValue = totalCustomers > 0 ? totalLifetimeValue / totalCustomers : 0
 
@@ -243,9 +266,11 @@ export default function AdminCustomers() {
             Manage all customers
           </p>
         </div>
-        <Button>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Add Customer
+        <Button asChild>
+          <Link href="/admin/customers/new">
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add Customer
+          </Link>
         </Button>
       </div>
 
@@ -259,7 +284,7 @@ export default function AdminCustomers() {
           <CardContent>
             <div className="text-2xl font-bold">{totalCustomers}</div>
             <p className="text-xs text-muted-foreground">
-              Active customers
+              Total customers ({activeCustomers} active, {deletedCustomers} deleted)
             </p>
           </CardContent>
         </Card>
@@ -309,8 +334,8 @@ export default function AdminCustomers() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="active">Active Only</SelectItem>
+              <SelectItem value="deleted">Deleted Only</SelectItem>
             </SelectContent>
           </Select>
           
@@ -398,17 +423,41 @@ export default function AdminCustomers() {
                 // Find customer summary data
                 const summary = customerSummary.find(c => c.id === customer.id)
                 return (
-                <TableRow key={customer.id} className="hover:bg-muted/50">
+                <TableRow key={customer.id} className={`hover:bg-muted/50 ${customer.deleted_at ? 'opacity-70' : ''}`}>
                   <TableCell className="font-medium">{customer.id}</TableCell>
-                  <TableCell>{customer.name}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span>{customer.name}</span>
+                      {customer.deleted_at && (
+                        <Badge variant="destructive" className="text-xs">
+                          Deleted
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>{customer.email}</TableCell>
                   <TableCell>{customer.phone || 'N/A'}</TableCell>
                   <TableCell>
-                    <Badge className={`${getStatusColor('active')} cursor-pointer transition-colors`}>
-                      Active
-                    </Badge>
+                    {customer.deleted_at ? (
+                      <Badge variant="destructive" className="cursor-pointer transition-colors">
+                        Deleted
+                      </Badge>
+                    ) : (
+                      <Badge className={`${getStatusColor('active')} cursor-pointer transition-colors`}>
+                        Active
+                      </Badge>
+                    )}
                   </TableCell>
-                  <TableCell>{new Date(customer.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <div>
+                      Created: {new Date(customer.created_at).toLocaleDateString()}
+                      {customer.deleted_at && (
+                        <div className="text-xs text-muted-foreground">
+                          Deleted: {new Date(customer.deleted_at).toLocaleDateString()}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button variant="ghost" size="icon" onClick={() => handleViewCustomer(customer.id)}>
@@ -417,9 +466,15 @@ export default function AdminCustomers() {
                       <Button variant="ghost" size="icon" onClick={() => handleEditCustomer(customer.id)}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteCustomer(customer.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {customer.deleted_at ? (
+                        <Button variant="ghost" size="icon" onClick={() => handleRestoreCustomer(customer.id)}>
+                          <ArrowUpDown className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteCustomer(customer.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

@@ -73,8 +73,8 @@ export function TrackTicketCTA() {
     <section className="py-20 relative overflow-hidden">
       {/* Enhanced animated background */}
       <div className="absolute inset-0 overflow-hidden">
-        {/* Gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80" />
+        {/* Gradient background with more transparency */}
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/70 to-primary/50" />
         
         {/* Animated particles */}
         {PARTICLES.map((particle, i) => (

@@ -19,7 +19,7 @@ function LoginFormContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn, user, role, isLoading: authLoading } = useAuth();
+  const { signIn, user, role, isLoading: authLoading, isFetchingRole } = useAuth(); // Add isFetchingRole
   const hasRedirected = useRef(false);
 
   useEffect(() => {
@@ -27,11 +27,18 @@ function LoginFormContent() {
       userId: user?.id, 
       role, 
       authLoading,
-      shouldRedirect: !authLoading && user && role === 'admin'
+      isFetchingRole,
+      shouldRedirect: !authLoading && !isFetchingRole && user && (role === 'admin' || role === null)
     });
-    // If user is already logged in and is admin, redirect to admin dashboard
-    if (!authLoading && user && role === 'admin' && !hasRedirected.current) {
-      console.log('LoginPage: User already authenticated as admin, redirecting to admin dashboard');
+    
+    // If we're still loading auth or waiting for role, don't redirect yet
+    if (authLoading || isFetchingRole) {
+      return;
+    }
+    
+    // If user is authenticated and we have the role, redirect appropriately
+    if (user && role === 'admin' && !hasRedirected.current) {
+      console.log('LoginPage: User authenticated as admin, redirecting to admin dashboard');
       hasRedirected.current = true;
       // Check if there's a redirectTo parameter
       const redirectTo = searchParams.get('redirectTo');
@@ -40,17 +47,15 @@ function LoginFormContent() {
       } else {
         router.push('/admin');
       }
-    } else if (!authLoading && user && role !== 'admin') {
+    } else if (user && role !== 'admin' && role !== null && !hasRedirected.current) {
       console.log('LoginPage: User authenticated but not admin, role:', role);
       // For non-admin users, redirect to homepage
-      if (!hasRedirected.current) {
-        hasRedirected.current = true;
-        router.push('/');
-      }
-    } else if (!authLoading && !user) {
+      hasRedirected.current = true;
+      router.push('/');
+    } else if (!user && !authLoading) {
       console.log('LoginPage: No user authenticated');
     }
-  }, [user, role, authLoading, router, searchParams]);
+  }, [user, role, authLoading, isFetchingRole, router, searchParams]); // Add isFetchingRole to dependencies
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,7 +97,7 @@ function LoginFormContent() {
   };
 
   // If user is already logged in, show loading state or redirect
-  if (authLoading) {
+  if (authLoading || isFetchingRole) { // Add isFetchingRole condition
     console.log('LoginPage: Showing loading state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">

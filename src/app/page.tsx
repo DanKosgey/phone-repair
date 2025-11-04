@@ -9,6 +9,7 @@ import { ServicesSection } from "@/components/homepage/ServicesSection"
 import { WhyChooseUsSection } from "@/components/homepage/WhyChooseUsSection"
 import { FeaturedProductsSection } from "@/components/homepage/FeaturedProductsSection"
 import { TrackTicketCTA } from "@/components/homepage/TrackTicketCTA"
+import { EnhancedBackground } from "@/components/homepage/EnhancedBackground"
 
 type Product = Database['public']['Tables']['products']['Row']
 
@@ -32,6 +33,7 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <EnhancedBackground />
       <Navbar />
       <div className="flex flex-1">
         <HomePageSidebar />

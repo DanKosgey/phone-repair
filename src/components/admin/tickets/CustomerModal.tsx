@@ -101,7 +101,7 @@ export function CustomerModal({ open, onOpenChange, onCustomerCreated }: Custome
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New Customer</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="customer-modal-description">
             Create a new customer record for repair services
           </DialogDescription>
         </DialogHeader>
@@ -118,6 +118,7 @@ export function CustomerModal({ open, onOpenChange, onCustomerCreated }: Custome
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Customer full name"
                   required
+                  aria-describedby="customer-modal-description"
                 />
               </div>
             </div>
@@ -132,6 +133,7 @@ export function CustomerModal({ open, onOpenChange, onCustomerCreated }: Custome
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="customer@example.com"
+                  aria-describedby="customer-modal-description"
                 />
               </div>
             </div>
@@ -145,6 +147,7 @@ export function CustomerModal({ open, onOpenChange, onCustomerCreated }: Custome
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+1 (555) 123-4567"
+                  aria-describedby="customer-modal-description"
                 />
               </div>
             </div>
@@ -159,6 +162,7 @@ export function CustomerModal({ open, onOpenChange, onCustomerCreated }: Custome
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Additional notes about this customer"
                   rows={3}
+                  aria-describedby="customer-modal-description"
                 />
               </div>
             </div>

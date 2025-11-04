@@ -8,10 +8,9 @@ export interface Customer {
   updated_at: string
   deleted_at: string | null
   name: string
-  email: string | null
+  email: string
   phone: string | null
   user_id: string | null
-  notes: string | null
 }
 
 interface CreateCustomerData {
@@ -23,9 +22,12 @@ interface CreateCustomerData {
 // Re-export the customersDb functions for direct use
 export const useCustomers = () => {
   return {
-    searchCustomers: customersDb.search,
+    getAllCustomers: (includeDeleted: boolean = false) => customersDb.getAll(includeDeleted),
+    searchCustomers: (query: string, includeDeleted: boolean = false) => customersDb.search(query, includeDeleted),
     getCustomerById: customersDb.getById,
-    createCustomer: customersDb.create
+    createCustomer: customersDb.create,
+    deleteCustomer: customersDb.delete,
+    restoreCustomer: customersDb.restore
   }
 }
 
@@ -49,7 +51,7 @@ export const useCreateCustomer = () => {
   return useMutation({
     mutationFn: (data: CreateCustomerData) => createCustomer({
       name: data.name,
-      email: data.email || null,
+      email: data.email || '',
       phone: data.phone || null,
     }),
     onSuccess: () => {

@@ -62,13 +62,13 @@ export default function EnhancedTrackTicket() {
     setError(null)
     
     try {
-      // Fetch tickets data from the database by customer name and phone number
-      const data = await ticketsDb.getByCustomerInfo(customerName.trim(), phoneNumber.trim())
+      // Fetch tickets data from the database by phone number only (name is for display only)
+      const data = await ticketsDb.getByPhoneNumber(phoneNumber.trim())
       
       if (data && data.length > 0) {
         setTicketsData(data)
       } else {
-        setError("No repair tickets found for the provided name and phone number.")
+        setError("No repair tickets found for the provided phone number.")
       }
     } catch (error: any) {
       console.error("Error fetching tickets:", error)
@@ -166,8 +166,9 @@ export default function EnhancedTrackTicket() {
         </div>
         
         <div className="max-w-2xl mx-auto">
-          <Card className="bg-gray-800/60 backdrop-blur-lg border border-blue-500/30 shadow-2xl shadow-blue-500/20 rounded-2xl overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-blue-900/40 to-indigo-900/40 pb-8 pt-6">
+          {/* Made the card background transparent to view the phone animation behind it */}
+          <Card className="bg-transparent border border-blue-500/30 shadow-2xl shadow-blue-500/20 rounded-2xl overflow-hidden backdrop-blur-sm">
+            <CardHeader className="bg-gradient-to-r from-blue-900/20 to-indigo-900/20 pb-8 pt-6 backdrop-blur-sm">
               <div className="flex items-center justify-center mb-4">
                 <div className="p-3 rounded-full bg-blue-500/20">
                   <Search className="h-8 w-8 text-blue-300" />
@@ -179,7 +180,7 @@ export default function EnhancedTrackTicket() {
               </CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmit}>
-              <CardContent className="space-y-6 py-6">
+              <CardContent className="space-y-6 py-6 backdrop-blur-sm">
                 <div className="space-y-2">
                   <Label htmlFor="customerName" className="text-blue-200 flex items-center gap-2">
                     <UserCircle className="h-4 w-4" />
@@ -222,7 +223,7 @@ export default function EnhancedTrackTicket() {
                   </div>
                 )}
               </CardContent>
-              <CardFooter className="pb-8">
+              <CardFooter className="pb-8 backdrop-blur-sm">
                 <Button 
                   className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300" 
                   type="submit" 
