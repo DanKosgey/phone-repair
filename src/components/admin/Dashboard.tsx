@@ -14,6 +14,7 @@ import {
 import { 
   BarChart3, 
   TrendingUp, 
+  PieChart as PieChartIcon, 
   Package, 
   Users, 
   Clock, 
@@ -28,6 +29,8 @@ import { useAuth } from '@/contexts/auth-context'
 import { redirect } from 'next/navigation'
 import { dashboardDb, Timeframe } from '@/lib/db/dashboard'
 import { ticketsDb } from '@/lib/db/tickets'
+import { productsDb } from '@/lib/db/products'
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts'
 
 // Types
 type StatCard = {
@@ -47,6 +50,13 @@ type RecentTicket = {
   device_model: string
   created_at: string
 }
+
+type TicketStatus = {
+  status: string
+  count: number
+}
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82ca9d']
 
 export default function AdminDashboard() {
   const { user, role, isLoading: authLoading } = useAuth()
@@ -72,12 +82,14 @@ export default function AdminDashboard() {
   ])
   
   const [recentTickets, setRecentTickets] = useState<RecentTicket[]>([])
+  const [ticketStatusData, setTicketStatusData] = useState<TicketStatus[]>([])
   
   // Loading states
   const [isLoading, setIsLoading] = useState(true)
   const [dataLoading, setDataLoading] = useState({
     stats: true,
-    tickets: true
+    tickets: true,
+    status: true
   })
 
   // Redirect to login if not authenticated or not admin
@@ -103,6 +115,9 @@ export default function AdminDashboard() {
       
       // Fetch recent tickets
       await fetchRecentTickets()
+      
+      // Fetch ticket status for simple insight
+      await fetchTicketStatus()
       
     } catch (error: any) {
       toast({
@@ -200,6 +215,27 @@ export default function AdminDashboard() {
     }
   }
 
+  const fetchTicketStatus = async () => {
+    try {
+      setDataLoading(prev => ({ ...prev, status: true }))
+      const statusData = await dashboardDb.getTicketStatusDistribution()
+      const transformed = statusData.map(item => ({
+        status: item.status,
+        count: item.count
+      }))
+      setTicketStatusData(transformed)
+    } catch (error) {
+      console.error("Failed to fetch ticket status:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch ticket status data",
+        variant: "destructive",
+      })
+    } finally {
+      setDataLoading(prev => ({ ...prev, status: false }))
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'open': return 'bg-blue-100 text-blue-800'
@@ -225,7 +261,6 @@ export default function AdminDashboard() {
 
   const handleTimeframeChange = (newTimeframe: Timeframe) => {
     setTimeframe(newTimeframe);
-    // Save to localStorage for persistence
     localStorage.setItem('dashboardTimeframe', newTimeframe);
   }
 
@@ -236,7 +271,7 @@ export default function AdminDashboard() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            <p className="text-muted-foreground">Monitor and manage your business metrics</p>
+            <p className="text-muted-foreground">Monitor and manage your shop operations</p>
           </div>
           
           {/* Timeframe Selector */}
@@ -257,10 +292,65 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Quick Actions at Top */}
+        <Card className="shadow-md hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-primary" />
+              Quick Actions
+            </CardTitle>
+            <CardDescription>
+              Add new tickets, products, or customers quickly
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Button 
+              variant="outline" 
+              className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
+              onClick={handleNewTicket}
+            >
+              <div className="p-2 bg-blue-500/10 rounded-full">
+                <Wrench className="h-5 w-5 text-blue-500" />
+              </div>
+              <span>New Ticket</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
+              onClick={handleAddProduct}
+            >
+              <div className="p-2 bg-green-500/10 rounded-full">
+                <Package className="h-5 w-5 text-green-500" />
+              </div>
+              <span>Add Product</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
+              onClick={handleNewCustomer}
+            >
+              <div className="p-2 bg-orange-500/10 rounded-full">
+                <Users className="h-5 w-5 text-orange-500" />
+              </div>
+              <span>New Customer</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
+              onClick={() => router.push('/analytics')}
+            >
+              <div className="p-2 bg-purple-500/10 rounded-full">
+                <PieChartIcon className="h-5 w-5 text-purple-500" />
+              </div>
+              <span>View Analytics</span>
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {stats.map((stat, index) => (
-            <Card key={index} className="shadow-sm">
+            <Card key={index} className="shadow-md hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
                 <stat.icon className={`h-5 w-5 ${stat.color.replace('bg-', 'text-')}`} />
@@ -273,9 +363,50 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Recent Tickets and Quick Actions */}
+        {/* Simple Data Insight: Ticket Status Distribution */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="shadow-sm">
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PieChartIcon className="h-5 w-5 text-primary" />
+                Ticket Status Overview
+              </CardTitle>
+              <CardDescription>
+                Quick insight into current ticket statuses
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-64">
+              {ticketStatusData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={ticketStatusData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="count"
+                      label={({ status, percent }) => `${status}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {ticketStatusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  No status data available
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Tickets */}
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-primary" />
@@ -318,84 +449,8 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="h-5 w-5 text-primary" />
-                Quick Actions
-              </CardTitle>
-              <CardDescription>
-                Common tasks you can perform quickly
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
-              <Button 
-                variant="outline" 
-                className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
-                onClick={handleNewTicket}
-              >
-                <div className="p-2 bg-blue-500/10 rounded-full">
-                  <Wrench className="h-5 w-5 text-blue-500" />
-                </div>
-                <span>New Ticket</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
-                onClick={handleAddProduct}
-              >
-                <div className="p-2 bg-green-500/10 rounded-full">
-                  <Package className="h-5 w-5 text-green-500" />
-                </div>
-                <span>Add Product</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
-                onClick={handleNewCustomer}
-              >
-                <div className="p-2 bg-orange-500/10 rounded-full">
-                  <Users className="h-5 w-5 text-orange-500" />
-                </div>
-                <span>New Customer</span>
-              </Button>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
   )
 }
-
-// Enhanced correlation calculation using database function
-// This function is kept for backward compatibility but delegates to the database implementation
-const calculatePearsonCorrelation = (x: number[], y: number[]): { correlation: number, pValue: number } => {
-  if (x.length !== y.length || x.length < 2) {
-    return { correlation: 0, pValue: 1 };
-  }
-  
-  // Use the enhanced correlation function from the database
-  const result = dashboardDb.calculateEnhancedCorrelation(x, y);
-  return { correlation: result.correlation, pValue: result.pValue };
-};
-
-// Simple approximation of cumulative normal distribution
-const cumulativeNormalDistribution = (x: number): number => {
-  // Approximation using Abramowitz and Stegun formula
-  const a1 = 0.31938153;
-  const a2 = -0.356563782;
-  const a3 = 1.781477937;
-  const a4 = -1.821255978;
-  const a5 = 1.330274429;
-  
-  const p = 0.2316419;
-  const sign = x < 0 ? -1 : 1;
-  const absX = Math.abs(x);
-  
-  const t = 1.0 / (1.0 + p * absX);
-  const polynomial = a1 + t * (a2 + t * (a3 + t * (a4 + t * a5)));
-  const y = 1.0 - (1.0 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * absX * absX) * t * polynomial;
-  
-  return sign === 1 ? y : 1 - y;
-};
