@@ -21,6 +21,7 @@ type TicketUpdate = Database['public']['Tables']['tickets']['Update']
 export default function EditTicket() {
   const { user, role, isLoading: authLoading } = useAuth()
   const [ticket, setTicket] = useState<Ticket | null>(null)
+  const [ticketId, setTicketId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [customerName, setCustomerName] = useState("")
@@ -40,8 +41,20 @@ export default function EditTicket() {
   const [notes, setNotes] = useState("")
   const [customerNotes, setCustomerNotes] = useState("")
   const router = useRouter()
-  const { id } = useParams()
+  const params = useParams()
   const { toast } = useToast()
+
+  // Unwrap the params promise for Next.js 16
+  useEffect(() => {
+    const unwrapParams = async () => {
+      if (params && typeof params === 'object' && 'id' in params) {
+        const unwrappedParams = await Promise.resolve(params)
+        setTicketId(unwrappedParams.id as string)
+      }
+    }
+    
+    unwrapParams()
+  }, [params])
 
   // Redirect to login if not authenticated or not admin
   useEffect(() => {
@@ -53,15 +66,15 @@ export default function EditTicket() {
   }, [user, role, authLoading, router])
 
   useEffect(() => {
-    if (id && typeof id === 'string') {
+    if (ticketId) {
       fetchTicket()
     }
-  }, [id])
+  }, [ticketId])
 
   const fetchTicket = async () => {
     try {
       setIsLoading(true)
-      const data = await ticketsDb.getById(id as string)
+      const data = await ticketsDb.getById(ticketId as string)
       setTicket(data)
       
       // Populate form fields with ticket data
@@ -171,7 +184,7 @@ export default function EditTicket() {
       })
 
       // Update ticket
-      await ticketsDb.update(id as string, updateData)
+      await ticketsDb.update(ticketId as string, updateData)
       
       toast({
         title: "Success",
@@ -179,7 +192,7 @@ export default function EditTicket() {
       })
       
       // Redirect to ticket details page
-      router.push(`/admin/tickets/${id}`)
+      router.push(`/admin/tickets/${ticketId}`)
     } catch (error: any) {
       toast({
         title: "Error",
@@ -466,7 +479,7 @@ export default function EditTicket() {
 
             <Card>
               <CardFooter className="flex justify-end gap-4">
-                <Link href={`/admin/tickets/${ticket.id}`}>
+                <Link href={`/admin/tickets/${ticketId}`}>
                   <Button variant="outline">Cancel</Button>
                 </Link>
                 <Button type="submit" disabled={isSubmitting}>

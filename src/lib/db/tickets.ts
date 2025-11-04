@@ -6,6 +6,16 @@ type TicketInsert = Database['public']['Tables']['tickets']['Insert']
 type TicketUpdate = Database['public']['Tables']['tickets']['Update']
 type TicketStatus = Database['public']['Enums']['ticket_status']
 
+// Helper function to refresh dashboard materialized views
+const refreshDashboardViews = async () => {
+  try {
+    const supabase = getSupabaseBrowserClient()
+    await supabase.rpc('refresh_dashboard_materialized_views')
+  } catch (error) {
+    console.warn('Failed to refresh dashboard materialized views:', error)
+  }
+}
+
 export const ticketsDb = {
   // Get all tickets
   async getAll() {
@@ -110,6 +120,10 @@ export const ticketsDb = {
         .single()
       
       if (error) throw new Error(`Failed to create ticket: ${error.message}`)
+      
+      // Refresh materialized views to update dashboard metrics
+      await refreshDashboardViews()
+      
       return data
     } catch (error) {
       console.error('Error in ticketsDb.create:', error)
@@ -129,6 +143,10 @@ export const ticketsDb = {
         .single()
       
       if (error) throw new Error(`Failed to update ticket: ${error.message}`)
+      
+      // Refresh materialized views to update dashboard metrics
+      await refreshDashboardViews()
+      
       return data
     } catch (error) {
       console.error('Error in ticketsDb.update:', error)
@@ -147,6 +165,9 @@ export const ticketsDb = {
         .eq('id', id)
       
       if (error) throw new Error(`Failed to delete ticket: ${error.message}`)
+      
+      // Refresh materialized views to update dashboard metrics
+      await refreshDashboardViews()
     } catch (error) {
       console.error('Error in ticketsDb.delete:', error)
       throw error
@@ -168,6 +189,25 @@ export const ticketsDb = {
       return data
     } catch (error) {
       console.error('Error in ticketsDb.getByStatus:', error)
+      throw error
+    }
+  },
+
+  // Get tickets by customer ID
+  async getTicketsByCustomerId(customerId: string) {
+    try {
+      const supabase: any = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('id, ticket_number, status, device_type, device_brand, device_model, final_cost, created_at')
+        .eq('customer_id', customerId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw new Error(`Failed to fetch customer tickets: ${error.message}`)
+      return data
+    } catch (error) {
+      console.error('Error in ticketsDb.getTicketsByCustomerId:', error)
       throw error
     }
   },

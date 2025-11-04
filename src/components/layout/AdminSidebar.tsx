@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutDashboard, Wrench, Package, Users, Settings, Menu, Recycle } from "lucide-react";
+import { LayoutDashboard, Wrench, Package, Users, Settings, Menu, Recycle, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -9,10 +9,10 @@ import { useState } from "react";
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/admin" },
+  { title: "Analytics", icon: BarChart3, path: "/admin/analytics" },
   { title: "Tickets", icon: Wrench, path: "/admin/tickets" },
   { title: "Products", icon: Package, path: "/admin/products" },
   { title: "Second-Hand Products", icon: Recycle, path: "/admin/secondhand-products" },
-  { title: "Customers", icon: Users, path: "/admin/customers" },
   { title: "Settings", icon: Settings, path: "/admin/settings" },
 ];
 

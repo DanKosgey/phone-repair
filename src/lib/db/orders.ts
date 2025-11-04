@@ -6,6 +6,16 @@ type OrderInsert = Database['public']['Tables']['orders']['Insert']
 type OrderUpdate = Database['public']['Tables']['orders']['Update']
 type OrderStatus = Database['public']['Enums']['order_status']
 
+// Helper function to refresh dashboard materialized views
+const refreshDashboardViews = async () => {
+  try {
+    const supabase = getSupabaseBrowserClient()
+    await supabase.rpc('refresh_dashboard_materialized_views')
+  } catch (error) {
+    console.warn('Failed to refresh dashboard materialized views:', error)
+  }
+}
+
 export const ordersDb = {
   // Get all orders with items
   async getAll() {
@@ -84,6 +94,10 @@ export const ordersDb = {
       .single()
     
     if (error) throw error
+    
+    // Refresh materialized views to update dashboard metrics
+    await refreshDashboardViews()
+    
     return data
   },
 
@@ -98,6 +112,10 @@ export const ordersDb = {
       .single()
     
     if (error) throw error
+    
+    // Refresh materialized views to update dashboard metrics
+    await refreshDashboardViews()
+    
     return data
   },
 
@@ -111,5 +129,8 @@ export const ordersDb = {
       .eq('id', id)
     
     if (error) throw error
+    
+    // Refresh materialized views to update dashboard metrics
+    await refreshDashboardViews()
   }
 }

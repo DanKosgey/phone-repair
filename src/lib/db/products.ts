@@ -5,6 +5,16 @@ type Product = Database['public']['Tables']['products']['Row']
 type ProductInsert = Database['public']['Tables']['products']['Insert']
 type ProductUpdate = Database['public']['Tables']['products']['Update']
 
+// Helper function to refresh dashboard materialized views
+const refreshDashboardViews = async () => {
+  try {
+    const supabase = getSupabaseBrowserClient()
+    await supabase.rpc('refresh_dashboard_materialized_views')
+  } catch (error) {
+    console.warn('Failed to refresh dashboard materialized views:', error)
+  }
+}
+
 // Helper function to verify admin role
 async function verifyAdminRole() {
   const supabase = getSupabaseBrowserClient()
@@ -147,6 +157,10 @@ export const productsDb = {
         .single()
       
       if (error) throw new Error(`Failed to create product: ${error.message}`)
+      
+      // Refresh materialized views to update dashboard metrics
+      await refreshDashboardViews()
+      
       return data
     } catch (error) {
       console.error('Error in productsDb.create:', error)
@@ -170,6 +184,10 @@ export const productsDb = {
         .single()
       
       if (error) throw new Error(`Failed to update product: ${error.message}`)
+      
+      // Refresh materialized views to update dashboard metrics
+      await refreshDashboardViews()
+      
       return data
     } catch (error) {
       console.error('Error in productsDb.update:', error)
@@ -192,6 +210,9 @@ export const productsDb = {
         .eq('id', id)
       
       if (error) throw new Error(`Failed to delete product: ${error.message}`)
+      
+      // Refresh materialized views to update dashboard metrics
+      await refreshDashboardViews()
     } catch (error) {
       console.error('Error in productsDb.delete:', error)
       throw error

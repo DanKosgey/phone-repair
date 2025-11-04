@@ -30,11 +30,24 @@ type Ticket = Database['public']['Tables']['tickets']['Row']
 export default function ViewTicket() {
   const { user, role, isLoading: authLoading } = useAuth()
   const [ticket, setTicket] = useState<Ticket | null>(null)
+  const [ticketId, setTicketId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
-  const { id } = useParams()
+  const params = useParams()
   const { toast } = useToast()
   const hasRedirected = useRef(false)
+
+  // Unwrap the params promise for Next.js 16
+  useEffect(() => {
+    const unwrapParams = async () => {
+      if (params && typeof params === 'object' && 'id' in params) {
+        const unwrappedParams = await Promise.resolve(params)
+        setTicketId(unwrappedParams.id as string)
+      }
+    }
+    
+    unwrapParams()
+  }, [params])
 
   // Redirect to login if not authenticated or not admin
   useEffect(() => {
@@ -47,15 +60,15 @@ export default function ViewTicket() {
   }, [user, role, authLoading, router])
 
   useEffect(() => {
-    if (id && typeof id === 'string') {
+    if (ticketId) {
       fetchTicket()
     }
-  }, [id])
+  }, [ticketId])
 
   const fetchTicket = async () => {
     try {
       setIsLoading(true)
-      const data = await ticketsDb.getById(id as string)
+      const data = await ticketsDb.getById(ticketId as string)
       console.log('Fetched ticket data:', data); // Debug log
       if (data && data.device_photos) {
         console.log('Device photos:', data.device_photos); // Debug log

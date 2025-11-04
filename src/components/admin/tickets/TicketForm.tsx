@@ -17,9 +17,13 @@ import { useAuth } from '@/contexts/auth-context'
 import { logger } from '@/lib/utils/logger'
 import { generateCSRFToken, storeCSRFToken, validateCSRFToken } from '@/lib/utils/csrf'
 import { CameraCapture } from '@/components/ui/camera'
+import { CustomerSearch } from './CustomerSearch'
+import { CustomerModal } from './CustomerModal'
+import { Customer } from '@/hooks/use-customers'
 
 export default function TicketForm() {
   const { user, role, isLoading: authLoading } = useAuth()
+  const [customer, setCustomer] = useState<Customer | null>(null)
   const [customerName, setCustomerName] = useState("")
   const [customerEmail, setCustomerEmail] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
@@ -31,6 +35,7 @@ export default function TicketForm() {
   const [devicePhotos, setDevicePhotos] = useState<File[]>([])
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false)
   const [csrfToken, setCsrfToken] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
@@ -56,6 +61,32 @@ export default function TicketForm() {
       }
     }
   }, [user, role, authLoading, router])
+
+  // Update customer fields when customer is selected
+  useEffect(() => {
+    if (customer) {
+      setCustomerName(customer.name || "")
+      setCustomerEmail(customer.email || "")
+      setCustomerPhone(customer.phone || "")
+    } else {
+      setCustomerName("")
+      setCustomerEmail("")
+      setCustomerPhone("")
+    }
+  }, [customer])
+
+  const handleCustomerSelect = (selectedCustomer: Customer) => {
+    setCustomer(selectedCustomer)
+  }
+
+  const handleAddNewCustomer = () => {
+    setIsCustomerModalOpen(true)
+  }
+
+  const handleCustomerCreated = (newCustomer: Customer) => {
+    setCustomer(newCustomer)
+    setIsCustomerModalOpen(false)
+  }
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -146,19 +177,12 @@ export default function TicketForm() {
         throw new Error('Invalid request. Please refresh the page and try again.');
       }
 
-      // Validate form inputs
-      if (!customerName || customerName.trim().length < 2) {
-        throw new Error('Customer name must be at least 2 characters long');
+      // Validate customer is selected
+      if (!customer) {
+        throw new Error('Please select or create a customer');
       }
 
-      if (!customerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
-        throw new Error('Please enter a valid email address');
-      }
-
-      if (!customerPhone || !/^\+?[\d\s\-\(\)]{10,15}$/.test(customerPhone)) {
-        throw new Error('Please enter a valid phone number');
-      }
-
+      // Validate device information
       if (!deviceType || deviceType.trim().length < 2) {
         throw new Error('Device type must be at least 2 characters long');
       }
@@ -186,116 +210,37 @@ export default function TicketForm() {
         photoUrls = await uploadPhotosToSupabase(devicePhotos);
       }
 
-      const supabase = getSupabaseBrowserClient()
-      // Use authenticated user's ID for RLS compliance
-
-      // Debug authentication state
-      logger.log('TicketForm: Auth state', { 
-        userId: user?.id ? '[REDACTED]' : null, 
-        hasRole: !!role,
-        authLoading,
-        isAuthenticated: !!user,
-        isAdmin: role === 'admin'
-      });
-
-      // Check if user is properly authenticated
-      if (!user || role !== 'admin') {
-        throw new Error('User not properly authenticated as admin');
-      }
-
-      // Additional check: Verify the user has admin role in the database
-      logger.log('TicketForm: Verifying user has admin role in database');
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      if (profileError) {
-        logger.error('TicketForm: Error fetching user profile', profileError.message);
-        throw new Error('Failed to verify user permissions');
-      }
-
-      if (profileData?.role !== 'admin') {
-        logger.error('TicketForm: User does not have admin role in database');
-        throw new Error('User does not have permission to create tickets');
-      }
-
-      logger.log('TicketForm: User verified as admin in database');
-
-      // Force refresh the session to ensure we have the latest auth token with role claim
-      logger.log('TicketForm: Refreshing session to ensure role claim is set');
-      const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
-      if (refreshError) {
-        logger.error('TicketForm: Error refreshing session', refreshError.message);
-        throw new Error('Failed to refresh authentication session');
-      }
-      
-      logger.log('TicketForm: Refreshed session');
-
-      // Verify that we have a valid session with admin role
-      if (!refreshedSession || !refreshedSession.user) {
-        throw new Error('No valid session found after refresh');
-      }
-
-      // Log the JWT token to see if it contains the role claim
-      logger.log('TicketForm: JWT token refreshed');
-      
-      // Decode the JWT token to see its contents
-      try {
-        const tokenParts = refreshedSession.access_token.split('.');
-        const payload = JSON.parse(atob(tokenParts[1]));
-        logger.log('TicketForm: Decoded JWT payload keys', Object.keys(payload));
-      } catch (decodeError: any) {
-        logger.error('TicketForm: Error decoding JWT', decodeError.message);
-      }
-
       // Generate ticket number
       const ticketNumber = `TKT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`
 
-      // Create ticket directly using the Supabase client
-      logger.log('TicketForm: Creating ticket with user ID', user.id ? '[REDACTED]' : null);
-      const { data, error } = await supabase
-        .from('tickets')
-        .insert({
-          user_id: user.id, // Use authenticated user's ID
-          ticket_number: ticketNumber,
-          customer_name: customerName.trim(),
-          customer_email: customerEmail.trim(),
-          customer_phone: customerPhone.trim(),
-          device_type: deviceType.trim(),
-          device_brand: deviceBrand.trim(),
-          device_model: deviceModel.trim(),
-          issue_description: issueDescription.trim(),
-          estimated_cost: estimatedCost ? Number(estimatedCost) : null,
-          device_photos: photoUrls.length > 0 ? photoUrls : null,
-          status: 'received',
-          priority: 'normal'
-        })
-        .select()
-        .single();
+      // Create ticket using the ticketsDb function
+      const ticketData = {
+        user_id: user.id, // Use authenticated user's ID
+        customer_id: customer.id, // Link to selected customer
+        ticket_number: ticketNumber,
+        customer_name: customer.name || customerName.trim(),
+        customer_email: customer.email || customerEmail.trim(),
+        customer_phone: customer.phone || customerPhone.trim(),
+        device_type: deviceType.trim(),
+        device_brand: deviceBrand.trim(),
+        device_model: deviceModel.trim(),
+        issue_description: issueDescription.trim(),
+        estimated_cost: estimatedCost ? Number(estimatedCost) : null,
+        device_photos: photoUrls.length > 0 ? photoUrls : null,
+        status: 'received' as const,
+        priority: 'normal' as const
+      };
 
-      if (error) {
-        logger.error('TicketForm: Error creating ticket', error.message);
-        throw new Error(`Failed to create ticket: ${error.message}`);
-      }
+      const createdTicket = await ticketsDb.create(ticketData);
 
-      logger.log('TicketForm: Ticket created successfully');
-      
-      // Clean up CSRF token after successful submission
-      // Note: We don't remove it immediately because the redirect might need it
-      setTimeout(() => {
-        // Remove CSRF token after a short delay to allow for any async operations
-      }, 1000);
-      
       toast({
         title: "Success",
         description: "Ticket created successfully",
       })
       
       // Redirect to the newly created ticket's view page
-      if (data && data.id) {
-        router.push(`/admin/tickets/${data.id}`)
+      if (createdTicket && createdTicket.id) {
+        router.push(`/admin/tickets/${createdTicket.id}`)
       } else {
         // Fallback to tickets list if we don't have the ticket ID
         router.push("/admin/tickets")
@@ -353,38 +298,84 @@ export default function TicketForm() {
           <CardHeader>
             <CardTitle>Customer Information</CardTitle>
             <CardDescription>
-              Enter the customer's contact details
+              Search for an existing customer or add a new one
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="customerName">Full Name</Label>
-              <Input
-                id="customerName"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="customerEmail">Email</Label>
-              <Input
-                id="customerEmail"
-                type="email"
-                value={customerEmail}
-                onChange={(e) => setCustomerEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="customerPhone">Phone Number</Label>
-              <Input
-                id="customerPhone"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                required
-              />
-            </div>
+          <CardContent className="space-y-4">
+            <CustomerSearch 
+              onCustomerSelect={handleCustomerSelect}
+              onAddNewCustomer={handleAddNewCustomer}
+              initialCustomer={customer}
+            />
+            
+            {!customer && (
+              <div className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded-md">
+                <strong>Note:</strong> Please select a customer to enable the "Create Ticket" button.
+              </div>
+            )}
+            
+            {customer ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="customerName">Full Name</Label>
+                  <Input
+                    id="customerName"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    required
+                    readOnly
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerEmail">Email</Label>
+                  <Input
+                    id="customerEmail"
+                    type="email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    readOnly
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerPhone">Phone Number</Label>
+                  <Input
+                    id="customerPhone"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    readOnly
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="customerName">Full Name</Label>
+                  <Input
+                    id="customerName"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerEmail">Email</Label>
+                  <Input
+                    id="customerEmail"
+                    type="email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerPhone">Phone Number</Label>
+                  <Input
+                    id="customerPhone"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -519,13 +510,30 @@ export default function TicketForm() {
             <Link href="/admin/tickets">
               <Button variant="outline">Cancel</Button>
             </Link>
-            <Button type="submit" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              disabled={isLoading || !customer}
+              title={!customer ? "Please select a customer first" : isLoading ? "Creating ticket..." : "Create ticket"}
+            >
               <Save className="mr-2 h-4 w-4" />
               {isLoading ? "Creating..." : "Create Ticket"}
             </Button>
           </CardFooter>
         </Card>
+        
+        {isLoading && (
+          <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded-md text-center">
+            Creating ticket, please wait...
+          </div>
+        )}
+
+        <CustomerModal 
+          open={isCustomerModalOpen}
+          onOpenChange={setIsCustomerModalOpen}
+          onCustomerCreated={handleCustomerCreated}
+        />
       </form>
+      
     </div>
   )
 }
