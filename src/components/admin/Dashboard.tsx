@@ -22,9 +22,7 @@ import {
   Wrench, 
   Plus, 
   AlertCircle,
-  BarChart,
-  Smartphone,
-  Star
+  BarChart
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
@@ -34,7 +32,6 @@ import { dashboardDb, Timeframe } from '@/lib/db/dashboard'
 import { ticketsDb } from '@/lib/db/tickets'
 import { productsDb } from '@/lib/db/products'
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts'
-import { motion } from 'framer-motion'
 
 // Types
 type StatCard = {
@@ -61,15 +58,6 @@ type TicketStatus = {
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82ca9d']
-
-// Add FeaturedProduct type
-type FeaturedProduct = {
-  id: string
-  name: string
-  price: number
-  image_url: string | null
-  description: string | null
-}
 
 export default function AdminDashboard() {
   const { user, role, isLoading: authLoading } = useAuth()
@@ -289,54 +277,6 @@ export default function AdminDashboard() {
     localStorage.setItem('dashboardTimeframe', newTimeframe);
   }
 
-  // Add featured products state
-  const [featuredProducts, setFeaturedProducts] = useState<FeaturedProduct[]>([])
-  
-  // Fetch featured products
-  useEffect(() => {
-    fetchFeaturedProducts()
-  }, [])
-  
-  const fetchFeaturedProducts = async () => {
-    try {
-      // For now, we'll just set some dummy data
-      // In a real implementation, you would fetch from your database
-      const dummyProducts: FeaturedProduct[] = [
-        {
-          id: "1",
-          name: "iPhone 15 Pro",
-          price: 120000,
-          image_url: null,
-          description: "Latest flagship smartphone with advanced camera system"
-        },
-        {
-          id: "2",
-          name: "Samsung Galaxy S24",
-          price: 95000,
-          image_url: null,
-          description: "Powerful Android smartphone with excellent display"
-        },
-        {
-          id: "3",
-          name: "MacBook Pro 16\"",
-          price: 250000,
-          image_url: null,
-          description: "Professional laptop for creators and developers"
-        },
-        {
-          id: "4",
-          name: "iPad Pro 12.9\"",
-          price: 180000,
-          image_url: null,
-          description: "Ultimate tablet for productivity and creativity"
-        }
-      ]
-      setFeaturedProducts(dummyProducts)
-    } catch (error) {
-      console.error("Failed to fetch featured products:", error)
-    }
-  }
-
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -436,85 +376,6 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Featured Products Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-        >
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Star className="h-5 w-5 text-primary" />
-                Featured Products
-              </CardTitle>
-              <CardDescription>
-                Top selling products in your inventory
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {featuredProducts.map((product, index) => (
-                  <motion.div
-                    key={product.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.1 * index }}
-                    whileHover={{ y: -5 }}
-                    className="relative"
-                  >
-                    {/* Animated border glow */}
-                    <motion.div
-                      className="absolute inset-0 rounded-lg bg-gradient-to-r from-primary/20 to-primary/10 blur-sm -z-10"
-                      animate={{
-                        opacity: [0.3, 0.6, 0.3],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                    />
-                    
-                    <Card className="h-full border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="bg-primary/10 rounded-full p-2">
-                            <Smartphone className="h-6 w-6 text-primary" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold line-clamp-1">{product.name}</h3>
-                            <p className="text-sm text-muted-foreground">KSh {product.price.toLocaleString()}</p>
-                          </div>
-                        </div>
-                        
-                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                          {product.description}
-                        </p>
-                        
-                        {/* Animated progress bar for sales */}
-                        <div className="w-full bg-muted rounded-full h-2 mb-2">
-                          <motion.div
-                            className="bg-primary h-2 rounded-full"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${70 + index * 5}%` }}
-                            transition={{ duration: 1, delay: 0.5 + index * 0.1 }}
-                          />
-                        </div>
-                        
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>{70 + index * 5}% sales</span>
-                          <span>{Math.floor(15 + index * 3)} sold</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-        
         {/* Simple Data Insight: Ticket Status Distribution */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="shadow-md hover:shadow-lg transition-shadow">
