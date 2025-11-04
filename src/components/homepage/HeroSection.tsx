@@ -267,17 +267,17 @@ export function HeroSection() {
               <motion.div
                 whileHover={{
                   scale: 1.05,
-                  boxShadow: "0 15px 30px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.3), 0 0 25px rgba(var(--primary-rgb, 0, 0, 0), 0.2)",
+                  boxShadow: "0 5px 15px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.15), 0 0 10px rgba(var(--primary-rgb, 0, 0, 0), 0.1)",
                 }}
                 whileTap={{ scale: 0.95 }}
                 className="relative"
               >
-                {/* Outer glow ring - more lively */}
+                {/* Outer glow ring - reduced intensity */}
                 <motion.div
-                  className="absolute inset-0 rounded-lg blur-lg bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20"
+                  className="absolute inset-0 rounded-lg blur-sm bg-gradient-to-r from-primary/10 via-purple-500/10 to-primary/10"
                   animate={{
-                    opacity: [0.2, 0.5, 0.2],
-                    scale: [1, 1.05, 1],
+                    opacity: [0.15, 0.3, 0.15],
+                    scale: [1, 1.01, 1],
                   }}
                   transition={{
                     duration: 3,
@@ -288,16 +288,16 @@ export function HeroSection() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full sm:w-auto border-2 border-primary text-lg px-8 py-6 relative overflow-hidden group bg-gradient-to-r from-background to-primary/5 backdrop-blur-sm theme-glow-animation"
+                  className="w-full sm:w-auto border border-primary/30 text-lg px-8 py-6 relative overflow-hidden group bg-background/80 backdrop-blur-sm theme-glow-animation"
                 >
-                  <span className="relative z-10 font-bold flex items-center gap-2">
+                  <span className="relative z-10 font-semibold flex items-center gap-2">
                     Shop Products
                     <motion.span
                       animate={{ 
-                        rotate: [0, 10, -10, 0],
+                        rotate: [0, 5, -5, 0],
                       }}
                       transition={{ 
-                        duration: 2,
+                        duration: 3,
                         repeat: Infinity,
                         ease: "easeInOut"
                       }}
@@ -305,26 +305,26 @@ export function HeroSection() {
                       <ShoppingCart className="h-5 w-5" />
                     </motion.span>
                   </span>
-                  {/* Animated gradient sweep - more lively */}
+                  {/* Animated gradient sweep - reduced intensity */}
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent"
                     animate={{
                       x: ["-200%", "200%"],
                     }}
                     transition={{
-                      duration: 2,
+                      duration: 3,
                       repeat: Infinity,
                       ease: "easeInOut",
                     }}
                   />
-                  {/* Pulsing background glow - more lively */}
+                  {/* Pulsing background glow - reduced intensity */}
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-primary/15 via-purple-500/15 to-primary/15"
+                    className="absolute inset-0 bg-gradient-to-r from-primary/8 via-purple-500/8 to-primary/8"
                     animate={{
-                      opacity: [0.3, 0.6, 0.3],
+                      opacity: [0.1, 0.2, 0.1],
                     }}
                     transition={{
-                      duration: 2,
+                      duration: 3,
                       repeat: Infinity,
                       ease: "easeInOut",
                     }}
@@ -337,38 +337,38 @@ export function HeroSection() {
               <motion.div
                 whileHover={{
                   scale: 1.05,
-                  boxShadow: "0 15px 30px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.3), 0 0 25px rgba(var(--primary-rgb, 0, 0, 0), 0.2)",
+                  boxShadow: "0 5px 15px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.15), 0 0 10px rgba(var(--primary-rgb, 0, 0, 0), 0.1)",
                 }}
                 whileTap={{ scale: 0.95 }}
                 className="relative"
               >
-                {/* Outer glow ring - more lively */}
+                {/* Outer glow ring - reduced intensity */}
                 <motion.div
-                  className="absolute inset-0 rounded-lg blur-lg bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20"
+                  className="absolute inset-0 rounded-lg blur-sm bg-gradient-to-r from-primary/10 via-purple-500/10 to-primary/10"
                   animate={{
-                    opacity: [0.2, 0.5, 0.2],
-                    scale: [1, 1.05, 1],
+                    opacity: [0.15, 0.3, 0.15],
+                    scale: [1, 1.01, 1],
                   }}
                   transition={{
                     duration: 3,
                     repeat: Infinity,
                     ease: "easeInOut",
-                    delay: 0.3,
+                    delay: 0.1,
                   }}
                 />
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full sm:w-auto border-2 border-primary text-lg px-8 py-6 relative overflow-hidden group bg-gradient-to-r from-background to-primary/5 backdrop-blur-sm theme-glow-animation"
+                  className="w-full sm:w-auto border border-primary/30 text-lg px-8 py-6 relative overflow-hidden group bg-background/80 backdrop-blur-sm theme-glow-animation"
                 >
-                  <span className="relative z-10 font-bold flex items-center gap-2">
+                  <span className="relative z-10 font-semibold flex items-center gap-2">
                     Marketplace
                     <motion.span
                       animate={{ 
-                        y: [-2, 2, -2],
+                        y: [-1, 1, -1],
                       }}
                       transition={{ 
-                        duration: 1.5,
+                        duration: 2,
                         repeat: Infinity,
                         ease: "easeInOut"
                       }}
@@ -376,30 +376,30 @@ export function HeroSection() {
                       <Package className="h-5 w-5" />
                     </motion.span>
                   </span>
-                  {/* Animated gradient sweep - more lively */}
+                  {/* Animated gradient sweep - reduced intensity */}
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent"
                     animate={{
                       x: ["-200%", "200%"],
                     }}
                     transition={{
-                      duration: 2,
+                      duration: 3,
                       repeat: Infinity,
                       ease: "easeInOut",
-                      delay: 0.3,
+                      delay: 0.1,
                     }}
                   />
-                  {/* Pulsing background glow - more lively */}
+                  {/* Pulsing background glow - reduced intensity */}
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-primary/15 via-purple-500/15 to-primary/15"
+                    className="absolute inset-0 bg-gradient-to-r from-primary/8 via-purple-500/8 to-primary/8"
                     animate={{
-                      opacity: [0.3, 0.6, 0.3],
+                      opacity: [0.1, 0.2, 0.1],
                     }}
                     transition={{
-                      duration: 2,
+                      duration: 3,
                       repeat: Infinity,
                       ease: "easeInOut",
-                      delay: 0.3,
+                      delay: 0.1,
                     }}
                   />
                 </Button>
