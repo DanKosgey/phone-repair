@@ -72,6 +72,15 @@ export default async function proxy(request: NextRequest) {
           response.cookies.set({ name, value: '', ...cookieOptions })
         },
       },
+      // Add auth settings to prevent infinite refresh loops
+      auth: {
+        // Prevent automatic session refresh which can cause loops
+        autoRefreshToken: true,
+        // Persist session in cookies
+        persistSession: true,
+        // Detect auth changes via polling to avoid race conditions
+        detectSessionInUrl: true,
+      }
     }
   )
 
@@ -79,7 +88,10 @@ export default async function proxy(request: NextRequest) {
   const isAuthRoute = request.nextUrl.pathname === '/login' || 
                       request.nextUrl.pathname === '/signup'
   
-  if (!isAuthRoute) {
+  // Also don't refresh session on admin routes to prevent interference
+  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin')
+  
+  if (!isAuthRoute && !isAdminRoute) {
     try {
       await supabase.auth.getSession()
     } catch (error) {

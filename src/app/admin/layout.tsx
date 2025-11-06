@@ -139,15 +139,19 @@ export default function AdminRootLayout({
     }
 
     // User exists but role is null (still fetching) - set a timeout
-    if (role === null && !isFetchingRole) {
-      // If we're not fetching role anymore but still have null role, 
-      // set a timeout to prevent infinite loading
-      authCheckTimeout.current = setTimeout(() => {
-        if (!hasRedirected.current && mountedRef.current) {
-          console.log('AdminLayout: Role check timeout, assuming admin role')
-          setIsCheckingAuth(false)
-        }
-      }, 8000) // 8 second timeout
+    if (role === null && user) {
+      // If we have a user but no role yet, wait for role to be fetched
+      // Only set timeout if we're not already fetching the role
+      if (!isFetchingRole) {
+        authCheckTimeout.current = setTimeout(() => {
+          if (!hasRedirected.current && mountedRef.current) {
+            console.log('AdminLayout: Role check timeout, assuming admin role')
+            setIsCheckingAuth(false)
+          }
+        }, 8000) // 8 second timeout
+      }
+      // Don't redirect to login if we have a user - we're still checking their role
+      return
     }
   }, [user, role, isLoading, isFetchingRole, router, toast])
 
