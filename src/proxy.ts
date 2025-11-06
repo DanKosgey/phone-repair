@@ -75,7 +75,7 @@ export default async function proxy(request: NextRequest) {
       // Add auth settings to prevent infinite refresh loops
       auth: {
         // Prevent automatic session refresh which can cause loops
-        autoRefreshToken: true,
+        autoRefreshToken: false,
         // Persist session in cookies
         persistSession: true,
         // Detect auth changes via polling to avoid race conditions

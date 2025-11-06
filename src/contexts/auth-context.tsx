@@ -5,10 +5,6 @@ import { getSupabaseBrowserClient } from '@/server/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 import { logger } from '@/lib/utils/logger';
 
-// Simple in-memory cache for user roles
-const roleCache = new Map<string, { role: string | null; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -36,7 +32,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isInitializedRef = useRef(false);
   const roleAbortControllerRef = useRef<AbortController | null>(null);
   const pendingTimeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set());
-  const lastFetchedUserIdRef = useRef<string | null>(null);
   
   // Get Supabase client instance (stable reference)
   const supabaseRef = useRef<ReturnType<typeof getSupabaseBrowserClient> | null>(null);
@@ -75,23 +70,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const fetchUserRole = useCallback(async (userId: string): Promise<void> => {
     if (!userId || !isMountedRef.current) return;
 
-    // Prevent re-fetching for the same user
-    if (lastFetchedUserIdRef.current === userId && isFetchingRole) {
-      logger.log('AuthProvider: Role fetch already in progress for this user');
-      return;
-    }
-
-    // Check cache first
-    const cached = roleCache.get(userId);
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      logger.log('AuthProvider: Using cached role');
-      if (isMountedRef.current) {
-        setRole(cached.role);
-        lastFetchedUserIdRef.current = userId;
-      }
-      return;
-    }
-
     // Cancel any pending role fetch
     if (roleAbortControllerRef.current) {
       roleAbortControllerRef.current.abort();
@@ -103,8 +81,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (isMountedRef.current) {
       setIsFetchingRole(true);
     }
-    lastFetchedUserIdRef.current = userId;
-    logger.log('AuthProvider: Fetching role for user');
     
     try {
       if (!supabase) {
@@ -120,26 +96,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Check if this request was aborted
       if (currentAbortController.signal.aborted || !isMountedRef.current) {
-        logger.log('AuthProvider: Role fetch was aborted or component unmounted');
         return;
       }
 
       if (error) {
-        logger.error('AuthProvider: Error fetching user role:', error.message);
+        console.error('AuthProvider: Error fetching user role:', error.message);
         // Even on error, we continue with null role to prevent blocking the flow
         if (isMountedRef.current) {
           setRole(null);
         }
       } else {
         const userRole = data?.role || null;
-        logger.log('AuthProvider: User role fetched successfully:', userRole);
         if (isMountedRef.current) {
           setRole(userRole);
-          roleCache.set(userId, { role: userRole, timestamp: Date.now() });
         }
       }
     } catch (error: any) {
-      logger.error('AuthProvider: Exception during role fetching:', error.message);
+      console.error('AuthProvider: Exception during role fetching:', error.message);
       // Even on exception, we continue with null role to prevent blocking the flow
       if (isMountedRef.current) {
         setRole(null);
@@ -153,7 +126,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         roleAbortControllerRef.current = null;
       }
     }
-  }, [isFetchingRole, supabase]);
+  }, [supabase]);
 
   // Initialize authentication - ONLY RUNS ONCE
   useEffect(() => {
@@ -255,7 +228,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               if (currentSession?.user) {
                 setUser(currentSession.user);
                 setSession(currentSession);
-                lastFetchedUserIdRef.current = null; // Reset to allow fetch
                 
                 // Fetch role with improved handling during sign in
                 if (isMountedRef.current) {
@@ -271,15 +243,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               if (currentSession?.user) {
                 setUser(currentSession.user);
                 setSession(currentSession);
-                // Don't re-fetch role on token refresh if we already have it
-                if (!role) {
-                  lastFetchedUserIdRef.current = null;
-                  
-                  // Fetch role with improved handling during token refresh
-                  if (isMountedRef.current) {
-                    fetchUserRole(currentSession.user.id);
-                  }
-                }
               }
               if (isMountedRef.current) {
                 setIsLoading(false);
@@ -290,8 +253,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               setUser(null);
               setSession(null);
               setRole(null);
-              roleCache.clear();
-              lastFetchedUserIdRef.current = null;
               if (isMountedRef.current) {
                 setIsLoading(false);
               }
@@ -361,7 +322,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(null);
             setSession(null);
             setRole(null);
-            lastFetchedUserIdRef.current = null;
           }
         } else if (refreshedSession && isMountedRef.current) {
           logger.log('AuthProvider: Session refreshed successfully');
@@ -419,9 +379,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(data.user);
         setSession(data.session);
         
-        // Reset fetch tracker
-        lastFetchedUserIdRef.current = null;
-        
         // Fetch role with improved handling
         fetchUserRole(data.user.id);
         
@@ -469,8 +426,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setSession(null);
       setRole(null);
-      roleCache.clear();
-      lastFetchedUserIdRef.current = null;
       
       // Sign out from Supabase with global scope
       try {
@@ -528,25 +483,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               }
             }
           });
-          
-          // Also clear any cookies that might have been set with different domains
-          if (process.env.NODE_ENV === 'production') {
-            const domain = window.location.hostname;
-            const baseDomain = domain.replace(/^www\./, '');
-            const cookieNames = ['sb-access-token', 'sb-refresh-token'];
-            
-            cookieNames.forEach(cookieName => {
-              try {
-                document.cookie = `${cookieName}=; path=/; max-age=0`;
-                document.cookie = `${cookieName}=; path=/; domain=${domain}; max-age=0`;
-                document.cookie = `${cookieName}=; path=/; domain=.${domain}; max-age=0`;
-                document.cookie = `${cookieName}=; path=/; domain=${baseDomain}; max-age=0`;
-                document.cookie = `${cookieName}=; path=/; domain=.${baseDomain}; max-age=0`;
-              } catch (removeError) {
-                logger.error(`Failed to remove cookie ${cookieName}:`, removeError);
-              }
-            });
-          }
         } catch (err) {
           logger.error('Failed to clear cookies:', err);
         }
@@ -559,7 +495,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setSession(null);
       setRole(null);
-      lastFetchedUserIdRef.current = null;
     } finally {
       if (isMountedRef.current) {
         setIsLoading(false);
@@ -583,7 +518,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(null);
           setSession(null);
           setRole(null);
-          lastFetchedUserIdRef.current = null;
           return null;
         }
         logger.error('AuthProvider: Error during session refresh:', error.message);
@@ -594,13 +528,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logger.log('AuthProvider: Session refreshed successfully');
         setUser(refreshedSession.user);
         setSession(refreshedSession);
-        
-        // Only fetch role if we don't have it
-        if (!role) {
-          lastFetchedUserIdRef.current = null;
-          // Fetch role with improved handling during session refresh
-          fetchUserRole(refreshedSession.user.id);
-        }
         return refreshedSession;
       }
       
@@ -609,7 +536,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logger.error('AuthProvider: Error refreshing session:', error.message);
       throw error;
     }
-  }, [supabase, fetchUserRole, role]);
+  }, [supabase]);
 
   // Recover session
   const recoverSession = useCallback(async (): Promise<boolean> => {
@@ -631,10 +558,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logger.log('AuthProvider: Session recovered');
         setUser(currentSession.user);
         setSession(currentSession);
-        lastFetchedUserIdRef.current = null;
-        
-        // Fetch role with improved handling during session recovery
-        fetchUserRole(currentSession.user.id);
         return true;
       }
       
@@ -644,7 +567,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logger.error('AuthProvider: Exception during session recovery:', error.message);
       return false;
     }
-  }, [supabase, fetchUserRole]);
+  }, [supabase]);
 
   // Check session validity
   const isSessionValid = useCallback(async (): Promise<boolean> => {
