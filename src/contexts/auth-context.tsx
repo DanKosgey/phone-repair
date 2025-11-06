@@ -5,6 +5,10 @@ import { getSupabaseBrowserClient } from '@/server/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 import { logger } from '@/lib/utils/logger';
 
+// Simple in-memory cache for user roles
+const roleCache = new Map<string, { role: string | null; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -29,8 +33,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Get Supabase client instance
   const supabase = getSupabaseBrowserClient();
 
+  // Check for cached role on mount
+  useEffect(() => {
+    if (user?.id) {
+      const cached = roleCache.get(user.id);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        logger.log('AuthProvider: Using cached role on mount for user:', user.id);
+        setRole(cached.role);
+      }
+    }
+  }, [user?.id]);
+
   // Memoize fetchUserRole to prevent recreation on every render
   const fetchUserRole = useCallback(async (userId: string) => {
+    // Check cache first
+    const cached = roleCache.get(userId);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      logger.log('AuthProvider: Using cached role for user:', userId);
+      setRole(cached.role);
+      return;
+    }
+
     // Prevent concurrent role fetches
     if (isFetchingRole) {
       logger.log('AuthProvider: Role fetch already in progress, skipping');
@@ -56,22 +79,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logger.error('AuthProvider: Error code:', error.code);
         logger.error('AuthProvider: Error details:', error);
         
+        // Handle specific error types
+        if (error.code === 'PGRST301' || error.message.includes('timeout') || error.message.includes('network')) {
+          // Network or timeout error - retry with exponential backoff
+          logger.log('AuthProvider: Network error detected, implementing exponential backoff retry');
+          const retryCount = roleCache.get(`retry_${userId}`)?.role ? parseInt(roleCache.get(`retry_${userId}`)?.role || '0') : 0;
+          const maxRetries = 3;
+          
+          if (retryCount < maxRetries) {
+            const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+            logger.log(`AuthProvider: Retry attempt ${retryCount + 1}/${maxRetries} in ${delay}ms`);
+            
+            // Store retry count
+            roleCache.set(`retry_${userId}`, { role: (retryCount + 1).toString(), timestamp: Date.now() });
+            
+            setTimeout(async () => {
+              setIsFetchingRole(false);
+              await fetchUserRole(userId);
+            }, delay);
+            return;
+          } else {
+            logger.error('AuthProvider: Max retries exceeded for role fetching');
+            // Clear retry count
+            roleCache.delete(`retry_${userId}`);
+          }
+        }
+        
         // In production, if we can't fetch the role, check if we can determine it from JWT
         if (session?.user?.role === 'admin') {
           logger.log('AuthProvider: Using role from JWT token');
           setRole('admin');
+          // Cache the role
+          roleCache.set(userId, { role: 'admin', timestamp: Date.now() });
         } else {
-          // Retry mechanism for role fetching
-          logger.log('AuthProvider: Retrying role fetch in 1 second');
+          // For other errors, retry once after 2 seconds
+          logger.log('AuthProvider: Retrying role fetch in 2 seconds due to error');
           setTimeout(async () => {
             setIsFetchingRole(false);
             await fetchUserRole(userId);
-          }, 1000);
+          }, 2000);
           return;
         }
       } else {
+        // Success - clear any retry count
+        roleCache.delete(`retry_${userId}`);
+        
         logger.log('AuthProvider: User role fetched:', data?.role ? '[REDACTED]' : null);
         setRole(data?.role || null);
+        // Cache the role
+        roleCache.set(userId, { role: data?.role || null, timestamp: Date.now() });
         
         // Additional logging for debugging
         if (data?.role === 'admin') {
@@ -94,17 +150,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logger.error('AuthProvider: Exception during role fetching:', error.message);
       logger.error('AuthProvider: Exception stack:', error.stack);
       
+      // Handle network exceptions
+      if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('timeout')) {
+        logger.log('AuthProvider: Network exception detected, implementing retry logic');
+        const retryCount = roleCache.get(`retry_${userId}`)?.role ? parseInt(roleCache.get(`retry_${userId}`)?.role || '0') : 0;
+        const maxRetries = 3;
+        
+        if (retryCount < maxRetries) {
+          const delay = Math.pow(2, retryCount) * 1500; // Exponential backoff: 1.5s, 3s, 6s
+          logger.log(`AuthProvider: Exception retry attempt ${retryCount + 1}/${maxRetries} in ${delay}ms`);
+          
+          // Store retry count
+          roleCache.set(`retry_${userId}`, { role: (retryCount + 1).toString(), timestamp: Date.now() });
+          
+          setTimeout(async () => {
+            setIsFetchingRole(false);
+            await fetchUserRole(userId);
+          }, delay);
+          return;
+        } else {
+          logger.error('AuthProvider: Max retries exceeded for role fetching due to exceptions');
+          // Clear retry count
+          roleCache.delete(`retry_${userId}`);
+        }
+      }
+      
       // Fallback: check if we can determine role from JWT in case of network errors
       if (session?.user?.role === 'admin') {
         logger.log('AuthProvider: Using role from JWT token as fallback');
         setRole('admin');
+        // Cache the role
+        roleCache.set(userId, { role: 'admin', timestamp: Date.now() });
       } else {
-        // Retry mechanism for exceptions
-        logger.log('AuthProvider: Retrying role fetch in 2 seconds due to exception');
+        // For other exceptions, retry once after 3 seconds
+        logger.log('AuthProvider: Retrying role fetch in 3 seconds due to exception');
         setTimeout(async () => {
           setIsFetchingRole(false);
           await fetchUserRole(userId);
-        }, 2000);
+        }, 3000);
         return;
       }
     } finally {
@@ -184,6 +267,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(null);
           setSession(null);
           setRole(null);
+          // Clear cache on sign out
+          roleCache.clear();
         } else {
           logger.log('AuthProvider: Ignoring event:', event);
         }
