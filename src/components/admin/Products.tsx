@@ -77,6 +77,18 @@ export default function AdminProducts() {
     }
   }, [user, role, authLoading])
 
+  // Add timeout to prevent infinite loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isLoading) {
+        console.log('Products: Timeout reached, forcing loading to complete');
+        setIsLoading(false);
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timer);
+  }, [isLoading]);
+
   useEffect(() => {
     fetchProducts()
   }, [])

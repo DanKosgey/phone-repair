@@ -47,6 +47,18 @@ export default function AdminRootLayout({
     }
   }, [user, role, isLoading, router])
 
+  // Add timeout to prevent infinite loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isLoading || isCheckingAuth) {
+        console.log('AdminLayout: Timeout reached, forcing loading to complete');
+        setIsCheckingAuth(false);
+      }
+    }, 5000); // 5 second timeout
+
+    return () => clearTimeout(timer);
+  }, [isLoading, isCheckingAuth]);
+
   const handleSignOut = async () => {
     console.log('AdminLayout: Signing out user:', user?.id);
     try {
@@ -81,8 +93,11 @@ export default function AdminRootLayout({
   if (isLoading || isCheckingAuth) {
     console.log('AdminLayout: Showing loading state', { isLoading, isCheckingAuth });
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="text-muted-foreground">Authenticating...</p>
+        </div>
       </div>
     )
   }

@@ -76,6 +76,18 @@ export default function Tickets() {
     }
   }, [user, role, authLoading, router])
 
+  // Add timeout to prevent infinite loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isLoading) {
+        console.log('Tickets: Timeout reached, forcing loading to complete');
+        setIsLoading(false);
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timer);
+  }, [isLoading]);
+
   useEffect(() => {
     fetchTickets()
     fetchStatusDistribution()

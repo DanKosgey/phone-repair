@@ -91,6 +91,18 @@ export default function AdminCustomers() {
     }
   }, [user, role, authLoading])
 
+  // Add timeout to prevent infinite loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isLoading) {
+        console.log('Customers: Timeout reached, forcing loading to complete');
+        setIsLoading(false);
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timer);
+  }, [isLoading]);
+
   useEffect(() => {
     fetchCustomers()
     fetchCustomerSummary()
@@ -486,3 +498,4 @@ export default function AdminCustomers() {
     </div>
   )
 }
+
