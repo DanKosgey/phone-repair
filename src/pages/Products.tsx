@@ -33,7 +33,10 @@ export default function Products() {
         
         // If feature is disabled, redirect to home
         if (!settings.enableShop) {
-          redirect('/')
+          // Use window.location for client-side redirect
+          if (typeof window !== 'undefined') {
+            window.location.href = '/'
+          }
           return
         }
         
@@ -46,7 +49,10 @@ export default function Products() {
       }
     }
 
-    checkFeatureEnabled()
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      checkFeatureEnabled()
+    }
   }, [])
 
   useEffect(() => {
@@ -62,6 +68,11 @@ export default function Products() {
   }, [searchTerm, products])
 
   const fetchProducts = async () => {
+    // Only fetch products on client side
+    if (typeof window === 'undefined') {
+      return
+    }
+    
     try {
       setIsLoading(true)
       const data = await productsDb.getAll()

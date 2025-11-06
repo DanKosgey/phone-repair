@@ -12,9 +12,28 @@ export function getSupabaseBrowserClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables')
+  // Check if we're in a browser environment during runtime (not build time)
+  if (typeof window === 'undefined') {
+    // During server-side rendering/build, we can't access env vars the same way
+    console.warn('Supabase client initialized during SSR/build - env vars may not be available yet')
+    // Return a minimal client that will be replaced during hydration
+    return null as any
   }
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase environment variables. Please check your .env.local file or Vercel environment variables.')
+  }
+
+  // Validate URL format
+  try {
+    new URL(supabaseUrl)
+  } catch (e) {
+    throw new Error(`Invalid Supabase URL format: ${supabaseUrl}`)
+  }
+
+  // Determine if we're in a browser environment and if it's HTTPS
+  const isBrowser = typeof window !== 'undefined'
+  const isHttps = isBrowser && window.location.protocol === 'https:'
 
   browserClient = createBrowserClient(
     supabaseUrl,
@@ -55,15 +74,15 @@ export function getSupabaseBrowserClient() {
             if (options?.sameSite) {
               cookie += `; samesite=${options.sameSite}`
             } else {
-              // Default to Lax for better security and compatibility
-              cookie += '; samesite=Lax'
+              // Default to lax for better security and compatibility
+              cookie += '; samesite=lax'
             }
             // Set Secure attribute properly
             if (options?.secure !== undefined) {
               cookie += options.secure ? '; secure' : ''
             } else {
               // Default to secure in production (HTTPS)
-              cookie += (typeof window !== 'undefined' && window.location.protocol === 'https:') ? '; secure' : ''
+              cookie += isHttps ? '; secure' : ''
             }
             
             document.cookie = cookie
@@ -78,7 +97,7 @@ export function getSupabaseBrowserClient() {
           try {
             // Always use root path for removal
             const path = '; path=/'
-            const domain = options?.domain || (typeof window !== 'undefined' ? window.location.hostname : '')
+            const domain = options?.domain || (isBrowser ? window.location.hostname : '')
             // Remove cookie with proper domain handling
             document.cookie = `${name}=;${path}; max-age=0`
             if (domain) {

@@ -40,7 +40,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const lastFetchedUserIdRef = useRef<string | null>(null);
   
   // Get Supabase client instance (stable reference)
-  const supabaseRef = useRef(getSupabaseBrowserClient());
+  const supabaseRef = useRef<ReturnType<typeof getSupabaseBrowserClient> | null>(null);
+  
+  // Initialize Supabase client safely
+  useEffect(() => {
+    try {
+      supabaseRef.current = getSupabaseBrowserClient();
+    } catch (error) {
+      console.warn('Failed to initialize Supabase client:', error);
+      supabaseRef.current = null;
+    }
+  }, []);
+
   const supabase = supabaseRef.current;
 
   // Cleanup helper for timeouts
@@ -63,7 +74,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Fetch user role with proper cleanup and error handling
   const fetchUserRole = useCallback(async (userId: string): Promise<void> => {
-    if (!userId || !isMountedRef.current) return;
+    if (!userId || !isMountedRef.current || !supabase) return;
 
     // Prevent re-fetching for the same user
     if (lastFetchedUserIdRef.current === userId && isFetchingRole) {
@@ -162,7 +173,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Initialize authentication - ONLY RUNS ONCE
   useEffect(() => {
     // Prevent multiple initializations
-    if (isInitializedRef.current) {
+    if (isInitializedRef.current || !supabase) {
       return;
     }
     
@@ -183,6 +194,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setIsLoading(false);
             return;
           }
+        }
+        
+        // Add a small delay to ensure cookies are properly set
+        if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
         
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
@@ -277,16 +293,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []); // Empty deps - only run once
+  }, [supabase]); // Depend on supabase client
 
   // Session auto-refresh
   useEffect(() => {
-    if (!session?.expires_at) return;
+    if (!session?.expires_at || !supabase) return;
 
     const now = Math.floor(Date.now() / 1000);
     const timeUntilExpiry = session.expires_at - now;
     
-    // Refresh 5 minutes before expiry
+    // Refresh 5 minutes before expiry, but not sooner than 1 minute
     const refreshTime = Math.max((timeUntilExpiry - 300) * 1000, 60000);
     
     const refreshTimer = safeSetTimeout(async () => {
@@ -298,9 +314,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (error) {
           logger.error('AuthProvider: Error during auto-refresh:', error.message);
+          // If we get an auth error, clear the session
+          if (error.message === 'Auth session missing!') {
+            setUser(null);
+            setSession(null);
+            setRole(null);
+            lastFetchedUserIdRef.current = null;
+          }
         } else if (refreshedSession && isMountedRef.current) {
-          setSession(refreshedSession);
+          logger.log('AuthProvider: Session refreshed successfully');
           setUser(refreshedSession.user);
+          setSession(refreshedSession);
         }
       } catch (error: any) {
         logger.error('AuthProvider: Exception during auto-refresh:', error.message);
@@ -315,6 +339,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Sign in
   const signIn = async (email: string, password: string): Promise<void> => {
+    if (!supabase) {
+      throw new Error('Supabase client not available');
+    }
+    
     logger.log('AuthProvider: Attempting sign in');
     setIsLoading(true);
     
@@ -379,40 +407,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Sign out
   const signOut = async (): Promise<void> => {
+    if (!supabase) {
+      // If supabase isn't available, just clear local state
+      setUser(null);
+      setSession(null);
+      setRole(null);
+      return;
+    }
+    
     try {
-      logger.log('AuthProvider: Signing out')
-      setIsLoading(true)
+      logger.log('AuthProvider: Signing out');
+      setIsLoading(true);
       
       // Set flag to prevent auto re-login
       if (typeof window !== 'undefined') {
-        sessionStorage.setItem('just_signed_out', 'true')
+        sessionStorage.setItem('just_signed_out', 'true');
       }
       
       // Clear all pending operations
-      clearAllTimeouts()
+      clearAllTimeouts();
       if (roleAbortControllerRef.current) {
-        roleAbortControllerRef.current.abort()
+        roleAbortControllerRef.current.abort();
       }
       
       // Clear state immediately
-      setUser(null)
-      setSession(null)
-      setRole(null)
-      roleCache.clear()
-      retryAttemptsRef.current.clear()
-      lastFetchedUserIdRef.current = null
+      setUser(null);
+      setSession(null);
+      setRole(null);
+      roleCache.clear();
+      retryAttemptsRef.current.clear();
+      lastFetchedUserIdRef.current = null;
       
       // Sign out from Supabase with global scope
       try {
         const { error } = await supabase.auth.signOut({
           scope: 'global'
-        })
+        });
         
         if (error && error.message !== 'Auth session missing!') {
-          logger.error('AuthProvider: Error during sign out:', error.message)
+          logger.error('AuthProvider: Error during sign out:', error.message);
         }
       } catch (err) {
-        logger.error('AuthProvider: Exception during sign out:', err)
+        logger.error('AuthProvider: Exception during sign out:', err);
       }
       
       // Clear all browser storage
@@ -421,65 +457,88 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           Object.keys(localStorage).forEach(key => {
             if (key.startsWith('sb-') || key.includes('supabase')) {
-              localStorage.removeItem(key)
+              localStorage.removeItem(key);
             }
-          })
+          });
         } catch (err) {
-          logger.error('Failed to clear localStorage:', err)
+          logger.error('Failed to clear localStorage:', err);
         }
         
         // Clear sessionStorage (except our flag)
         try {
           Object.keys(sessionStorage).forEach(key => {
             if ((key.startsWith('sb-') || key.includes('supabase')) && key !== 'just_signed_out') {
-              sessionStorage.removeItem(key)
+              sessionStorage.removeItem(key);
             }
-          })
+          });
         } catch (err) {
-          logger.error('Failed to clear sessionStorage:', err)
+          logger.error('Failed to clear sessionStorage:', err);
         }
         
         // Clear auth cookies properly
         try {
           // Get all cookies and filter for Supabase-related ones
-          const cookies = document.cookie.split(';')
+          const cookies = document.cookie.split(';');
           
           cookies.forEach(cookie => {
-            const name = cookie.trim().split('=')[0]
+            const name = cookie.trim().split('=')[0];
             if (name.includes('supabase') || name.includes('sb-') || name.includes('auth')) {
               // Remove cookie with proper domain and path handling
-              const domain = window.location.hostname
+              const domain = window.location.hostname;
               try {
-                document.cookie = `${name}=; path=/; max-age=0`
-                document.cookie = `${name}=; path=/; domain=${domain}; max-age=0`
-                document.cookie = `${name}=; path=/; domain=.${domain}; max-age=0`
+                document.cookie = `${name}=; path=/; max-age=0`;
+                document.cookie = `${name}=; path=/; domain=${domain}; max-age=0`;
+                document.cookie = `${name}=; path=/; domain=.${domain}; max-age=0`;
               } catch (removeError) {
-                logger.error(`Failed to remove cookie ${name}:`, removeError)
+                logger.error(`Failed to remove cookie ${name}:`, removeError);
               }
             }
-          })
+          });
+          
+          // Also clear any cookies that might have been set with different domains
+          if (process.env.NODE_ENV === 'production') {
+            const domain = window.location.hostname;
+            const baseDomain = domain.replace(/^www\./, '');
+            const cookieNames = ['sb-access-token', 'sb-refresh-token'];
+            
+            cookieNames.forEach(cookieName => {
+              try {
+                document.cookie = `${cookieName}=; path=/; max-age=0`;
+                document.cookie = `${cookieName}=; path=/; domain=${domain}; max-age=0`;
+                document.cookie = `${cookieName}=; path=/; domain=.${domain}; max-age=0`;
+                document.cookie = `${cookieName}=; path=/; domain=${baseDomain}; max-age=0`;
+                document.cookie = `${cookieName}=; path=/; domain=.${baseDomain}; max-age=0`;
+              } catch (removeError) {
+                logger.error(`Failed to remove cookie ${cookieName}:`, removeError);
+              }
+            });
+          }
         } catch (err) {
-          logger.error('Failed to clear cookies:', err)
+          logger.error('Failed to clear cookies:', err);
         }
       }
       
-      logger.log('AuthProvider: Sign out completed, all data cleared')
+      logger.log('AuthProvider: Sign out completed, all data cleared');
     } catch (error: any) {
-      logger.error('AuthProvider: Error signing out:', error.message)
+      logger.error('AuthProvider: Error signing out:', error.message);
       // Ensure state is cleared even on error
-      setUser(null)
-      setSession(null)
-      setRole(null)
-      lastFetchedUserIdRef.current = null
+      setUser(null);
+      setSession(null);
+      setRole(null);
+      lastFetchedUserIdRef.current = null;
     } finally {
       if (isMountedRef.current) {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
-  }
+  };
 
   // Refresh session
   const refreshSession = useCallback(async (): Promise<Session | null> => {
+    if (!supabase) {
+      return null;
+    }
+    
     try {
       logger.log('AuthProvider: Refreshing session');
       const { data: { session: refreshedSession }, error } = await supabase.auth.refreshSession();
@@ -519,6 +578,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Recover session
   const recoverSession = useCallback(async (): Promise<boolean> => {
+    if (!supabase) {
+      return false;
+    }
+    
     try {
       logger.log('AuthProvider: Attempting session recovery');
       
@@ -548,6 +611,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Check session validity
   const isSessionValid = useCallback(async (): Promise<boolean> => {
+    if (!supabase) {
+      return false;
+    }
+    
     try {
       logger.log('AuthProvider: Checking session validity');
       const { data: { session: currentSession }, error } = await supabase.auth.getSession();

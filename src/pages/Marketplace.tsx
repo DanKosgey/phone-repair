@@ -28,7 +28,10 @@ export default function Marketplace() {
         
         // If feature is disabled, redirect to home
         if (!settings.enableSecondHandProducts) {
-          redirect('/')
+          // Use window.location for client-side redirect
+          if (typeof window !== 'undefined') {
+            window.location.href = '/'
+          }
           return
         }
         
@@ -41,7 +44,10 @@ export default function Marketplace() {
       }
     }
 
-    checkFeatureEnabled()
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      checkFeatureEnabled()
+    }
   }, [])
 
   useEffect(() => {
@@ -57,6 +63,11 @@ export default function Marketplace() {
   }, [searchTerm, products])
 
   const fetchProducts = async () => {
+    // Only fetch products on client side
+    if (typeof window === 'undefined') {
+      return
+    }
+    
     try {
       setIsLoading(true)
       const data = await secondHandProductsDb.getAll()

@@ -3,11 +3,31 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export default async function proxy(request: NextRequest) {
+  // Check if environment variables are available
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.warn('Supabase environment variables not available during middleware execution')
+    return NextResponse.next({
+      request: {
+        headers: request.headers,
+      },
+    })
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   })
+
+  // Get the hostname from the request
+  const hostname = request.headers.get('host') || 'localhost'
+  const isProduction = process.env.NODE_ENV === 'production'
+  
+  // Determine if we're on HTTPS (for production)
+  const isHttps = request.headers.get('x-forwarded-proto') === 'https' || 
+                  request.nextUrl.protocol === 'https:' ||
+                  hostname.includes('.vercel.app') ||
+                  isProduction
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,18 +38,38 @@ export default async function proxy(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options })
+          // Set proper cookie options for production
+          const cookieOptions: CookieOptions = {
+            ...options,
+            // Ensure proper SameSite setting
+            sameSite: options?.sameSite || 'lax',
+            // Ensure secure setting for HTTPS
+            secure: options?.secure ?? isHttps,
+            // Ensure path is set
+            path: options?.path || '/',
+          }
+          
+          request.cookies.set({ name, value, ...cookieOptions })
           response = NextResponse.next({ 
             request: { headers: request.headers } 
           })
-          response.cookies.set({ name, value, ...options })
+          response.cookies.set({ name, value, ...cookieOptions })
         },
         remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value: '', ...options })
+          const cookieOptions: CookieOptions = {
+            ...options,
+            // Ensure proper settings for removal
+            sameSite: options?.sameSite || 'lax',
+            secure: options?.secure ?? isHttps,
+            path: options?.path || '/',
+            maxAge: 0,
+          }
+          
+          request.cookies.set({ name, value: '', ...cookieOptions })
           response = NextResponse.next({ 
             request: { headers: request.headers } 
           })
-          response.cookies.set({ name, value: '', ...options })
+          response.cookies.set({ name, value: '', ...cookieOptions })
         },
       },
     }

@@ -1,14 +1,12 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { ticketsDb } from "@/lib/db/tickets"
 import { Search, AlertTriangle } from "lucide-react"
-import { redirect } from "next/navigation"
-import { getFeatureSettings } from "@/lib/feature-toggle"
 
 export default function TrackTicket() {
   const [ticketNumber, setTicketNumber] = useState('')
@@ -17,17 +15,17 @@ export default function TrackTicket() {
   const [featureEnabled, setFeatureEnabled] = useState(true)
   const { toast } = useToast()
 
-  // Check if the tracking feature is enabled
-  useState(() => {
+  useEffect(() => {
+    // Check if the tracking feature is enabled
     const checkFeatureEnabled = async () => {
       try {
-        const settings = await getFeatureSettings()
-        setFeatureEnabled(settings.enableTracking)
-        
-        // If feature is disabled, redirect to home
-        if (!settings.enableTracking) {
-          redirect('/')
+        // Only run on client side
+        if (typeof window === 'undefined') {
+          return
         }
+        
+        const settings = await import('@/lib/feature-toggle').then(mod => mod.getFeatureSettings())
+        setFeatureEnabled(settings.enableTracking)
       } catch (error) {
         console.error('Error checking feature settings:', error)
         // Default to enabled if there's an error
