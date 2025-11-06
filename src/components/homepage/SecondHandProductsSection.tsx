@@ -3,18 +3,17 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { FeaturedProductCard } from "@/components/homepage/FeaturedProductCard";
 import { Database } from "../../../types/database.types";
-import { Star, Zap } from "lucide-react";
-import { useFeaturedProducts } from "@/hooks/use-featured-products";
+import { Recycle, Zap } from "lucide-react";
+import { useSecondHandProducts } from "@/hooks/use-secondhand-products";
 import { useFeatureToggle } from "@/hooks/use-feature-toggle";
 import { useEffect, useState } from "react";
 
-type Product = Database['public']['Tables']['products']['Row'];
+type Product = Database['public']['Tables']['second_hand_products']['Row'];
 
-export function FeaturedProductsSection() {
-  const { data: featuredProducts = [], isLoading, error } = useFeaturedProducts();
-  const { enableShop, loading: featureLoading } = useFeatureToggle();
+export function SecondHandProductsSection() {
+  const { data: secondHandProducts = [], isLoading, error } = useSecondHandProducts();
+  const { enableSecondHandProducts, loading: featureLoading } = useFeatureToggle();
   const [isClient, setIsClient] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -27,7 +26,7 @@ export function FeaturedProductsSection() {
   }, []);
 
   // Don't render if feature is disabled or still loading feature toggle
-  if (featureLoading || !isClient || !enableShop) {
+  if (featureLoading || !isClient || !enableSecondHandProducts) {
     return null;
   }
 
@@ -61,7 +60,7 @@ export function FeaturedProductsSection() {
       <section className="py-16 relative overflow-hidden">
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Failed to load featured products</p>
+            <p className="text-muted-foreground">Failed to load second-hand products</p>
           </div>
         </div>
       </section>
@@ -126,7 +125,7 @@ export function FeaturedProductsSection() {
         {[...Array(3)].map((_, i) => (
           <motion.div
             key={`float-${i}`}
-            className="absolute w-4 h-4 rounded-full bg-yellow-400"
+            className="absolute w-4 h-4 rounded-full bg-green-400"
             style={{
               top: `${20 + i * 30}%`,
               left: `${10 + i * 20}%`,
@@ -164,7 +163,7 @@ export function FeaturedProductsSection() {
                 ease: "easeInOut"
               }}
             >
-              <Star className="h-8 w-8 text-primary" />
+              <Recycle className="h-8 w-8 text-primary" />
             </motion.div>
             <div>
               <motion.h2 
@@ -175,7 +174,7 @@ export function FeaturedProductsSection() {
                 transition={{ duration: 0.6 }}
               >
                 <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
-                  Featured Products
+                  Second-Hand Products
                 </span>
                 {/* Animated underline */}
                 <motion.div
@@ -187,7 +186,7 @@ export function FeaturedProductsSection() {
                 />
                 {/* Animated sparkle on the title */}
                 <motion.div
-                  className="absolute -top-2 -right-2 w-3 h-3 bg-yellow-400 rounded-full"
+                  className="absolute -top-2 -right-2 w-3 h-3 bg-green-400 rounded-full"
                   animate={{
                     opacity: [0, 1, 0],
                     scale: [0, 1, 0],
@@ -206,7 +205,7 @@ export function FeaturedProductsSection() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: 0.2 }}
               >
-                Check out our most popular items
+                Quality refurbished devices at affordable prices
               </motion.p>
             </div>
           </div>
@@ -218,7 +217,7 @@ export function FeaturedProductsSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            <Link href="/products">
+            <Link href="/marketplace">
               <Button 
                 variant="outline" 
                 className="border-primary text-primary hover:bg-primary/10 relative overflow-hidden group"
@@ -261,8 +260,53 @@ export function FeaturedProductsSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          {featuredProducts.slice(0, 4).map((product) => (
-            <FeaturedProductCard key={product.id} product={product} />
+          {secondHandProducts.slice(0, 4).map((product) => (
+            <motion.div
+              key={product.id}
+              className="group relative overflow-hidden rounded-xl border bg-card text-card-foreground shadow transition-all duration-300 hover:shadow-xl"
+              whileHover={{ y: -10 }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+            >
+              <div className="relative overflow-hidden rounded-t-xl">
+                {product.image_url ? (
+                  <img 
+                    src={product.image_url} 
+                    alt={product.name}
+                    className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="h-48 w-full bg-muted flex items-center justify-center">
+                    <Recycle className="h-12 w-12 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="absolute bottom-2 left-2 right-2 text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                  <p className="text-sm font-medium truncate">{product.name}</p>
+                  <p className="text-xs">Condition: {product.condition}</p>
+                </div>
+                {product.is_featured && (
+                  <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                    Featured
+                  </div>
+                )}
+              </div>
+              <div className="p-4">
+                <h3 className="font-semibold mb-1 truncate">{product.name}</h3>
+                <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                  {product.description}
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-lg">KSh {product.price.toLocaleString()}</span>
+                  <div className="flex items-center gap-1">
+                    <Zap className="h-4 w-4 text-yellow-500" />
+                    <span className="text-xs text-muted-foreground">Refurbished</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           ))}
         </motion.div>
       </div>

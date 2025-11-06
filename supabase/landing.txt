@@ -168,7 +168,7 @@ export default function PhoneRepairLanding() {
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-gray-300 max-w-4xl mx-auto leading-relaxed animate-fade-in-up font-light">
             Premium repairs in under <span className="text-blue-400 font-semibold">60 minutes</span>. 
-            Professional service, genuine parts, and a <span className="text-blue-400 font-semibold">90-day warranty</span> you can trust.
+            Professional service and genuine parts you can trust.
           </p>
 
           {/* CTA Buttons */}
@@ -228,7 +228,7 @@ export default function PhoneRepairLanding() {
           {[
             { 
               title: 'Screen Repair', 
-              desc: 'Crystal-clear OLED & LCD replacements with lifetime warranty on parts', 
+              desc: 'Crystal-clear OLED & LCD replacements with genuine parts', 
               icon: Smartphone,
               gradient: 'from-blue-500/80 to-blue-600/80'
             },

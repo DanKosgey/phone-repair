@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutDashboard, Wrench, Package, Users, Settings, Menu, Recycle, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Wrench, Package, Users, Settings, Menu, Recycle, BarChart3, TestTube } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -14,6 +14,7 @@ const menuItems = [
   { title: "Products", icon: Package, path: "/admin/products" },
   { title: "Second-Hand Products", icon: Recycle, path: "/admin/secondhand-products" },
   { title: "Settings", icon: Settings, path: "/admin/settings" },
+  { title: "Test Working", icon: TestTube, path: "/admin/test-working" },
 ];
 
 const SidebarContent = ({ onItemClick }: { onItemClick?: () => void }) => {

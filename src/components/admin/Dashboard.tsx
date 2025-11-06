@@ -22,7 +22,8 @@ import {
   Wrench, 
   Plus, 
   AlertCircle,
-  BarChart
+  BarChart,
+  Bell
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
@@ -31,6 +32,8 @@ import { redirect } from 'next/navigation'
 import { dashboardDb, Timeframe } from '@/lib/db/dashboard'
 import { ticketsDb } from '@/lib/db/tickets'
 import { productsDb } from '@/lib/db/products'
+import { notificationsDb } from '@/lib/db/notifications'
+import { getSupabaseBrowserClient } from '@/server/supabase/client'
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts'
 
 // Types
@@ -55,6 +58,14 @@ type RecentTicket = {
 type TicketStatus = {
   status: string
   count: number
+}
+
+type Notification = {
+  id: string
+  sender_name: string
+  subject: string
+  created_at: string
+  is_read: boolean
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82ca9d']
@@ -83,13 +94,16 @@ export default function AdminDashboard() {
   
   const [recentTickets, setRecentTickets] = useState<RecentTicket[]>([])
   const [ticketStatusData, setTicketStatusData] = useState<TicketStatus[]>([])
+  const [unreadNotifications, setUnreadNotifications] = useState<Notification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
   
   // Loading states
   const [isLoading, setIsLoading] = useState(true)
   const [dataLoading, setDataLoading] = useState({
     stats: true,
     tickets: true,
-    status: true
+    status: true,
+    notifications: true
   })
 
   // Redirect to login if not authenticated or not admin
@@ -110,7 +124,8 @@ export default function AdminDashboard() {
         setDataLoading({
           stats: false,
           tickets: false,
-          status: false
+          status: false,
+          notifications: false
         });
       }
     }, 10000); // 10 second timeout
@@ -122,6 +137,53 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchDashboardData()
   }, [timeframe])
+
+  // Fetch notifications periodically
+  useEffect(() => {
+    fetchNotifications()
+    const interval = setInterval(fetchNotifications, 30000) // Refresh every 30 seconds
+    return () => clearInterval(interval)
+  }, [])
+
+  // Set up real-time subscription for notifications
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient()
+    
+    const channel = supabase
+      .channel('notifications-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+        },
+        (payload) => {
+          // New notification received
+          console.log('New notification:', payload.new)
+          fetchNotifications() // Refresh notifications
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+        },
+        (payload) => {
+          // Notification updated
+          console.log('Notification updated:', payload.new)
+          fetchNotifications() // Refresh notifications
+        }
+      )
+      .subscribe()
+
+    // Clean up subscription
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   const fetchDashboardData = async () => {
     try {
@@ -243,6 +305,32 @@ export default function AdminDashboard() {
     }
   }
 
+  const fetchNotifications = async () => {
+    try {
+      setDataLoading(prev => ({ ...prev, notifications: true }))
+      
+      // Fetch unread notification count
+      const count = await notificationsDb.getUnreadCount()
+      setUnreadCount(count)
+      
+      // Fetch recent unread notifications
+      const notifications = await notificationsDb.getUnreadNotifications()
+      const transformed = notifications.map(notification => ({
+        id: notification.id,
+        sender_name: notification.sender_name,
+        subject: notification.subject,
+        created_at: notification.created_at,
+        is_read: notification.is_read
+      }))
+      
+      setUnreadNotifications(transformed)
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error)
+    } finally {
+      setDataLoading(prev => ({ ...prev, notifications: false }))
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'open': return 'bg-blue-100 text-blue-800'
@@ -259,23 +347,27 @@ export default function AdminDashboard() {
   }
 
   const handleAddProduct = () => {
-    router.push('/admin/products/new') // Redirect to add new product page
+    router.push('/admin/products/new')
   }
 
   const handleNewCustomer = () => {
-    router.push('/admin/customers/new') // Redirect to add new customer page
+    router.push('/admin/customers/new')
   }
 
   const handleViewAllCustomers = () => {
-    router.push('/admin/customers') // Redirect to view all customers page
+    router.push('/admin/customers')
   }
 
   const handleViewAllProducts = () => {
-    router.push('/admin/products') // Redirect to products list page
+    router.push('/admin/products')
   }
 
   const handleViewAnalytics = () => {
-    router.push('/admin/analytics') // Redirect to analytics page
+    router.push('/admin/analytics')
+  }
+
+  const handleViewNotifications = () => {
+    router.push('/admin/notifications')
   }
 
   const handleTimeframeChange = (newTimeframe: Timeframe) => {
@@ -322,7 +414,7 @@ export default function AdminDashboard() {
               Add new tickets, products, or customers quickly
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <Button 
               variant="outline" 
               className="h-24 flex flex-col gap-2 hover:shadow-md transition-all" 
@@ -363,6 +455,21 @@ export default function AdminDashboard() {
               </div>
               <span>View Analytics</span>
             </Button>
+            <Button 
+              variant="outline" 
+              className="h-24 flex flex-col gap-2 hover:shadow-md transition-all relative" 
+              onClick={handleViewNotifications}
+            >
+              <div className="p-2 bg-red-500/10 rounded-full">
+                <Bell className="h-5 w-5 text-red-500" />
+              </div>
+              <span>Notifications</span>
+              {unreadCount > 0 && (
+                <Badge className="absolute -top-2 -right-2 bg-red-500 text-white">
+                  {unreadCount}
+                </Badge>
+              )}
+            </Button>
           </CardContent>
         </Card>
 
@@ -382,45 +489,57 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Simple Data Insight: Ticket Status Distribution */}
+        {/* Notifications and Recent Tickets */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Notifications */}
           <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <PieChartIcon className="h-5 w-5 text-primary" />
-                Ticket Status Overview
+                <Bell className="h-5 w-5 text-primary" />
+                Recent Notifications
               </CardTitle>
               <CardDescription>
-                Quick insight into current ticket statuses
+                Customer messages and alerts
               </CardDescription>
             </CardHeader>
-            <CardContent className="h-64">
-              {ticketStatusData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={ticketStatusData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="count"
-                      label={({ status, percent }) => `${status}: ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {ticketStatusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
-                  No status data available
-                </div>
-              )}
+            <CardContent>
+              <div className="space-y-4">
+                {unreadNotifications.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-muted-foreground">No new notifications</p>
+                  </div>
+                ) : (
+                  unreadNotifications.map((notification) => (
+                    <div key={notification.id} className="flex items-start justify-between p-4 rounded-lg border hover:bg-accent/50 transition-colors">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{notification.sender_name}</p>
+                          {!notification.is_read && (
+                            <Badge className="bg-red-500 text-white" variant="secondary">
+                              New
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {notification.subject}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(notification.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => router.push(`/admin/notifications/${notification.id}`)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="mt-4 text-center">
+                <Button variant="outline" onClick={handleViewNotifications}>
+                  View All Notifications
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -470,64 +589,107 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Additional Quick Links Section */}
-        <Card className="shadow-md hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5 text-primary" />
-              Additional Management
-            </CardTitle>
-            <CardDescription>
-              Manage your customers and products
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Button 
-              variant="outline" 
-              className="h-20 flex flex-col gap-2 hover:shadow-md transition-all" 
-              onClick={handleNewCustomer}
-            >
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-orange-500" />
-                <span>Add New Customer</span>
-              </div>
-              <p className="text-xs text-muted-foreground text-center">Create a new customer profile</p>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 flex flex-col gap-2 hover:shadow-md transition-all" 
-              onClick={handleAddProduct}
-            >
-              <div className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-green-500" />
-                <span>Add New Product</span>
-              </div>
-              <p className="text-xs text-muted-foreground text-center">Add a new product to inventory</p>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 flex flex-col gap-2 hover:shadow-md transition-all" 
-              onClick={handleViewAllCustomers}
-            >
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-500" />
-                <span>View All Customers</span>
-              </div>
-              <p className="text-xs text-muted-foreground text-center">Manage existing customer profiles</p>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 flex flex-col gap-2 hover:shadow-md transition-all" 
-              onClick={handleViewAllProducts}
-            >
-              <div className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-purple-500" />
-                <span>View All Products</span>
-              </div>
-              <p className="text-xs text-muted-foreground text-center">Manage product inventory</p>
-            </Button>
-          </CardContent>
-        </Card>
+        {/* Simple Data Insight: Ticket Status Distribution */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PieChartIcon className="h-5 w-5 text-primary" />
+                Ticket Status Overview
+              </CardTitle>
+              <CardDescription>
+                Quick insight into current ticket statuses
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-64">
+              {ticketStatusData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={ticketStatusData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="count"
+                      label={({ status, percent }) => `${status}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {ticketStatusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  No status data available
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Additional Quick Links Section */}
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="h-5 w-5 text-primary" />
+                Additional Management
+              </CardTitle>
+              <CardDescription>
+                Manage your customers and products
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col gap-2 hover:shadow-md transition-all" 
+                onClick={handleNewCustomer}
+              >
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-orange-500" />
+                  <span>Add New Customer</span>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">Create a new customer profile</p>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col gap-2 hover:shadow-md transition-all" 
+                onClick={handleAddProduct}
+              >
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-green-500" />
+                  <span>Add New Product</span>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">Add a new product to inventory</p>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col gap-2 hover:shadow-md transition-all" 
+                onClick={handleViewAllCustomers}
+              >
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-500" />
+                  <span>View All Customers</span>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">Manage existing customer profiles</p>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col gap-2 hover:shadow-md transition-all" 
+                onClick={handleViewAllProducts}
+              >
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-purple-500" />
+                  <span>View All Products</span>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">Manage product inventory</p>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Analytics Quick Link Section */}
         <Card className="shadow-md hover:shadow-lg transition-shadow">

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Wrench, ShoppingBag, Recycle, Smartphone, Tablet, Laptop } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { useFeatureToggle } from "@/hooks/use-feature-toggle";
 
 // Predefined positions to avoid hydration issues
 const FLOATING_ELEMENTS = [
@@ -22,33 +23,56 @@ const FLOATING_ELEMENTS = [
   { top: "65%", left: "40%", size: "21px" },
 ];
 
-const services = [
-  { 
-    icon: Wrench, 
-    title: "Repair Services", 
-    description: "Expert repairs for phones, tablets, and laptops with warranty",
-    devices: [Smartphone, Tablet, Laptop]
-  },
-  { 
-    icon: ShoppingBag, 
-    title: "Quality Products", 
-    description: "Genuine parts and accessories for all major brands",
-    devices: [Smartphone, Tablet, Laptop]
-  },
-  { 
-    icon: Recycle, 
-    title: "Trade-In Program", 
-    description: "Buy and sell second-hand devices in our marketplace",
-    devices: [Smartphone, Tablet, Laptop]
-  }
-];
-
-export function ServicesSection() {
+const ServicesSection = () => {
   const [mounted, setMounted] = useState(false);
+  const { enableShop, enableSecondHandProducts, enableTracking, loading: featureLoading } = useFeatureToggle();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Filter services based on feature toggles
+  const services = [
+    enableShop && { 
+      icon: ShoppingBag, 
+      title: "Quality Products", 
+      description: "Genuine parts and accessories for all major brands",
+      devices: [Smartphone, Tablet, Laptop]
+    },
+    enableTracking && { 
+      icon: Wrench, 
+      title: "Repair Services", 
+      description: "Expert repairs for phones, tablets, and laptops",
+      devices: [Smartphone, Tablet, Laptop]
+    },
+    enableSecondHandProducts && { 
+      icon: Recycle, 
+      title: "Trade-In Program", 
+      description: "Buy and sell second-hand devices in our marketplace",
+      devices: [Smartphone, Tablet, Laptop]
+    }
+  ].filter(Boolean) as { icon: any; title: string; description: string; devices: any[] }[];
+
+  // Don't render if still loading feature toggle or if no services are enabled
+  if (featureLoading || !isClient || services.length === 0) {
+    return (
+      <section className="py-20 relative overflow-hidden">
+        <div className="container mx-auto px-4">
+          <div className="h-16 mb-16"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[...Array(services.length || 3)].map((_, i) => (
+              <div key={i} className="h-80"></div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (!mounted) {
     return (
@@ -56,7 +80,7 @@ export function ServicesSection() {
         <div className="container mx-auto px-4">
           <div className="h-16 mb-16"></div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[...Array(3)].map((_, i) => (
+            {[...Array(services.length)].map((_, i) => (
               <div key={i} className="h-80"></div>
             ))}
           </div>
@@ -193,4 +217,6 @@ export function ServicesSection() {
       </div>
     </section>
   );
-}
+};
+
+export { ServicesSection };

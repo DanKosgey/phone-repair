@@ -4,71 +4,88 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Search } from "lucide-react"
-import Image from "next/image"
+import { useToast } from "@/hooks/use-toast"
 import { secondHandProductsDb } from "@/lib/db/secondhand_products"
+import { Search, ShoppingCart, AlertTriangle } from "lucide-react"
+import Image from "next/image"
+import { redirect } from "next/navigation"
+import { getFeatureSettings } from "@/lib/feature-toggle"
 
 export default function Marketplace() {
+  const [products, setProducts] = useState<any[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [marketplaceItems, setMarketplaceItems] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [featureEnabled, setFeatureEnabled] = useState(true)
+  const { toast } = useToast()
 
-  // Fetch second-hand products from database
   useEffect(() => {
-    const fetchProducts = async () => {
+    // Check if the second-hand products feature is enabled
+    const checkFeatureEnabled = async () => {
       try {
-        setLoading(true)
-        const products = await secondHandProductsDb.getAll()
-        setMarketplaceItems(products)
-        setError(null)
-      } catch (err) {
-        console.error('Error fetching second-hand products:', err)
-        setError('Failed to load marketplace items')
-      } finally {
-        setLoading(false)
+        const settings = await getFeatureSettings()
+        setFeatureEnabled(settings.enableSecondHandProducts)
+        
+        // If feature is disabled, redirect to home
+        if (!settings.enableSecondHandProducts) {
+          redirect('/')
+          return
+        }
+        
+        fetchProducts()
+      } catch (error) {
+        console.error('Error checking feature settings:', error)
+        // Default to enabled if there's an error
+        setFeatureEnabled(true)
+        fetchProducts()
       }
     }
 
-    fetchProducts()
+    checkFeatureEnabled()
   }, [])
 
-  const filteredItems = marketplaceItems.filter(item => 
-    item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.seller_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.condition?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  useEffect(() => {
+    if (searchTerm) {
+      const filtered = products.filter(product => 
+        product.seller_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      setFilteredProducts(filtered)
+    } else {
+      setFilteredProducts(products)
+    }
+  }, [searchTerm, products])
 
-  // Get condition color
-  const getConditionColor = (condition: string) => {
-    switch (condition) {
-      case 'Like New': return 'bg-blue-100 text-blue-800'
-      case 'Good': return 'bg-green-100 text-green-800'
-      case 'Fair': return 'bg-yellow-100 text-yellow-800'
-      default: return 'bg-gray-100 text-gray-800'
+  const fetchProducts = async () => {
+    try {
+      setIsLoading(true)
+      const data = await secondHandProductsDb.getAll()
+      setProducts(data)
+      setFilteredProducts(data)
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch marketplace products",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  if (loading) {
+  // If feature is disabled, show a message
+  if (!featureEnabled) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">{error}</p>
-          </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center p-8 max-w-md">
+          <AlertTriangle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Feature Not Available</h1>
+          <p className="text-muted-foreground mb-6">
+            The device marketplace feature is currently disabled. Please check back later.
+          </p>
+          <Button onClick={() => window.location.href = '/'}>
+            Return to Home
+          </Button>
         </div>
       </div>
     )
@@ -80,7 +97,7 @@ export default function Marketplace() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Device Marketplace</h1>
           <p className="text-muted-foreground mb-6">
-            Browse our selection of quality used electronics
+            Browse our collection of quality refurbished devices
           </p>
           
           <div className="relative max-w-md">
@@ -94,62 +111,57 @@ export default function Marketplace() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItems.map((item) => (
-            <Card key={item.id} className="flex flex-col">
-              <CardHeader className="p-0">
-                <div className="aspect-square bg-muted rounded-t-lg flex items-center justify-center">
-                  {item.image_url ? (
-                    <Image 
-                      src={item.image_url} 
-                      alt={item.description || "Second-hand product"} 
-                      width={300}
-                      height={300}
-                      className="h-full w-full object-cover rounded-t-lg"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 flex items-center justify-center">
-                      <span className="text-gray-500 text-xs">No Image</span>
-                    </div>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <CardTitle className="text-lg line-clamp-1">{item.description || "No description"}</CardTitle>
-                    <CardDescription className="line-clamp-2">
-                      Sold by {item.seller_name}
-                    </CardDescription>
-                  </div>
-                  <Badge className={getConditionColor(item.condition)}>
-                    {item.condition}
-                  </Badge>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-lg text-primary">
-                      KSh {item.price?.toLocaleString() || 'N/A'}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="p-4 pt-0">
-                <div className="w-full text-center text-sm text-muted-foreground">
-                  Visit shop to purchase
-                </div>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-
-        {filteredItems.length === 0 && (
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">
-              {searchTerm ? 'No marketplace items found matching your search' : 'No marketplace items available'}
-            </p>
+            <p className="text-muted-foreground">No devices found</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredProducts.map((product) => (
+              <Card key={product.id} className="flex flex-col">
+                <CardHeader className="p-0">
+                  <div className="aspect-square bg-muted rounded-t-lg flex items-center justify-center">
+                    {product.image_url ? (
+                      <Image 
+                        src={product.image_url} 
+                        alt={product.description || "Second-hand product"} 
+                        width={300}
+                        height={300}
+                        className="h-full w-full object-cover rounded-t-lg"
+                      />
+                    ) : (
+                      <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 flex items-center justify-center">
+                        <span className="text-gray-500 text-xs">No Image</span>
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 p-4">
+                  <CardTitle className="text-lg mb-1 line-clamp-1">{product.description}</CardTitle>
+                  <CardDescription className="mb-2">
+                    <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                      {product.condition}
+                    </span>
+                  </CardDescription>
+                  <CardDescription className="mb-3 line-clamp-2">
+                    Sold by: {product.seller_name}
+                  </CardDescription>
+                  <div className="font-bold text-lg text-primary">
+                    KSh {product.price?.toLocaleString()}
+                  </div>
+                </CardContent>
+                <CardFooter className="p-4 pt-0">
+                  <Button className="w-full">
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    View Details
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
           </div>
         )}
       </div>

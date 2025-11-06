@@ -36,40 +36,104 @@ import {
   CreditCard,
   Globe,
   Clock,
-  Upload
+  Upload,
+  Database,
+  Image
 } from "lucide-react"
 import { useAuth } from '@/contexts/auth-context'
 import { redirect } from 'next/navigation'
+import { getBusinessConfig, saveBusinessConfig, type BusinessConfig } from '@/lib/config-service'
+import { getFeatureSettings, saveFeatureSettings } from '@/lib/feature-toggle'
+import { Wrench, Package, Recycle } from "lucide-react"
+
+// Define types for our settings
+interface FeatureSettings {
+  enableSecondHandProducts: boolean
+  enableTracking: boolean
+  enableShop: boolean
+}
+
+interface AppearanceSettings {
+  theme: 'light' | 'dark' | 'system'
+  primaryColor: string
+  secondaryColor: string
+}
 
 export default function Settings() {
   const { user, role, isLoading: authLoading } = useAuth()
-  const [activeTab, setActiveTab] = useState("business")
+  const [activeTab, setActiveTab] = useState("contact")
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
   // Business Information
-  const [businessName, setBusinessName] = useState("Jay's Shop")
-  const [businessEmail, setBusinessEmail] = useState("info@devicecaretaker.com")
-  const [businessPhone, setBusinessPhone] = useState("+254700123456")
-  const [businessAddress, setBusinessAddress] = useState("123 Tech Street, Nairobi, Kenya")
-  const [businessWebsite, setBusinessWebsite] = useState("https://devicecaretaker.com")
+  const [businessSettings, setBusinessSettings] = useState<BusinessConfig>({
+    businessName: "Jay's Shop",
+    businessEmail: "info@devicecaretaker.com",
+    businessPhone: "+254700123456",
+    businessAddress: "123 Tech Street, Nairobi, Kenya",
+    businessWebsite: "https://devicecaretaker.com",
+    businessDescription: "Professional phone repair services and quality products.",
+    copyrightText: "2024 Jay's Shop. All rights reserved.",
+    primaryColor: "#3b82f6",
+    secondaryColor: "#8b5cf6"
+  })
 
-  // Notification Settings
-  const [emailNotifications, setEmailNotifications] = useState(true)
-  const [smsNotifications, setSmsNotifications] = useState(true)
-  const [pushNotifications, setPushNotifications] = useState(false)
-  const [ticketUpdates, setTicketUpdates] = useState(true)
-  const [orderUpdates, setOrderUpdates] = useState(true)
-  const [marketingEmails, setMarketingEmails] = useState(false)
-
-  // Security Settings
-  const [twoFactorAuth, setTwoFactorAuth] = useState(false)
-  const [loginAlerts, setLoginAlerts] = useState(true)
-  const [sessionTimeout, setSessionTimeout] = useState("30")
+  // Feature Toggles
+  const [featureSettings, setFeatureSettings] = useState<FeatureSettings>({
+    enableSecondHandProducts: true,
+    enableTracking: true,
+    enableShop: true
+  })
 
   // Appearance Settings
-  const [theme, setTheme] = useState("light")
-  const [language, setLanguage] = useState("en")
+  const [appearanceSettings, setAppearanceSettings] = useState<AppearanceSettings>({
+    theme: "light",
+    primaryColor: "#3b82f6",
+    secondaryColor: "#8b5cf6"
+  })
+
+  // Contact Information for Homepage
+  const [contactInfo, setContactInfo] = useState({
+    phone: "(555) 123-4567",
+    email: "support@repairhub.com",
+    hours: "Mon-Sat 9AM-6PM"
+  })
+
+  // Load existing settings
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const config = await getBusinessConfig()
+        setBusinessSettings(config)
+        setAppearanceSettings({
+          theme: "light",
+          primaryColor: config.primaryColor,
+          secondaryColor: config.secondaryColor
+        })
+        
+        // Load feature settings
+        const featureConfig = await getFeatureSettings()
+        setFeatureSettings(featureConfig)
+        
+        // Load contact info from localStorage or use defaults
+        if (typeof window !== 'undefined') {
+          const storedContactInfo = localStorage.getItem('homepageContactInfo')
+          if (storedContactInfo) {
+            setContactInfo(JSON.parse(storedContactInfo))
+          }
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load settings",
+          variant: "destructive",
+        })
+      }
+    }
+    
+    loadSettings()
+  }, [])
 
   // Redirect to login if not authenticated or not admin
   useEffect(() => {
@@ -80,13 +144,53 @@ export default function Settings() {
     }
   }, [user, role, authLoading])
 
+  // Handle business settings changes
+  const handleBusinessSettingsChange = (field: keyof BusinessConfig, value: string) => {
+    setBusinessSettings(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  // Handle feature settings changes
+  const handleFeatureSettingsChange = (field: keyof FeatureSettings, value: boolean) => {
+    setFeatureSettings(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  // Handle appearance settings changes
+  const handleAppearanceSettingsChange = (field: keyof AppearanceSettings, value: string | 'light' | 'dark' | 'system') => {
+    setAppearanceSettings(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  // Handle contact info changes
+  const handleContactInfoChange = (field: keyof typeof contactInfo, value: string) => {
+    setContactInfo(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Save business settings
+      await saveBusinessConfig(businessSettings)
+      
+      // Save feature settings
+      await saveFeatureSettings(featureSettings)
+      
+      // Save contact info to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('homepageContactInfo', JSON.stringify(contactInfo))
+      }
       
       toast({
         title: "Success",
@@ -113,18 +217,14 @@ export default function Settings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="business" className="flex items-center gap-2">
-            <Building className="h-4 w-4" />
-            Business
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="contact" className="flex items-center gap-2">
+            <Phone className="h-4 w-4" />
+            Contact Info
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            Notifications
-          </TabsTrigger>
-          <TabsTrigger value="security" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            Security
+          <TabsTrigger value="features" className="flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            Features
           </TabsTrigger>
           <TabsTrigger value="appearance" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
@@ -132,388 +232,267 @@ export default function Settings() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="business">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                Business Information
-              </CardTitle>
-              <CardDescription>
-                Update your business details that will be displayed to customers
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="businessName" className="flex items-center gap-2">
-                    <Building className="h-4 w-4" />
-                    Business Name
-                  </Label>
-                  <Input
-                    id="businessName"
-                    value={businessName}
-                    onChange={(e) => setBusinessName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="businessWebsite" className="flex items-center gap-2">
-                    <Globe className="h-4 w-4" />
-                    Website
-                  </Label>
-                  <Input
-                    id="businessWebsite"
-                    type="url"
-                    value={businessWebsite}
-                    onChange={(e) => setBusinessWebsite(e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="businessEmail" className="flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    Business Email
-                  </Label>
-                  <Input
-                    id="businessEmail"
-                    type="email"
-                    value={businessEmail}
-                    onChange={(e) => setBusinessEmail(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="businessPhone" className="flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    Business Phone
-                  </Label>
-                  <Input
-                    id="businessPhone"
-                    value={businessPhone}
-                    onChange={(e) => setBusinessPhone(e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="businessAddress" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Business Address
-                </Label>
-                <Textarea
-                  id="businessAddress"
-                  value={businessAddress}
-                  onChange={(e) => setBusinessAddress(e.target.value)}
-                  rows={3}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Upload className="h-4 w-4" />
-                  Business Logo
-                </Label>
-                <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-md bg-muted flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground">Logo</span>
-                  </div>
-                  <Button variant="outline">Upload New Logo</Button>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" disabled={isLoading}>
-                <Save className="mr-2 h-4 w-4" />
-                {isLoading ? "Saving..." : "Save Changes"}
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Notification Settings
-              </CardTitle>
-              <CardDescription>
-                Configure how you receive notifications
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Notification Channels</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Email Notifications</p>
-                        <p className="text-sm text-muted-foreground">Receive notifications via email</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={emailNotifications}
-                      onCheckedChange={setEmailNotifications}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Phone className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">SMS Notifications</p>
-                        <p className="text-sm text-muted-foreground">Receive notifications via SMS</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={smsNotifications}
-                      onCheckedChange={setSmsNotifications}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Bell className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Push Notifications</p>
-                        <p className="text-sm text-muted-foreground">Receive notifications in your browser</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={pushNotifications}
-                      onCheckedChange={setPushNotifications}
-                    />
+        {/* Contact Information Tab */}
+        <TabsContent value="contact">
+          <form onSubmit={handleSubmit}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Phone className="h-5 w-5" />
+                  Homepage Contact Information
+                </CardTitle>
+                <CardDescription>
+                  Update the contact information displayed on the homepage and footer
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="bg-muted p-4 rounded-lg">
+                  <h3 className="font-semibold mb-2">Preview</h3>
+                  <div className="bg-background p-4 rounded border">
+                    <h4 className="font-semibold mb-3">Contact</h4>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      <li>Phone: {contactInfo.phone}</li>
+                      <li>Email: {contactInfo.email}</li>
+                      <li>Hours: {contactInfo.hours}</li>
+                    </ul>
                   </div>
                 </div>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Notification Types</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Clock className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Ticket Updates</p>
-                        <p className="text-sm text-muted-foreground">Get notified about ticket status changes</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={ticketUpdates}
-                      onCheckedChange={setTicketUpdates}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <CreditCard className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Order Updates</p>
-                        <p className="text-sm text-muted-foreground">Get notified about order status changes</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={orderUpdates}
-                      onCheckedChange={setOrderUpdates}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Marketing Emails</p>
-                        <p className="text-sm text-muted-foreground">Receive promotional emails</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={marketingEmails}
-                      onCheckedChange={setMarketingEmails}
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" disabled={isLoading}>
-                <Save className="mr-2 h-4 w-4" />
-                {isLoading ? "Saving..." : "Save Changes"}
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="security">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Security Settings
-              </CardTitle>
-              <CardDescription>
-                Manage your account security settings
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Authentication</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Shield className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Two-Factor Authentication</p>
-                        <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={twoFactorAuth}
-                      onCheckedChange={setTwoFactorAuth}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Bell className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Login Alerts</p>
-                        <p className="text-sm text-muted-foreground">Get notified of new login attempts</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={loginAlerts}
-                      onCheckedChange={setLoginAlerts}
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Session Management</h3>
+                
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="sessionTimeout" className="flex items-center gap-2">
+                    <Label htmlFor="contactPhone" className="flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Phone Number
+                    </Label>
+                    <Input
+                      id="contactPhone"
+                      value={contactInfo.phone}
+                      onChange={(e) => handleContactInfoChange('phone', e.target.value)}
+                      placeholder="(555) 123-4567"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="contactEmail" className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Email Address
+                    </Label>
+                    <Input
+                      id="contactEmail"
+                      type="email"
+                      value={contactInfo.email}
+                      onChange={(e) => handleContactInfoChange('email', e.target.value)}
+                      placeholder="support@repairhub.com"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="contactHours" className="flex items-center gap-2">
                       <Clock className="h-4 w-4" />
-                      Session Timeout
+                      Business Hours
                     </Label>
-                    <Select value={sessionTimeout} onValueChange={setSessionTimeout}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="15">15 minutes</SelectItem>
-                        <SelectItem value="30">30 minutes</SelectItem>
-                        <SelectItem value="60">1 hour</SelectItem>
-                        <SelectItem value="120">2 hours</SelectItem>
-                        <SelectItem value="0">Never</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground">
-                      Time before your session expires automatically
-                    </p>
+                    <Input
+                      id="contactHours"
+                      value={contactInfo.hours}
+                      onChange={(e) => handleContactInfoChange('hours', e.target.value)}
+                      placeholder="Mon-Sat 9AM-6PM"
+                    />
                   </div>
                 </div>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Password</h3>
-                <div className="space-y-4">
-                  <Button variant="outline">Change Password</Button>
-                  <Button variant="outline">View Login History</Button>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" disabled={isLoading}>
-                <Save className="mr-2 h-4 w-4" />
-                {isLoading ? "Saving..." : "Save Changes"}
-              </Button>
-            </CardFooter>
-          </Card>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" disabled={isLoading}>
+                  <Save className="mr-2 h-4 w-4" />
+                  {isLoading ? "Saving..." : "Save Changes"}
+                </Button>
+              </CardFooter>
+            </Card>
+          </form>
         </TabsContent>
 
+        {/* Features Settings Tab */}
+        <TabsContent value="features">
+          <form onSubmit={handleSubmit}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="h-5 w-5" />
+                  Feature Management
+                </CardTitle>
+                <CardDescription>
+                  Enable or disable features in your application
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Core Features</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Package className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">Product Shop</p>
+                          <p className="text-sm text-muted-foreground">Enable the product shopping section</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={featureSettings.enableShop}
+                        onCheckedChange={(checked) => handleFeatureSettingsChange('enableShop', checked)}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Wrench className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">Repair Tracking</p>
+                          <p className="text-sm text-muted-foreground">Enable the ticket tracking system</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={featureSettings.enableTracking}
+                        onCheckedChange={(checked) => handleFeatureSettingsChange('enableTracking', checked)}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Recycle className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">Second-Hand Products</p>
+                          <p className="text-sm text-muted-foreground">Enable the second-hand product marketplace</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={featureSettings.enableSecondHandProducts}
+                        onCheckedChange={(checked) => handleFeatureSettingsChange('enableSecondHandProducts', checked)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" disabled={isLoading}>
+                  <Save className="mr-2 h-4 w-4" />
+                  {isLoading ? "Saving..." : "Save Changes"}
+                </Button>
+              </CardFooter>
+            </Card>
+          </form>
+        </TabsContent>
+
+        {/* Appearance Settings Tab */}
         <TabsContent value="appearance">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5" />
-                Appearance Settings
-              </CardTitle>
-              <CardDescription>
-                Customize the look and feel of your admin panel
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Theme</h3>
+          <form onSubmit={handleSubmit}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Palette className="h-5 w-5" />
+                  Appearance Settings
+                </CardTitle>
+                <CardDescription>
+                  Customize the look and feel of your application
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="theme" className="flex items-center gap-2">
-                      <Palette className="h-4 w-4" />
-                      Color Theme
-                    </Label>
-                    <Select value={theme} onValueChange={setTheme}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="light">Light</SelectItem>
-                        <SelectItem value="dark">Dark</SelectItem>
-                        <SelectItem value="system">System</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <h3 className="text-lg font-medium">Theme</h3>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="theme" className="flex items-center gap-2">
+                        <Palette className="h-4 w-4" />
+                        Color Theme
+                      </Label>
+                      <Select 
+                        value={appearanceSettings.theme} 
+                        onValueChange={(value: 'light' | 'dark' | 'system') => 
+                          handleAppearanceSettingsChange('theme', value)
+                        }
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="light">Light</SelectItem>
+                          <SelectItem value="dark">Dark</SelectItem>
+                          <SelectItem value="system">System</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Language</h3>
+                
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="language" className="flex items-center gap-2">
-                      <Globe className="h-4 w-4" />
-                      Interface Language
-                    </Label>
-                    <Select value={language} onValueChange={setLanguage}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="es">Spanish</SelectItem>
-                        <SelectItem value="fr">French</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Layout</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <User className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Compact Sidebar</p>
-                        <p className="text-sm text-muted-foreground">Use a compact sidebar layout</p>
+                  <h3 className="text-lg font-medium">Colors</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="primaryColor" className="flex items-center gap-2">
+                        <Palette className="h-4 w-4" />
+                        Primary Color
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="primaryColor"
+                          type="color"
+                          value={appearanceSettings.primaryColor}
+                          onChange={(e) => handleAppearanceSettingsChange('primaryColor', e.target.value)}
+                          className="w-16 h-10 p-1"
+                        />
+                        <Input
+                          value={appearanceSettings.primaryColor}
+                          onChange={(e) => handleAppearanceSettingsChange('primaryColor', e.target.value)}
+                          className="flex-1"
+                        />
                       </div>
                     </div>
-                    <Switch />
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="secondaryColor" className="flex items-center gap-2">
+                        <Palette className="h-4 w-4" />
+                        Secondary Color
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="secondaryColor"
+                          type="color"
+                          value={appearanceSettings.secondaryColor}
+                          onChange={(e) => handleAppearanceSettingsChange('secondaryColor', e.target.value)}
+                          className="w-16 h-10 p-1"
+                        />
+                        <Input
+                          value={appearanceSettings.secondaryColor}
+                          onChange={(e) => handleAppearanceSettingsChange('secondaryColor', e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" disabled={isLoading}>
-                <Save className="mr-2 h-4 w-4" />
-                {isLoading ? "Saving..." : "Save Changes"}
-              </Button>
-            </CardFooter>
-          </Card>
+                
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Layout Options</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Building className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">Compact Layout</p>
+                          <p className="text-sm text-muted-foreground">Use a more compact layout for admin panels</p>
+                        </div>
+                      </div>
+                      <Switch />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" disabled={isLoading}>
+                  <Save className="mr-2 h-4 w-4" />
+                  {isLoading ? "Saving..." : "Save Changes"}
+                </Button>
+              </CardFooter>
+            </Card>
+          </form>
         </TabsContent>
       </Tabs>
     </div>

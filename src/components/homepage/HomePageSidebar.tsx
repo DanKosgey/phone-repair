@@ -13,7 +13,7 @@ const quickLinks = [
 ];
 
 const services = [
-  { name: "Repair Services", icon: Wrench, description: "Expert repairs with warranty" },
+  { name: "Repair Services", icon: Wrench, description: "Expert repairs for all devices" },
   { name: "Quality Products", icon: ShoppingCart, description: "Genuine parts and accessories" },
   { name: "Trade-In Program", icon: Recycle, description: "Buy and sell second-hand devices" },
 ];

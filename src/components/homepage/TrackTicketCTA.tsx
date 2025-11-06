@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { FileSearch, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useFeatureToggle } from "@/hooks/use-feature-toggle";
 
 // Predefined positions to avoid hydration issues
 const PARTICLES = [
@@ -51,10 +52,21 @@ const CIRCLES = [
 
 export function TrackTicketCTA() {
   const [mounted, setMounted] = useState(false);
+  const { enableTracking, loading: featureLoading } = useFeatureToggle();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Don't render if feature is disabled or still loading feature toggle
+  if (featureLoading || !isClient || !enableTracking) {
+    return null;
+  }
 
   if (!mounted) {
     return (

@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { productsDb } from "@/lib/db/products"
 import { Database } from "../../types/database.types"
-import { Search, ShoppingCart } from "lucide-react"
+import { Search, ShoppingCart, AlertTriangle } from "lucide-react"
 import Image from "next/image"
 import { useCartStore } from "@/stores/cart-store"
+import { getFeatureSettings } from "@/lib/feature-toggle"
+import { redirect } from "next/navigation"
 
 type Product = Database['public']['Tables']['products']['Row']
 
@@ -18,11 +20,33 @@ export default function Products() {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [featureEnabled, setFeatureEnabled] = useState(true)
   const { toast } = useToast()
   const { addItem } = useCartStore()
 
   useEffect(() => {
-    fetchProducts()
+    // Check if the shop feature is enabled
+    const checkFeatureEnabled = async () => {
+      try {
+        const settings = await getFeatureSettings()
+        setFeatureEnabled(settings.enableShop)
+        
+        // If feature is disabled, redirect to home
+        if (!settings.enableShop) {
+          redirect('/')
+          return
+        }
+        
+        fetchProducts()
+      } catch (error) {
+        console.error('Error checking feature settings:', error)
+        // Default to enabled if there's an error
+        setFeatureEnabled(true)
+        fetchProducts()
+      }
+    }
+
+    checkFeatureEnabled()
   }, [])
 
   useEffect(() => {
@@ -65,6 +89,24 @@ export default function Products() {
       title: "Added to cart",
       description: `${product.name} has been added to your cart.`,
     });
+  }
+
+  // If feature is disabled, show a message
+  if (!featureEnabled) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center p-8 max-w-md">
+          <AlertTriangle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Feature Not Available</h1>
+          <p className="text-muted-foreground mb-6">
+            The product shop feature is currently disabled. Please check back later.
+          </p>
+          <Button onClick={() => window.location.href = '/'}>
+            Return to Home
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (

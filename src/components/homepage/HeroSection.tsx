@@ -6,6 +6,8 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getBusinessConfig } from '@/lib/config-service';
+import { useFeatureToggle } from '@/hooks/use-feature-toggle';
 
 // Optimized floating elements configuration - reduced number
 const FLOATING_ELEMENTS = [
@@ -33,9 +35,28 @@ export function HeroSection() {
   const [mounted, setMounted] = useState(false);
   const [showNonCriticalAnimations, setShowNonCriticalAnimations] = useState(false);
   const isMobile = useIsMobile();
+  const [businessConfig, setBusinessConfig] = useState<any>(null);
+  const { enableShop, enableSecondHandProducts, enableTracking, loading: featureLoading } = useFeatureToggle();
 
   useEffect(() => {
     setMounted(true);
+    
+    // Load business configuration
+    const loadConfig = async () => {
+      try {
+        const config = await getBusinessConfig();
+        setBusinessConfig(config);
+      } catch (error) {
+        console.error('HeroSection: Error loading business config:', error);
+        // Use default values if config fails to load
+        setBusinessConfig({
+          businessName: "Jay's Shop",
+          businessDescription: "Professional phone repair services and quality products."
+        });
+      }
+    };
+    
+    loadConfig();
     
     // Delay non-critical animations to improve initial load performance
     const timer = setTimeout(() => {
@@ -46,7 +67,7 @@ export function HeroSection() {
   }, []);
 
   // Skeleton loader for SSR
-  if (!mounted) {
+  if (!mounted || featureLoading) {
     return (
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-background py-20 lg:py-32">
         <div className="container mx-auto px-4">
@@ -63,6 +84,12 @@ export function HeroSection() {
       </section>
     );
   }
+
+  // Use default values if config hasn't loaded yet
+  const config = businessConfig || {
+    businessName: "Jay's Shop",
+    businessDescription: "Professional phone repair services and quality products."
+  };
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-background py-20 lg:py-32">
@@ -224,51 +251,75 @@ export function HeroSection() {
             {...fadeInUp}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            Fast, reliable repairs for all your devices. Track your repair
-            status in real-time with our advanced system.
+            {config.businessDescription}
           </motion.p>
 
           {/* CTA Buttons */}
-          <motion.div
-            className="flex flex-col sm:flex-row gap-4 justify-center mb-12"
-            {...fadeInUp}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
-            <Link href="/track">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/marketplace">
               <motion.div
                 whileHover={isMobile ? {} : {
                   scale: 1.05,
-                  boxShadow:
-                    "0 20px 25px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.3)",
+                  boxShadow: "0 5px 15px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.15), 0 0 10px rgba(var(--primary-rgb, 0, 0, 0), 0.1)",
                 }}
                 whileTap={isMobile ? {} : { scale: 0.95 }}
+                className="relative"
               >
+                {/* Outer glow ring - reduced intensity */}
+                <motion.div
+                  className="absolute inset-0 rounded-lg blur-sm bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-green-500/10"
+                  animate={showNonCriticalAnimations ? {
+                    opacity: [0.15, 0.3, 0.15],
+                    scale: [1, 1.01, 1],
+                  } : {}}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                />
                 <Button
                   size="lg"
-                  className="w-full sm:w-auto group text-lg px-8 py-6 relative overflow-hidden"
+                  variant="outline"
+                  className="w-full sm:w-auto border border-green-500/30 text-lg px-8 py-6 relative overflow-hidden group bg-background/80 backdrop-blur-sm theme-glow-animation"
                 >
-                  <span className="relative z-10 flex items-center gap-2">
-                    Track Your Repair
+                  <span className="relative z-10 font-semibold flex items-center gap-2">
+                    Device Marketplace
                     <motion.span
-                      animate={showNonCriticalAnimations ? { x: [0, 5, 0] } : {}}
-                      transition={{
+                      animate={{ 
+                        x: [0, 5, 0],
+                      }}
+                      transition={{ 
                         duration: 1.5,
                         repeat: Infinity,
-                        ease: "easeInOut",
+                        ease: "easeInOut"
                       }}
                     >
                       →
                     </motion.span>
                   </span>
+                  {/* Animated gradient sweep - reduced intensity */}
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-primary/50 to-primary/30"
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent"
                     animate={showNonCriticalAnimations ? {
-                      x: ["-100%", "100%"],
+                      x: ["-200%", "200%"],
                     } : {}}
                     transition={{
-                      duration: 2,
+                      duration: 3,
                       repeat: Infinity,
-                      ease: "linear",
+                      ease: "easeInOut",
+                    }}
+                  />
+                  {/* Pulsing background glow - reduced intensity */}
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-green-500/8 via-emerald-500/8 to-green-500/8"
+                    animate={showNonCriticalAnimations ? {
+                      opacity: [0.1, 0.2, 0.1],
+                    } : {}}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "easeInOut",
                     }}
                   />
                 </Button>
@@ -305,16 +356,16 @@ export function HeroSection() {
                   <span className="relative z-10 font-semibold flex items-center gap-2">
                     Shop Products
                     <motion.span
-                      animate={showNonCriticalAnimations ? { 
-                        rotate: [0, 5, -5, 0],
-                      } : {}}
+                      animate={{ 
+                        x: [0, 5, 0],
+                      }}
                       transition={{ 
-                        duration: 3,
+                        duration: 1.5,
                         repeat: Infinity,
                         ease: "easeInOut"
                       }}
                     >
-                      <ShoppingCart className="h-5 w-5" />
+                      →
                     </motion.span>
                   </span>
                   {/* Animated gradient sweep - reduced intensity */}
@@ -345,79 +396,47 @@ export function HeroSection() {
               </motion.div>
             </Link>
 
-            <Link href="/marketplace">
+            <Link href="/track">
               <motion.div
                 whileHover={isMobile ? {} : {
                   scale: 1.05,
-                  boxShadow: "0 5px 15px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.15), 0 0 10px rgba(var(--primary-rgb, 0, 0, 0), 0.1)",
+                  boxShadow:
+                    "0 20px 25px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.3)",
                 }}
                 whileTap={isMobile ? {} : { scale: 0.95 }}
-                className="relative"
               >
-                {/* Outer glow ring - reduced intensity */}
-                <motion.div
-                  className="absolute inset-0 rounded-lg blur-sm bg-gradient-to-r from-primary/10 via-purple-500/10 to-primary/10"
-                  animate={showNonCriticalAnimations ? {
-                    opacity: [0.15, 0.3, 0.15],
-                    scale: [1, 1.01, 1],
-                  } : {}}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 0.1,
-                  }}
-                />
                 <Button
                   size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto border border-primary/30 text-lg px-8 py-6 relative overflow-hidden group bg-background/80 backdrop-blur-sm theme-glow-animation"
+                  className="w-full sm:w-auto text-lg px-8 py-6 relative overflow-hidden group bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white shadow-lg hover:shadow-xl theme-glow-animation"
                 >
-                  <span className="relative z-10 font-semibold flex items-center gap-2">
-                    Marketplace
+                  <span className="relative z-10 flex items-center gap-2">
+                    Track Your Repair
                     <motion.span
-                      animate={showNonCriticalAnimations ? { 
-                        y: [-1, 1, -1],
-                      } : {}}
-                      transition={{ 
-                        duration: 2,
+                      animate={showNonCriticalAnimations ? { x: [0, 5, 0] } : {}}
+                      transition={{
+                        duration: 1.5,
                         repeat: Infinity,
-                        ease: "easeInOut"
+                        ease: "easeInOut",
                       }}
                     >
-                      <Package className="h-5 w-5" />
+                      →
                     </motion.span>
                   </span>
-                  {/* Animated gradient sweep - reduced intensity */}
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent"
+                    className="absolute inset-0 bg-gradient-to-r from-primary/50 to-primary/30"
                     animate={showNonCriticalAnimations ? {
-                      x: ["-200%", "200%"],
+                      x: ["-100%", "100%"],
                     } : {}}
                     transition={{
-                      duration: 3,
+                      duration: 2,
                       repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: 0.1,
-                    }}
-                  />
-                  {/* Pulsing background glow - reduced intensity */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-primary/8 via-purple-500/8 to-primary/8"
-                    animate={showNonCriticalAnimations ? {
-                      opacity: [0.1, 0.2, 0.1],
-                    } : {}}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: 0.1,
+                      ease: "linear",
                     }}
                   />
                 </Button>
               </motion.div>
             </Link>
-          </motion.div>
+          </div>
 
           {/* Feature highlights */}
           <motion.div

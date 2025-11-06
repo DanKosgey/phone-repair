@@ -4,14 +4,41 @@ import { Smartphone, Facebook, Twitter, Instagram } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { getBusinessConfig, type BusinessConfig } from '@/lib/config-service';
 
 export const Footer = () => {
   const { user, role, isLoading } = useAuth();
   const router = useRouter();
+  const [businessConfig, setBusinessConfig] = useState<BusinessConfig | null>(null);
+  const [contactInfo, setContactInfo] = useState({
+    phone: "(555) 123-4567",
+    email: "support@repairhub.com",
+    hours: "Mon-Sat 9AM-6PM"
+  });
 
   useEffect(() => {
     console.log('Footer: Auth state updated:', { user, role, isLoading });
+    
+    // Load business configuration
+    const loadConfig = async () => {
+      try {
+        const config = await getBusinessConfig();
+        setBusinessConfig(config);
+      } catch (error) {
+        console.error('Footer: Error loading business config:', error);
+      }
+    };
+    
+    loadConfig();
+    
+    // Load contact information
+    if (typeof window !== 'undefined') {
+      const storedContactInfo = localStorage.getItem('homepageContactInfo');
+      if (storedContactInfo) {
+        setContactInfo(JSON.parse(storedContactInfo));
+      }
+    }
   }, [user, role, isLoading]);
 
   const handleAdminAccess = () => {
@@ -25,14 +52,21 @@ export const Footer = () => {
     }
   };
 
+  // Use default values if config hasn't loaded yet
+  const config = businessConfig || {
+    businessName: "Jay's Shop",
+    businessDescription: "Professional phone repair services and quality products.",
+    copyrightText: "2024 Jay's Shop. All rights reserved."
+  };
+
   return (
     <footer className="border-t bg-card mt-auto pb-16 lg:pb-0">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
-            <h3 className="text-lg font-semibold mb-4">Jay's Shop</h3>
+            <h3 className="text-lg font-semibold mb-4">{config.businessName}</h3>
             <p className="text-muted-foreground mb-4">
-              Professional phone repair services and quality products.
+              {config.businessDescription}
             </p>
             <div className="flex space-x-4">
               <a href="#" className="text-muted-foreground hover:text-foreground">
@@ -75,15 +109,15 @@ export const Footer = () => {
           <div>
             <h3 className="font-semibold mb-3">Contact</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>Phone: (555) 123-4567</li>
-              <li>Email: support@repairhub.com</li>
-              <li>Hours: Mon-Sat 9AM-6PM</li>
+              <li>Phone: {contactInfo.phone}</li>
+              <li>Email: {contactInfo.email}</li>
+              <li>Hours: {contactInfo.hours}</li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-border mt-8 pt-8 text-center">
-          <p>&copy; 2024 Jay's Shop. All rights reserved.</p>
+          <p>&copy; {config.copyrightText}</p>
         </div>
       </div>
     </footer>

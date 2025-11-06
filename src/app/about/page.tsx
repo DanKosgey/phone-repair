@@ -1,8 +1,12 @@
 import { Navbar } from "@/components/layout/Navbar"
 import { Footer } from "@/components/layout/Footer"
 import { Clock, Heart, ShieldCheck, Wrench } from "lucide-react"
+import { getBusinessConfig } from '@/lib/config-service'
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  // Load business configuration on the server
+  const businessConfig = await getBusinessConfig();
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -10,9 +14,9 @@ export default function AboutPage() {
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
             <div className="text-center space-y-4">
-              <h1 className="text-4xl font-bold">About Jay's Shop</h1>
-              <p className="text-xl text-muted-foreground">
-                Your trusted partner for phone repair services and quality products.
+              <h1 className="text-4xl font-bold">About {businessConfig.businessName}</h1>
+              <p className="text-xl text-primary-foreground/80">
+                {businessConfig.businessDescription}
               </p>
             </div>
           </div>
@@ -24,7 +28,7 @@ export default function AboutPage() {
           <div>
             <h2 className="text-3xl font-bold mb-6">Our Story</h2>
             <p className="text-lg mb-4">
-              Jay's Shop is a leading provider of phone repair services and quality products. 
+              {businessConfig.businessName} is a leading provider of phone repair services and quality products. 
               Founded with a passion for technology and customer satisfaction, we've been serving 
               our community for years with exceptional service.
             </p>
@@ -38,10 +42,6 @@ export default function AboutPage() {
               <li className="flex items-center">
                 <Wrench className="h-5 w-5 text-primary mr-2" />
                 <span>Certified technicians with years of experience</span>
-              </li>
-              <li className="flex items-center">
-                <ShieldCheck className="h-5 w-5 text-primary mr-2" />
-                <span>90-day warranty on all repairs</span>
               </li>
               <li className="flex items-center">
                 <Clock className="h-5 w-5 text-primary mr-2" />
