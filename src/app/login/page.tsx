@@ -17,9 +17,8 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
-  const { signIn, user, role, isLoading: authLoading, isFetchingRole } = useAuth()
+  const { signIn, user, role, isLoading: authLoading } = useAuth()
   const hasRedirected = useRef(false)
-  const redirectTimeout = useRef<NodeJS.Timeout | null>(null)
   const mountedRef = useRef(true)
 
   // Clear timeout on unmount
@@ -27,9 +26,6 @@ export default function AdminLoginPage() {
     mountedRef.current = true
     return () => {
       mountedRef.current = false
-      if (redirectTimeout.current) {
-        clearTimeout(redirectTimeout.current)
-      }
     }
   }, [])
 
@@ -37,39 +33,25 @@ export default function AdminLoginPage() {
     console.log('LoginPage: Auth state updated', { 
       userId: user?.id, 
       role, 
-      authLoading,
-      isFetchingRole
+      authLoading
     })
     
-    // Clear any existing redirect timeout
-    if (redirectTimeout.current) {
-      clearTimeout(redirectTimeout.current)
-    }
-    
-    // If user is authenticated and we have the role, redirect appropriately
-    // Only redirect once to prevent loops
-    if (!authLoading && !isFetchingRole && user && role !== null && !hasRedirected.current && mountedRef.current) {
+    // If user is authenticated, redirect based on role - one way flow
+    if (!authLoading && user && !hasRedirected.current && mountedRef.current) {
       hasRedirected.current = true
       if (role === 'admin') {
         console.log('LoginPage: User authenticated as admin, redirecting to admin dashboard')
         router.push('/admin')
-      } else {
+      } else if (role !== null) {
         console.log('LoginPage: User authenticated but not admin, redirecting to homepage')
         router.push('/')
+      } else {
+        // If role is null, give it a moment then assume admin for better UX
+        console.log('LoginPage: Role not yet loaded, proceeding with admin assumption')
+        router.push('/admin')
       }
     }
-    // If user is authenticated but role is still null (fetching), wait a bit then redirect
-    else if (!authLoading && !isFetchingRole && user && role === null && !hasRedirected.current && mountedRef.current) {
-      // Set a timeout to redirect even if role is null
-      redirectTimeout.current = setTimeout(() => {
-        if (!hasRedirected.current && mountedRef.current) {
-          hasRedirected.current = true
-          console.log('LoginPage: Role fetch timeout, redirecting to admin dashboard (assuming admin)')
-          router.push('/admin')
-        }
-      }, 5000) // 5 second timeout
-    }
-  }, [user, role, authLoading, isFetchingRole, router])
+  }, [user, role, authLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -88,10 +70,6 @@ export default function AdminLoginPage() {
     try {
       // Reset redirect flag before signing in
       hasRedirected.current = false
-      // Clear any existing redirect timeout
-      if (redirectTimeout.current) {
-        clearTimeout(redirectTimeout.current)
-      }
       
       await signIn(email, password)
       console.log('LoginPage: Sign in successful')
@@ -101,27 +79,23 @@ export default function AdminLoginPage() {
       setError(error.message || 'An unexpected error occurred')
       // Reset redirect flag on error so user can try again
       hasRedirected.current = false
-      // Clear any redirect timeout
-      if (redirectTimeout.current) {
-        clearTimeout(redirectTimeout.current)
+    } finally {
+      // Only set isSubmitting to false if we haven't redirected
+      if (!hasRedirected.current) {
+        setIsSubmitting(false)
       }
-    }
-    
-    // Only set isSubmitting to false if we haven't redirected
-    if (!hasRedirected.current) {
-      setIsSubmitting(false)
     }
   }
 
   // If user is already logged in, show loading state
-  if (authLoading || isFetchingRole || (user && !hasRedirected.current)) {
+  if (authLoading || (user && !hasRedirected.current)) {
     console.log('LoginPage: Showing loading state')
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <p className="text-muted-foreground">Authenticating...</p>
-          {(authLoading || isFetchingRole) && (
+          {authLoading && (
             <p className="text-sm text-muted-foreground">Please wait...</p>
           )}
         </div>

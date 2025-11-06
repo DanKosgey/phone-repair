@@ -90,7 +90,7 @@ const nextConfig: NextConfig = {
   
   // Fix Turbopack configuration - explicitly set root directory
   turbopack: {
-    root: '.'
+    root: 'C:\\Users\\PC\\OneDrive\\Desktop\\jays\\phone-repair'
   },
   
   // Configure cookie settings for production

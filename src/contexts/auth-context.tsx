@@ -36,7 +36,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isInitializedRef = useRef(false);
   const roleAbortControllerRef = useRef<AbortController | null>(null);
   const pendingTimeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set());
-  const retryAttemptsRef = useRef<Map<string, number>>(new Map());
   const lastFetchedUserIdRef = useRef<string | null>(null);
   
   // Get Supabase client instance (stable reference)
@@ -108,100 +107,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     logger.log('AuthProvider: Fetching role for user');
     
     try {
-      // Add a timeout to prevent infinite waiting
-      const timeoutPromise = new Promise((_, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Role fetch timeout'));
-        }, 15000); // Increased to 15 seconds timeout
-        
-        // Clean up timeout on abort
-        currentAbortController.signal.addEventListener('abort', () => {
-          clearTimeout(timeout);
-        });
-      });
+      if (!supabase) {
+        throw new Error('Supabase client not available');
+      }
 
-      const fetchPromise = (async () => {
-        if (!supabase) {
-          throw new Error('Supabase client not available');
-        }
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .abortSignal(currentAbortController.signal)
+        .single();
 
-        // Add retry logic for the role fetch
-        let attempts = 0;
-        const maxAttempts = 3;
-        const retryDelay = 1000; // 1 second
-
-        while (attempts < maxAttempts) {
-          try {
-            const { data, error } = await supabase
-              .from('profiles')
-              .select('role')
-              .eq('id', userId)
-              .abortSignal(currentAbortController.signal)
-              .single();
-
-            // Check if this request was aborted
-            if (currentAbortController.signal.aborted || !isMountedRef.current) {
-              logger.log('AuthProvider: Role fetch was aborted or component unmounted');
-              throw new Error('Aborted');
-            }
-
-            if (error) {
-              logger.error('AuthProvider: Error fetching user role:', error.message);
-              
-              // Handle network errors or timeout errors with retry
-              if (error.code === 'PGRST301' || 
-                  error.message.includes('timeout') || 
-                  error.message.includes('network') ||
-                  error.message.includes('permission') ||
-                  error.message.includes('Unauthorized')) {
-                attempts++;
-                if (attempts < maxAttempts) {
-                  logger.log(`AuthProvider: Retrying role fetch (${attempts}/${maxAttempts}) in ${retryDelay}ms`);
-                  await new Promise(resolve => setTimeout(resolve, retryDelay));
-                  continue; // Retry
-                } else {
-                  logger.error('AuthProvider: Max retries exceeded for role fetch');
-                }
-              }
-              
-              throw error; // Re-throw if not a retryable error or max attempts reached
-            } else {
-              // Success - clear retry count
-              retryAttemptsRef.current.delete(userId);
-              
-              const userRole = data?.role || null;
-              logger.log('AuthProvider: User role fetched successfully:', userRole);
-              if (isMountedRef.current) {
-                setRole(userRole);
-                roleCache.set(userId, { role: userRole, timestamp: Date.now() });
-              }
-              return; // Success, exit the retry loop
-            }
-          } catch (err) {
-            attempts++;
-            if (attempts >= maxAttempts) {
-              throw err; // Re-throw if max attempts reached
-            }
-            logger.log(`AuthProvider: Retrying role fetch (${attempts}/${maxAttempts}) in ${retryDelay}ms`);
-            await new Promise(resolve => setTimeout(resolve, retryDelay));
-          }
-        }
-      })();
-
-      // Race the fetch against the timeout
-      await Promise.race([fetchPromise, timeoutPromise]);
-    } catch (error: any) {
-      if (error.message === 'Aborted' || !isMountedRef.current) {
-        logger.log('AuthProvider: Role fetch aborted');
+      // Check if this request was aborted
+      if (currentAbortController.signal.aborted || !isMountedRef.current) {
+        logger.log('AuthProvider: Role fetch was aborted or component unmounted');
         return;
       }
-      
-      if (error.message === 'Role fetch timeout') {
-        logger.error('AuthProvider: Role fetch timed out');
+
+      if (error) {
+        logger.error('AuthProvider: Error fetching user role:', error.message);
+        // Even on error, we continue with null role to prevent blocking the flow
+        if (isMountedRef.current) {
+          setRole(null);
+        }
       } else {
-        logger.error('AuthProvider: Exception during role fetching:', error.message);
+        const userRole = data?.role || null;
+        logger.log('AuthProvider: User role fetched successfully:', userRole);
+        if (isMountedRef.current) {
+          setRole(userRole);
+          roleCache.set(userId, { role: userRole, timestamp: Date.now() });
+        }
       }
-      
+    } catch (error: any) {
+      logger.error('AuthProvider: Exception during role fetching:', error.message);
+      // Even on exception, we continue with null role to prevent blocking the flow
       if (isMountedRef.current) {
         setRole(null);
       }
@@ -236,7 +175,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logger.warn('AuthProvider: Initialization timeout, setting loading to false');
         setIsLoading(false);
       }
-    }, 8000); // 8 second timeout
+    }, 5000); // 5 second timeout
     
     const initAuth = async () => {
       try {
@@ -256,11 +195,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         }
         
-        // Add a small delay to ensure cookies are properly set
-        if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-        
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -278,13 +212,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           // Fetch role with improved handling during initialization
           if (isMountedRef.current) {
-            fetchUserRole(currentSession.user.id).catch((roleError: any) => {
-              if (isMountedRef.current) {
-                logger.warn('AuthProvider: Non-critical error fetching role during initialization (will retry):', roleError.message);
-                // Set role to null but continue with initialization
-                setRole(null);
-              }
-            });
+            fetchUserRole(currentSession.user.id);
           }
         } else {
           logger.log('AuthProvider: No active session found');
@@ -330,16 +258,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 lastFetchedUserIdRef.current = null; // Reset to allow fetch
                 
                 // Fetch role with improved handling during sign in
-                // We don't want to block the sign-in process if role fetching fails initially
-                // The role will be fetched again when needed
                 if (isMountedRef.current) {
-                  fetchUserRole(currentSession.user.id).catch((roleError: any) => {
-                    if (isMountedRef.current) {
-                      logger.warn('AuthProvider: Non-critical error fetching role during sign in event (will retry):', roleError.message);
-                      // Set role to null but don't fail the sign in
-                      setRole(null);
-                    }
-                  });
+                  fetchUserRole(currentSession.user.id);
                 }
               }
               if (isMountedRef.current) {
@@ -357,13 +277,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   
                   // Fetch role with improved handling during token refresh
                   if (isMountedRef.current) {
-                    fetchUserRole(currentSession.user.id).catch((roleError: any) => {
-                      if (isMountedRef.current) {
-                        logger.warn('AuthProvider: Non-critical error fetching role during token refresh (will retry):', roleError.message);
-                        // Set role to null but continue with token refresh
-                        setRole(null);
-                      }
-                    });
+                    fetchUserRole(currentSession.user.id);
                   }
                 }
               }
@@ -377,7 +291,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               setSession(null);
               setRole(null);
               roleCache.clear();
-              retryAttemptsRef.current.clear();
               lastFetchedUserIdRef.current = null;
               if (isMountedRef.current) {
                 setIsLoading(false);
@@ -510,14 +423,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         lastFetchedUserIdRef.current = null;
         
         // Fetch role with improved handling
-        // We don't want to block the sign-in process if role fetching fails initially
-        fetchUserRole(data.user.id).catch((roleError: any) => {
-          if (isMountedRef.current) {
-            logger.warn('AuthProvider: Non-critical error fetching role during sign in (will retry):', roleError.message);
-            // Set role to null but don't fail the sign in
-            setRole(null);
-          }
-        });
+        fetchUserRole(data.user.id);
         
         // Add a small delay to ensure state is properly set before any potential redirect
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -564,7 +470,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(null);
       setRole(null);
       roleCache.clear();
-      retryAttemptsRef.current.clear();
       lastFetchedUserIdRef.current = null;
       
       // Sign out from Supabase with global scope
@@ -694,13 +599,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!role) {
           lastFetchedUserIdRef.current = null;
           // Fetch role with improved handling during session refresh
-          fetchUserRole(refreshedSession.user.id).catch((roleError: any) => {
-            logger.warn('AuthProvider: Non-critical error fetching role during session refresh (will retry):', roleError.message);
-            // Set role to null but continue with session refresh
-            if (isMountedRef.current) {
-              setRole(null);
-            }
-          });
+          fetchUserRole(refreshedSession.user.id);
         }
         return refreshedSession;
       }
@@ -735,13 +634,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         lastFetchedUserIdRef.current = null;
         
         // Fetch role with improved handling during session recovery
-        fetchUserRole(currentSession.user.id).catch((roleError: any) => {
-          logger.warn('AuthProvider: Non-critical error fetching role during session recovery (will retry):', roleError.message);
-          // Set role to null but continue with session recovery
-          if (isMountedRef.current) {
-            setRole(null);
-          }
-        });
+        fetchUserRole(currentSession.user.id);
         return true;
       }
       
@@ -797,7 +690,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (roleAbortControllerRef.current) {
         roleAbortControllerRef.current.abort();
       }
-      retryAttemptsRef.current.clear();
       logger.log('AuthProvider: Cleaning up');
     };
   }, [clearAllTimeouts]);

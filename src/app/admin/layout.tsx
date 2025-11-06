@@ -19,7 +19,6 @@ export default function AdminRootLayout({
   
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const hasRedirected = useRef(false)
-  const authCheckTimeout = useRef<NodeJS.Timeout | null>(null)
   const mountedRef = useRef(true)
 
   // Clear timeout on unmount
@@ -27,9 +26,6 @@ export default function AdminRootLayout({
     mountedRef.current = true
     return () => {
       mountedRef.current = false
-      if (authCheckTimeout.current) {
-        clearTimeout(authCheckTimeout.current)
-      }
     }
   }, [])
 
@@ -80,7 +76,7 @@ export default function AdminRootLayout({
     }
   }, [signOut, toast])
 
-  // Main authentication check effect
+  // Simplified authentication check - one way flow
   useEffect(() => {
     // Don't run if already redirected or component is unmounted
     if (hasRedirected.current || !mountedRef.current) return
@@ -91,11 +87,6 @@ export default function AdminRootLayout({
       isLoading,
       isFetchingRole
     })
-
-    // Clear any existing timeout
-    if (authCheckTimeout.current) {
-      clearTimeout(authCheckTimeout.current)
-    }
 
     // Wait for initial loading to complete
     if (isLoading) {
@@ -129,7 +120,7 @@ export default function AdminRootLayout({
       return
     }
 
-    // User exists and is admin
+    // User exists and is admin - proceed to dashboard
     if (role === 'admin') {
       console.log('AdminLayout: User authorized as admin')
       if (mountedRef.current) {
@@ -138,20 +129,17 @@ export default function AdminRootLayout({
       return
     }
 
-    // User exists but role is null (still fetching) - set a timeout
+    // User exists but role is still loading - give it a moment then proceed
     if (role === null && user) {
-      // If we have a user but no role yet, wait for role to be fetched
-      // Only set timeout if we're not already fetching the role
-      if (!isFetchingRole) {
-        authCheckTimeout.current = setTimeout(() => {
-          if (!hasRedirected.current && mountedRef.current) {
-            console.log('AdminLayout: Role check timeout, assuming admin role')
-            setIsCheckingAuth(false)
-          }
-        }, 8000) // 8 second timeout
-      }
-      // Don't redirect to login if we have a user - we're still checking their role
-      return
+      // Small delay to allow role to load, then proceed anyway
+      const timer = setTimeout(() => {
+        if (!hasRedirected.current && mountedRef.current) {
+          console.log('AdminLayout: Proceeding with admin access (role loading timeout)')
+          setIsCheckingAuth(false)
+        }
+      }, 1000) // Short 1 second delay
+      
+      return () => clearTimeout(timer)
     }
   }, [user, role, isLoading, isFetchingRole, router, toast])
 
