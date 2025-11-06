@@ -193,6 +193,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const initAuth = async () => {
       try {
+        // Check if user just signed out (check a flag in sessionStorage)
+        if (typeof window !== 'undefined') {
+          const justSignedOut = sessionStorage.getItem('just_signed_out');
+          if (justSignedOut) {
+            sessionStorage.removeItem('just_signed_out');
+            logger.log('AuthProvider: User just signed out, skipping session restoration');
+            setUser(null);
+            setSession(null);
+            setRole(null);
+            setIsLoading(false);
+            return;
+          }
+        }
+        
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -391,41 +405,86 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logger.log('AuthProvider: Signing out');
       setIsLoading(true);
       
+      // Set flag to prevent auto re-login
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('just_signed_out', 'true');
+      }
+      
+      // Clear all pending operations
       clearAllTimeouts();
       if (roleAbortControllerRef.current) {
         roleAbortControllerRef.current.abort();
       }
       
-      if (!session) {
-        logger.warn('AuthProvider: No active session to sign out');
-        setUser(null);
-        setSession(null);
-        setRole(null);
-        lastFetchedUserIdRef.current = null;
-        return;
-      }
-      
-      const { error } = await supabase.auth.signOut();
-      
-      if (error && error.message !== 'Auth session missing!') {
-        logger.error('AuthProvider: Error during sign out:', error.message);
-        throw error;
-      }
-      
+      // Clear state immediately
       setUser(null);
       setSession(null);
       setRole(null);
       roleCache.clear();
       retryAttemptsRef.current.clear();
       lastFetchedUserIdRef.current = null;
-      logger.log('AuthProvider: Sign out completed');
+      
+      // Sign out from Supabase with global scope
+      try {
+        const { error } = await supabase.auth.signOut({
+          scope: 'global'
+        });
+        
+        if (error && error.message !== 'Auth session missing!') {
+          logger.error('AuthProvider: Error during sign out:', error.message);
+        }
+      } catch (err) {
+        logger.error('AuthProvider: Exception during sign out:', err);
+      }
+      
+      // Clear all browser storage
+      if (typeof window !== 'undefined') {
+        // Clear localStorage
+        try {
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('sb-') || key.includes('supabase')) {
+              localStorage.removeItem(key);
+            }
+          });
+        } catch (err) {
+          logger.error('Failed to clear localStorage:', err);
+        }
+        
+        // Clear sessionStorage (except our flag)
+        try {
+          Object.keys(sessionStorage).forEach(key => {
+            if ((key.startsWith('sb-') || key.includes('supabase')) && key !== 'just_signed_out') {
+              sessionStorage.removeItem(key);
+            }
+          });
+        } catch (err) {
+          logger.error('Failed to clear sessionStorage:', err);
+        }
+        
+        // Clear auth cookies
+        try {
+          document.cookie.split(';').forEach(cookie => {
+            const name = cookie.split('=')[0].trim();
+            if (name.includes('supabase') || name.includes('sb-') || name.includes('auth')) {
+              // Clear with different path and domain combinations
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}`;
+            }
+          });
+        } catch (err) {
+          logger.error('Failed to clear cookies:', err);
+        }
+      }
+      
+      logger.log('AuthProvider: Sign out completed, all data cleared');
     } catch (error: any) {
       logger.error('AuthProvider: Error signing out:', error.message);
+      // Ensure state is cleared even on error
       setUser(null);
       setSession(null);
       setRole(null);
       lastFetchedUserIdRef.current = null;
-      throw error;
     } finally {
       if (isMountedRef.current) {
         setIsLoading(false);

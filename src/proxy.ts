@@ -9,7 +9,6 @@ export default async function proxy(request: NextRequest) {
     },
   })
 
-  // Create Supabase client with proper cookie handling
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -36,24 +35,27 @@ export default async function proxy(request: NextRequest) {
     }
   )
 
-  // Refresh session if expired - important for SSR
-  try {
-    await supabase.auth.getSession()
-  } catch (error) {
-    console.error('Middleware: Error refreshing session:', error)
+  // Don't refresh session on auth routes to prevent re-login
+  const isAuthRoute = request.nextUrl.pathname === '/login' || 
+                      request.nextUrl.pathname === '/signup'
+  
+  if (!isAuthRoute) {
+    try {
+      await supabase.auth.getSession()
+    } catch (error) {
+      console.error('Middleware: Error refreshing session:', error)
+    }
   }
 
-  // Add headers to allow cookies
   response.headers.set('Access-Control-Allow-Credentials', 'true')
   
-  // Filter out problematic Cloudflare cookies
   const cookies = request.cookies.getAll()
   cookies.forEach(cookie => {
     if (cookie.name.startsWith('__cf_')) {
       try {
         response.cookies.delete(cookie.name)
       } catch (error) {
-        // Silently fail if cookie can't be deleted
+        // Silently fail
       }
     }
   })

@@ -47,8 +47,11 @@ export default function AdminRootLayout({
     if (!isMountedRef.current) return
     
     console.log('AdminLayout: Signing out user')
+    
     try {
+      // Sign out
       await signOut()
+      
       console.log('AdminLayout: Sign out completed')
       
       if (isMountedRef.current) {
@@ -56,7 +59,9 @@ export default function AdminRootLayout({
           title: "Signed out",
           description: "You have been successfully signed out.",
         })
-        router.push('/login')
+        
+        // Force hard navigation (not soft navigation)
+        window.location.href = '/login'
       }
     } catch (error: any) {
       console.error('AdminLayout: Error during sign out:', error)
@@ -66,19 +71,19 @@ export default function AdminRootLayout({
       if (error.message === 'Auth session missing!') {
         toast({
           title: "Session expired",
-          description: "Your session has already expired. You have been logged out.",
+          description: "Your session has already expired.",
         })
       } else {
         toast({
-          title: "Sign out issue",
-          description: "There was a problem signing out. You have been logged out locally.",
-          variant: "destructive",
+          title: "Signed out",
+          description: "You have been signed out.",
         })
       }
       
-      router.push('/login')
+      // Force hard navigation even on error
+      window.location.href = '/login'
     }
-  }, [signOut, toast, router])
+  }, [signOut, toast])
 
   // Main authentication check effect
   useEffect(() => {
