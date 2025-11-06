@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,13 +11,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Lock } from 'lucide-react';
 import Link from 'next/link';
 
-export default function AdminLoginPage() {
+// Separate component for the login form that uses useRouter
+function LoginFormContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { signIn, user, role, isLoading: authLoading, isFetchingRole } = useAuth();
   const hasRedirected = useRef(false);
   const redirectTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -47,13 +47,7 @@ export default function AdminLoginPage() {
     if (user && role === 'admin' && !hasRedirected.current) {
       console.log('LoginPage: User authenticated as admin, redirecting to admin dashboard');
       hasRedirected.current = true;
-      // Check if there's a redirectTo parameter
-      const redirectTo = searchParams.get('redirectTo');
-      if (redirectTo && redirectTo.startsWith('/admin')) {
-        router.push(redirectTo);
-      } else {
-        router.push('/admin');
-      }
+      router.push('/admin');
     } else if (user && role !== 'admin' && role !== null && !hasRedirected.current) {
       console.log('LoginPage: User authenticated but not admin, role:', role);
       // For non-admin users, redirect to homepage
@@ -73,12 +67,7 @@ export default function AdminLoginPage() {
           console.log('LoginPage: Redirect timeout reached, forcing redirect based on available data, attempt:', roleCheckAttempts + 1);
           if (role === 'admin') {
             hasRedirected.current = true;
-            const redirectTo = searchParams.get('redirectTo');
-            if (redirectTo && redirectTo.startsWith('/admin')) {
-              router.push(redirectTo);
-            } else {
-              router.push('/admin');
-            }
+            router.push('/admin');
           } else if (role !== null) {
             // Role is explicitly not admin
             hasRedirected.current = true;
@@ -89,12 +78,7 @@ export default function AdminLoginPage() {
             if (roleCheckAttempts >= 2) {
               console.log('LoginPage: Multiple attempts failed, assuming admin role for redirect');
               hasRedirected.current = true;
-              const redirectTo = searchParams.get('redirectTo');
-              if (redirectTo && redirectTo.startsWith('/admin')) {
-                router.push(redirectTo);
-              } else {
-                router.push('/admin');
-              }
+              router.push('/admin');
             } else {
               // Increment attempts and try again
               setRoleCheckAttempts(prev => prev + 1);
@@ -103,7 +87,7 @@ export default function AdminLoginPage() {
         }
       }, 3000); // 3 second timeout
     }
-  }, [user, role, authLoading, isFetchingRole, router, searchParams, roleCheckAttempts]);
+  }, [user, role, authLoading, isFetchingRole, router, roleCheckAttempts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,15 +118,8 @@ export default function AdminLoginPage() {
       
       // Small delay to ensure role is properly set
       setTimeout(() => {
-        // Check if there's a redirectTo parameter
-        const redirectTo = searchParams.get('redirectTo');
-        if (redirectTo && redirectTo.startsWith('/admin')) {
-          console.log('LoginPage: Redirecting to:', redirectTo);
-          router.push(redirectTo);
-        } else {
-          console.log('LoginPage: Redirecting to default admin dashboard');
-          router.push('/admin');
-        }
+        console.log('LoginPage: Redirecting to admin dashboard');
+        router.push('/admin');
       }, 100);
     } catch (error: any) {
       console.error('LoginPage: Sign in failed:', error);
@@ -230,5 +207,21 @@ export default function AdminLoginPage() {
         </form>
       </Card>
     </div>
+  );
+}
+
+// Main component that wraps the login form in a Suspense boundary
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    }>
+      <LoginFormContent />
+    </Suspense>
   );
 }
