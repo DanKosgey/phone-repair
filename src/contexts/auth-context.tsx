@@ -112,10 +112,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const timeoutPromise = new Promise((_, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error('Role fetch timeout'));
-          if (isMountedRef.current) {
-            setIsFetchingRole(false);
-          }
-        }, 10000); // 10 second timeout
+        }, 15000); // Increased to 15 seconds timeout
         
         // Clean up timeout on abort
         currentAbortController.signal.addEventListener('abort', () => {
@@ -128,58 +125,65 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           throw new Error('Supabase client not available');
         }
 
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', userId)
-          .abortSignal(currentAbortController.signal)
-          .single();
+        // Add retry logic for the role fetch
+        let attempts = 0;
+        const maxAttempts = 3;
+        const retryDelay = 1000; // 1 second
 
-        // Check if this request was aborted
-        if (currentAbortController.signal.aborted || !isMountedRef.current) {
-          logger.log('AuthProvider: Role fetch was aborted or component unmounted');
-          throw new Error('Aborted');
-        }
+        while (attempts < maxAttempts) {
+          try {
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', userId)
+              .abortSignal(currentAbortController.signal)
+              .single();
 
-        if (error) {
-          logger.error('AuthProvider: Error fetching user role:', error.message);
-          
-          // Handle network errors with exponential backoff
-          if (error.code === 'PGRST301' || error.message.includes('timeout') || error.message.includes('network')) {
-            const retryCount = retryAttemptsRef.current.get(userId) || 0;
-            const maxRetries = 3;
-            
-            if (retryCount < maxRetries) {
-              const delay = Math.pow(2, retryCount) * 1000;
-              logger.log(`AuthProvider: Retry attempt ${retryCount + 1}/${maxRetries} in ${delay}ms`);
-              
-              retryAttemptsRef.current.set(userId, retryCount + 1);
-              
-              await new Promise(resolve => setTimeout(resolve, delay));
-              if (isMountedRef.current) {
-                setIsFetchingRole(false);
-                lastFetchedUserIdRef.current = null;
-                return fetchUserRole(userId);
-              }
-              return;
-            } else {
-              logger.error('AuthProvider: Max retries exceeded');
-              retryAttemptsRef.current.delete(userId);
+            // Check if this request was aborted
+            if (currentAbortController.signal.aborted || !isMountedRef.current) {
+              logger.log('AuthProvider: Role fetch was aborted or component unmounted');
+              throw new Error('Aborted');
             }
-          }
-          
-          if (isMountedRef.current) {
-            setRole(null);
-          }
-        } else {
-          // Success - clear retry count
-          retryAttemptsRef.current.delete(userId);
-          
-          const userRole = data?.role || null;
-          logger.log('AuthProvider: User role fetched successfully:', userRole);
-          if (isMountedRef.current) {
-            setRole(userRole);
-            roleCache.set(userId, { role: userRole, timestamp: Date.now() });
+
+            if (error) {
+              logger.error('AuthProvider: Error fetching user role:', error.message);
+              
+              // Handle network errors or timeout errors with retry
+              if (error.code === 'PGRST301' || 
+                  error.message.includes('timeout') || 
+                  error.message.includes('network') ||
+                  error.message.includes('permission') ||
+                  error.message.includes('Unauthorized')) {
+                attempts++;
+                if (attempts < maxAttempts) {
+                  logger.log(`AuthProvider: Retrying role fetch (${attempts}/${maxAttempts}) in ${retryDelay}ms`);
+                  await new Promise(resolve => setTimeout(resolve, retryDelay));
+                  continue; // Retry
+                } else {
+                  logger.error('AuthProvider: Max retries exceeded for role fetch');
+                }
+              }
+              
+              throw error; // Re-throw if not a retryable error or max attempts reached
+            } else {
+              // Success - clear retry count
+              retryAttemptsRef.current.delete(userId);
+              
+              const userRole = data?.role || null;
+              logger.log('AuthProvider: User role fetched successfully:', userRole);
+              if (isMountedRef.current) {
+                setRole(userRole);
+                roleCache.set(userId, { role: userRole, timestamp: Date.now() });
+              }
+              return; // Success, exit the retry loop
+            }
+          } catch (err) {
+            attempts++;
+            if (attempts >= maxAttempts) {
+              throw err; // Re-throw if max attempts reached
+            }
+            logger.log(`AuthProvider: Retrying role fetch (${attempts}/${maxAttempts}) in ${retryDelay}ms`);
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
           }
         }
       })();
@@ -270,12 +274,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(currentSession.user);
           setSession(currentSession);
           
-          // Fetch role with timeout during initialization
+          // Fetch role with improved timeout and retry handling during initialization
           try {
             const timeoutPromise = new Promise<void>((resolve, reject) => {
               setTimeout(() => {
                 reject(new Error('Role fetch timeout during initialization'));
-              }, 5000);
+              }, 15000); // Increased to 15 seconds
             });
             
             await Promise.race([
@@ -328,12 +332,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setSession(currentSession);
                 lastFetchedUserIdRef.current = null; // Reset to allow fetch
                 
-                // Fetch role with timeout during sign in
+                // Fetch role with improved timeout and retry handling during sign in
                 try {
                   const timeoutPromise = new Promise<void>((resolve, reject) => {
                     setTimeout(() => {
                       reject(new Error('Role fetch timeout during sign in event'));
-                    }, 5000);
+                    }, 15000); // Increased to 15 seconds
                   });
                   
                   await Promise.race([
@@ -342,7 +346,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   ]);
                 } catch (roleError: any) {
                   logger.error('AuthProvider: Error fetching role during sign in event:', roleError.message);
-                  // Set role to null but continue with sign in
+                  // Even if role fetch fails, we still want to complete the sign in
+                  // The role will be fetched again when needed
                   if (isMountedRef.current) {
                     setRole(null);
                   }
@@ -520,23 +525,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Reset fetch tracker
         lastFetchedUserIdRef.current = null;
         
-        // Fetch role with timeout
+        // Fetch role with improved timeout and retry handling
         try {
           const timeoutPromise = new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
+            setTimeout(() => {
               reject(new Error('Role fetch timeout during sign in'));
-            }, 5000);
-            
-            // Clean up on successful role fetch
-            const cleanup = () => clearTimeout(timeout);
-            
-            // Listen for abort signal
-            if (roleAbortControllerRef.current) {
-              roleAbortControllerRef.current.signal.addEventListener('abort', () => {
-                clearTimeout(timeout);
-                reject(new Error('Role fetch aborted'));
-              });
-            }
+            }, 15000); // Increased to 15 seconds
           });
           
           await Promise.race([

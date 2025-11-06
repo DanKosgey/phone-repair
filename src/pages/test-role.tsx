@@ -6,6 +6,8 @@ export default function TestRolePage() {
   const { user, role, isLoading, isFetchingRole } = useAuth();
   const [testResult, setTestResult] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [apiTestResult, setApiTestResult] = useState<string>('');
+  const [apiError, setApiError] = useState<string>('');
 
   const testRoleFetch = async () => {
     if (!user?.id) {
@@ -45,8 +47,29 @@ export default function TestRolePage() {
     }
   };
 
+  const testApiRoute = async () => {
+    try {
+      setApiTestResult('Testing API route...');
+      setApiError('');
+
+      const response = await fetch('/api/test-role');
+      const data = await response.json();
+
+      if (!response.ok) {
+        setApiError(`API Error: ${data.error} - ${data.details || ''}`);
+        setApiTestResult('');
+      } else {
+        setApiTestResult(`API Result: Role = ${data.role}, User ID = ${data.userId}`);
+      }
+    } catch (err: any) {
+      console.error('Exception during API test:', err);
+      setApiError(`API Exception: ${err.message}`);
+      setApiTestResult('');
+    }
+  };
+
   return (
-    <div style={{ padding: '20px' }}>
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1>Role Fetch Test</h1>
       
       {isLoading && <p>Loading auth state...</p>}
@@ -54,20 +77,41 @@ export default function TestRolePage() {
       
       {user ? (
         <div>
+          <h2>User Information</h2>
           <p>User ID: {user.id}</p>
           <p>Email: {user.email}</p>
           <p>Current Role: {role || 'null'}</p>
           
-          <button onClick={testRoleFetch} disabled={isFetchingRole}>
-            Test Role Fetch
-          </button>
+          <div style={{ marginTop: '20px' }}>
+            <h2>Client-side Test</h2>
+            <button 
+              onClick={testRoleFetch} 
+              disabled={isFetchingRole}
+              style={{ padding: '10px 15px', marginRight: '10px' }}
+            >
+              Test Role Fetch
+            </button>
+          </div>
+          
+          <div style={{ marginTop: '20px' }}>
+            <h2>Server-side API Test</h2>
+            <button 
+              onClick={testApiRoute}
+              style={{ padding: '10px 15px' }}
+            >
+              Test API Route
+            </button>
+          </div>
         </div>
       ) : (
         <p>No user signed in</p>
       )}
       
-      {testResult && <p style={{ color: 'green' }}>{testResult}</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {testResult && <p style={{ color: 'green', marginTop: '10px' }}>{testResult}</p>}
+      {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
+      
+      {apiTestResult && <p style={{ color: 'green', marginTop: '10px' }}>{apiTestResult}</p>}
+      {apiError && <p style={{ color: 'red', marginTop: '10px' }}>{apiError}</p>}
     </div>
   );
 }
