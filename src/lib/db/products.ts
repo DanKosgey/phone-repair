@@ -46,6 +46,12 @@ export const productsDb = {
   async getAll() {
     try {
       const supabase = getSupabaseBrowserClient()
+      // Handle case where supabase client is not available
+      if (!supabase) {
+        console.warn('Supabase client not available, returning empty array')
+        return []
+      }
+      
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -64,6 +70,12 @@ export const productsDb = {
   async getById(id: string) {
     try {
       const supabase = getSupabaseBrowserClient()
+      // Handle case where supabase client is not available
+      if (!supabase) {
+        console.warn('Supabase client not available')
+        return null
+      }
+      
       const { data, error } = await supabase
         .from('products')
         .select('*')

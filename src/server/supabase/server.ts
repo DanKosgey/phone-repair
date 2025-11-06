@@ -14,18 +14,21 @@ export const getSupabaseServerClient = () => {
   }
 
   if (!supabaseUrl) {
-    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
+    console.warn('Missing NEXT_PUBLIC_SUPABASE_URL environment variable. Returning null client.')
+    return null as any
   }
 
   if (!supabaseAnonKey) {
-    throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable')
+    console.warn('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable. Returning null client.')
+    return null as any
   }
 
   // Validate URL format
   try {
     new URL(supabaseUrl)
   } catch (e) {
-    throw new Error(`Invalid Supabase URL format: ${supabaseUrl}`)
+    console.warn(`Invalid Supabase URL format: ${supabaseUrl}. Returning null client.`)
+    return null as any
   }
 
   return createClient<Database>(supabaseUrl, supabaseAnonKey)

@@ -14,18 +14,21 @@ export const getSupabaseAdminClient = () => {
   }
 
   if (!supabaseUrl) {
-    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
+    console.warn('Missing NEXT_PUBLIC_SUPABASE_URL environment variable. Returning null client.')
+    return null as any
   }
 
   if (!supabaseServiceRoleKey) {
-    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
+    console.warn('Missing SUPABASE_SERVICE_ROLE_KEY environment variable. Returning null client.')
+    return null as any
   }
 
   // Validate URL format
   try {
     new URL(supabaseUrl)
   } catch (e) {
-    throw new Error(`Invalid Supabase URL format: ${supabaseUrl}`)
+    console.warn(`Invalid Supabase URL format: ${supabaseUrl}. Returning null client.`)
+    return null as any
   }
 
   // Create Supabase client with service role key for admin operations

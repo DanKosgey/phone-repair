@@ -20,15 +20,18 @@ export function getSupabaseBrowserClient() {
     return null as any
   }
 
+  // If we don't have the required environment variables, return null
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables. Please check your .env.local file or Vercel environment variables.')
+    console.warn('Missing Supabase environment variables. Returning null client.')
+    return null as any
   }
 
   // Validate URL format
   try {
     new URL(supabaseUrl)
   } catch (e) {
-    throw new Error(`Invalid Supabase URL format: ${supabaseUrl}`)
+    console.warn(`Invalid Supabase URL format: ${supabaseUrl}. Returning null client.`)
+    return null as any
   }
 
   // Determine if we're in a browser environment and if it's HTTPS

@@ -21,6 +21,12 @@ export const ticketsDb = {
   async getAll() {
     try {
       const supabase = getSupabaseBrowserClient()
+      // Handle case where supabase client is not available
+      if (!supabase) {
+        console.warn('Supabase client not available, returning empty array')
+        return []
+      }
+      
       const { data, error } = await supabase
         .from('tickets')
         .select('*')
@@ -39,6 +45,12 @@ export const ticketsDb = {
   async getById(id: string) {
     try {
       const supabase = getSupabaseBrowserClient()
+      // Handle case where supabase client is not available
+      if (!supabase) {
+        console.warn('Supabase client not available')
+        return null
+      }
+      
       const { data, error } = await supabase
         .from('tickets')
         .select('*')
@@ -58,6 +70,12 @@ export const ticketsDb = {
   async getByTicketNumber(ticketNumber: string) {
     try {
       const supabase = getSupabaseBrowserClient()
+      // Handle case where supabase client is not available
+      if (!supabase) {
+        console.warn('Supabase client not available')
+        return null
+      }
+      
       const { data, error } = await supabase
         .from('tickets')
         .select('*')
@@ -85,6 +103,12 @@ export const ticketsDb = {
   async getByCustomerInfo(customerName: string, phoneNumber: string) {
     try {
       const supabase = getSupabaseBrowserClient()
+      // Handle case where supabase client is not available
+      if (!supabase) {
+        console.warn('Supabase client not available, returning empty array')
+        return []
+      }
+      
       const { data, error } = await supabase
         .from('tickets')
         .select('*')
@@ -113,6 +137,12 @@ export const ticketsDb = {
   async getByPhoneNumber(phoneNumber: string) {
     try {
       const supabase = getSupabaseBrowserClient()
+      // Handle case where supabase client is not available
+      if (!supabase) {
+        console.warn('Supabase client not available, returning empty array')
+        return []
+      }
+      
       const { data, error } = await supabase
         .from('tickets')
         .select('*')
@@ -140,6 +170,11 @@ export const ticketsDb = {
   async create(ticket: TicketInsert) {
     try {
       const supabase = getSupabaseBrowserClient()
+      // Handle case where supabase client is not available
+      if (!supabase) {
+        throw new Error('Supabase client not available')
+      }
+      
       const { data, error } = await supabase
         .from('tickets')
         .insert(ticket)
@@ -162,6 +197,11 @@ export const ticketsDb = {
   async update(id: string, updates: TicketUpdate) {
     try {
       const supabase = getSupabaseBrowserClient()
+      // Handle case where supabase client is not available
+      if (!supabase) {
+        throw new Error('Supabase client not available')
+      }
+      
       const { data, error } = await supabase
         .from('tickets')
         .update(updates)
@@ -185,6 +225,11 @@ export const ticketsDb = {
   async delete(id: string) {
     try {
       const supabase = getSupabaseBrowserClient()
+      // Handle case where supabase client is not available
+      if (!supabase) {
+        throw new Error('Supabase client not available')
+      }
+      
       // Using type assertion to bypass TypeScript error for deleted_at field
       const { error } = await supabase
         .from('tickets')

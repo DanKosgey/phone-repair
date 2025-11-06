@@ -174,11 +174,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Prevent multiple initializations
     if (isInitializedRef.current || !supabase) {
+      // Make sure to set loading to false if we're not initializing
+      if (isMountedRef.current && isLoading) {
+        setIsLoading(false);
+      }
       return;
     }
     
     isInitializedRef.current = true;
     logger.log('AuthProvider: Initializing authentication');
+    
+    // Add a timeout to prevent infinite loading
+    const initTimeout = setTimeout(() => {
+      if (isMountedRef.current && isLoading) {
+        logger.warn('AuthProvider: Initialization timeout, setting loading to false');
+        setIsLoading(false);
+      }
+    }, 5000); // 5 second timeout
     
     const initAuth = async () => {
       try {
@@ -225,74 +237,93 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (isMountedRef.current) {
           setIsLoading(false);
         }
+        clearTimeout(initTimeout);
       }
     };
 
-    initAuth();
+    // Only run initialization if we have a Supabase client
+    if (supabase) {
+      initAuth();
+    } else {
+      // If no Supabase client, set loading to false
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
+      clearTimeout(initTimeout);
+    }
 
-    // Listen to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        logger.log('AuthProvider: Auth state changed:', event);
-        
-        if (!isMountedRef.current) return;
+    // Listen to auth changes (only if we have a Supabase client)
+    if (supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, currentSession) => {
+          logger.log('AuthProvider: Auth state changed:', event);
+          
+          if (!isMountedRef.current) return;
 
-        switch (event) {
-          case 'SIGNED_IN':
-            if (currentSession?.user) {
-              setUser(currentSession.user);
-              setSession(currentSession);
-              lastFetchedUserIdRef.current = null; // Reset to allow fetch
-              await fetchUserRole(currentSession.user.id);
-            }
-            setIsLoading(false);
-            break;
-            
-          case 'TOKEN_REFRESHED':
-            if (currentSession?.user) {
-              setUser(currentSession.user);
-              setSession(currentSession);
-              // Don't re-fetch role on token refresh if we already have it
-              if (!role) {
-                lastFetchedUserIdRef.current = null;
+          switch (event) {
+            case 'SIGNED_IN':
+              if (currentSession?.user) {
+                setUser(currentSession.user);
+                setSession(currentSession);
+                lastFetchedUserIdRef.current = null; // Reset to allow fetch
                 await fetchUserRole(currentSession.user.id);
               }
-            }
-            setIsLoading(false);
-            break;
-            
-          case 'SIGNED_OUT':
-            setUser(null);
-            setSession(null);
-            setRole(null);
-            roleCache.clear();
-            retryAttemptsRef.current.clear();
-            lastFetchedUserIdRef.current = null;
-            setIsLoading(false);
-            break;
-            
-          case 'USER_UPDATED':
-            if (currentSession?.user) {
-              setUser(currentSession.user);
-              setSession(currentSession);
-            }
-            setIsLoading(false);
-            break;
+              setIsLoading(false);
+              break;
+              
+            case 'TOKEN_REFRESHED':
+              if (currentSession?.user) {
+                setUser(currentSession.user);
+                setSession(currentSession);
+                // Don't re-fetch role on token refresh if we already have it
+                if (!role) {
+                  lastFetchedUserIdRef.current = null;
+                  await fetchUserRole(currentSession.user.id);
+                }
+              }
+              setIsLoading(false);
+              break;
+              
+            case 'SIGNED_OUT':
+              setUser(null);
+              setSession(null);
+              setRole(null);
+              roleCache.clear();
+              retryAttemptsRef.current.clear();
+              lastFetchedUserIdRef.current = null;
+              setIsLoading(false);
+              break;
+              
+            case 'USER_UPDATED':
+              if (currentSession?.user) {
+                setUser(currentSession.user);
+                setSession(currentSession);
+              }
+              setIsLoading(false);
+              break;
 
-          case 'INITIAL_SESSION':
-            // Ignore INITIAL_SESSION as it's handled by initAuth
-            break;
-            
-          default:
-            setIsLoading(false);
-            break;
+            case 'INITIAL_SESSION':
+              // Ignore INITIAL_SESSION as it's handled by initAuth
+              break;
+              
+            default:
+              setIsLoading(false);
+              break;
+          }
         }
-      }
-    );
+      );
 
-    return () => {
-      subscription.unsubscribe();
-    };
+      return () => {
+        subscription.unsubscribe();
+        clearTimeout(initTimeout);
+      };
+    } else {
+      // If no Supabase client, set loading to false
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
+      clearTimeout(initTimeout);
+    }
   }, [supabase]); // Depend on supabase client
 
   // Session auto-refresh
