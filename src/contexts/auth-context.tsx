@@ -274,25 +274,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(currentSession.user);
           setSession(currentSession);
           
-          // Fetch role with improved timeout and retry handling during initialization
-          try {
-            const timeoutPromise = new Promise<void>((resolve, reject) => {
-              setTimeout(() => {
-                reject(new Error('Role fetch timeout during initialization'));
-              }, 15000); // Increased to 15 seconds
-            });
-            
-            await Promise.race([
-              fetchUserRole(currentSession.user.id),
-              timeoutPromise
-            ]);
-          } catch (roleError: any) {
-            logger.error('AuthProvider: Error fetching role during initialization:', roleError.message);
+          // Fetch role with improved handling during initialization
+          // We don't want to block the initialization process if role fetching fails initially
+          fetchUserRole(currentSession.user.id).catch((roleError: any) => {
+            logger.warn('AuthProvider: Non-critical error fetching role during initialization (will retry):', roleError.message);
             // Set role to null but continue with initialization
             if (isMountedRef.current) {
               setRole(null);
             }
-          }
+          });
         } else {
           logger.log('AuthProvider: No active session found');
         }
@@ -332,26 +322,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setSession(currentSession);
                 lastFetchedUserIdRef.current = null; // Reset to allow fetch
                 
-                // Fetch role with improved timeout and retry handling during sign in
-                try {
-                  const timeoutPromise = new Promise<void>((resolve, reject) => {
-                    setTimeout(() => {
-                      reject(new Error('Role fetch timeout during sign in event'));
-                    }, 15000); // Increased to 15 seconds
-                  });
-                  
-                  await Promise.race([
-                    fetchUserRole(currentSession.user.id),
-                    timeoutPromise
-                  ]);
-                } catch (roleError: any) {
-                  logger.error('AuthProvider: Error fetching role during sign in event:', roleError.message);
-                  // Even if role fetch fails, we still want to complete the sign in
-                  // The role will be fetched again when needed
+                // Fetch role with improved handling during sign in
+                // We don't want to block the sign-in process if role fetching fails initially
+                // The role will be fetched again when needed
+                fetchUserRole(currentSession.user.id).catch((roleError: any) => {
+                  logger.warn('AuthProvider: Non-critical error fetching role during sign in event (will retry):', roleError.message);
+                  // Set role to null but don't fail the sign in
                   if (isMountedRef.current) {
                     setRole(null);
                   }
-                }
+                });
               }
               if (isMountedRef.current) {
                 setIsLoading(false);
@@ -525,25 +505,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Reset fetch tracker
         lastFetchedUserIdRef.current = null;
         
-        // Fetch role with improved timeout and retry handling
-        try {
-          const timeoutPromise = new Promise<void>((resolve, reject) => {
-            setTimeout(() => {
-              reject(new Error('Role fetch timeout during sign in'));
-            }, 15000); // Increased to 15 seconds
-          });
-          
-          await Promise.race([
-            fetchUserRole(data.user.id),
-            timeoutPromise
-          ]);
-        } catch (roleError: any) {
-          logger.error('AuthProvider: Error fetching role during sign in:', roleError.message);
+        // Fetch role with improved handling
+        // We don't want to block the sign-in process if role fetching fails initially
+        fetchUserRole(data.user.id).catch((roleError: any) => {
+          logger.warn('AuthProvider: Non-critical error fetching role during sign in (will retry):', roleError.message);
           // Set role to null but don't fail the sign in
           if (isMountedRef.current) {
             setRole(null);
           }
-        }
+        });
       } else if (!data.user) {
         throw new Error('Authentication failed. No user data received.');
       }
@@ -716,25 +686,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Only fetch role if we don't have it
         if (!role) {
           lastFetchedUserIdRef.current = null;
-          try {
-            // Add timeout for role fetching during refresh
-            const timeoutPromise = new Promise<void>((resolve, reject) => {
-              setTimeout(() => {
-                reject(new Error('Role fetch timeout during session refresh'));
-              }, 5000);
-            });
-            
-            await Promise.race([
-              fetchUserRole(refreshedSession.user.id),
-              timeoutPromise
-            ]);
-          } catch (roleError: any) {
-            logger.error('AuthProvider: Error fetching role during session refresh:', roleError.message);
+          // Fetch role with improved handling during session refresh
+          fetchUserRole(refreshedSession.user.id).catch((roleError: any) => {
+            logger.warn('AuthProvider: Non-critical error fetching role during session refresh (will retry):', roleError.message);
             // Set role to null but continue with session refresh
             if (isMountedRef.current) {
               setRole(null);
             }
-          }
+          });
         }
         return refreshedSession;
       }
@@ -768,25 +727,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(currentSession);
         lastFetchedUserIdRef.current = null;
         
-        try {
-          // Add timeout for role fetching during recovery
-          const timeoutPromise = new Promise<void>((resolve, reject) => {
-            setTimeout(() => {
-              reject(new Error('Role fetch timeout during session recovery'));
-            }, 5000);
-          });
-          
-          await Promise.race([
-            fetchUserRole(currentSession.user.id),
-            timeoutPromise
-          ]);
-        } catch (roleError: any) {
-          logger.error('AuthProvider: Error fetching role during session recovery:', roleError.message);
+        // Fetch role with improved handling during session recovery
+        fetchUserRole(currentSession.user.id).catch((roleError: any) => {
+          logger.warn('AuthProvider: Non-critical error fetching role during session recovery (will retry):', roleError.message);
           // Set role to null but continue with session recovery
           if (isMountedRef.current) {
             setRole(null);
           }
-        }
+        });
         return true;
       }
       

@@ -17,9 +17,8 @@ export const logger = {
   },
   
   warn: (message: string, ...args: any[]) => {
-    if (isDevelopment) {
-      console.warn(`[WARN] ${message}`, ...args);
-    }
+    // Always log warnings
+    console.warn(`[WARN] ${message}`, ...args);
   },
   
   error: (message: string, ...args: any[]) => {
