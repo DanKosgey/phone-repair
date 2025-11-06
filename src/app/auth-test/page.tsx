@@ -1,72 +1,63 @@
-'use client';
+'use client'
 
-import { useAuth } from '@/contexts/auth-context';
-import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { AuthSystemTest } from '@/components/auth/AuthSystemTest'
+import { useAuth } from '@/contexts/auth-context'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 export default function AuthTestPage() {
-  const { user, role, isLoading, signIn, signOut } = useAuth();
-  const router = useRouter();
+  const { user, role, isLoading } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
-    console.log('AuthTestPage: Component mounted with auth state:', { user, role, isLoading });
-  }, [user, role, isLoading]);
-
-  const handleLogin = async () => {
-    console.log('AuthTestPage: Attempting login');
-    const result = await signIn('admin@g.com', 'Dan@2020');
-    console.log('AuthTestPage: Login result:', result);
-    
-    if (result.error) {
-      console.error('AuthTestPage: Login error:', result.error);
-    } else {
-      console.log('AuthTestPage: Login successful, redirecting to admin');
-      router.push('/admin');
+    // If user is already logged in, redirect to appropriate page
+    if (!isLoading && user) {
+      if (role === 'admin') {
+        router.push('/admin')
+      } else {
+        router.push('/')
+      }
     }
-  };
+  }, [user, role, isLoading, router])
 
-  const handleLogout = async () => {
-    console.log('AuthTestPage: Logging out');
-    await signOut();
-    console.log('AuthTestPage: Logout complete');
-  };
-
-  const handleGoToLogin = () => {
-    console.log('AuthTestPage: Going to login page');
-    router.push('/login');
-  };
-
-  const handleGoToAdmin = () => {
-    console.log('AuthTestPage: Going to admin dashboard');
-    router.push('/admin');
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-100">
-      <div className="max-w-md w-full space-y-6 bg-white p-6 rounded-lg shadow-lg">
-        <h1 className="text-2xl font-bold text-center">Authentication Test</h1>
-        
-        <div className="p-4 bg-blue-50 rounded-lg">
-          <h2 className="font-semibold text-blue-800">Current Auth State</h2>
-          <p className="text-sm text-blue-700">Loading: {isLoading ? 'true' : 'false'}</p>
-          <p className="text-sm text-blue-700">User: {user ? user.email : 'null'}</p>
-          <p className="text-sm text-blue-700">Role: {role || 'null'}</p>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="max-w-2xl w-full space-y-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold">Authentication Test</h1>
+          <p className="text-muted-foreground mt-2">
+            Diagnosing authentication system issues
+          </p>
         </div>
         
-        <div className="grid grid-cols-2 gap-3">
-          <Button onClick={handleLogin} disabled={isLoading}>Login</Button>
-          <Button onClick={handleLogout} variant="outline" disabled={isLoading}>Logout</Button>
-          <Button onClick={handleGoToLogin} variant="secondary">Go to Login Page</Button>
-          <Button onClick={handleGoToAdmin} variant="secondary" disabled={!user || role !== 'admin'}>
-            Go to Admin
-          </Button>
+        <div className="bg-card border rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">Auth Status</h2>
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span>User:</span>
+              <span className="font-mono">{user ? user.email : 'Not logged in'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Role:</span>
+              <span className="font-mono">{role || 'None'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Loading:</span>
+              <span className="font-mono">{isLoading ? 'Yes' : 'No'}</span>
+            </div>
+          </div>
         </div>
         
-        <div className="text-center text-sm text-gray-500">
-          <p>Check browser console for detailed logs</p>
-        </div>
+        <AuthSystemTest />
       </div>
     </div>
-  );
+  )
 }

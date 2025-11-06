@@ -31,7 +31,13 @@ export const Footer = () => {
   }, [user, role, isLoading]);
 
   const handleAdminAccess = () => {
-    console.log('Footer: Admin access button clicked', { user, role });
+    console.log('Footer: Admin access button clicked', { user, role, isLoading });
+    
+    // Show loading state while checking auth
+    if (isLoading) {
+      return;
+    }
+    
     if (user && role === 'admin') {
       console.log('Footer: Redirecting to admin dashboard');
       router.push('/admin');
@@ -83,7 +89,8 @@ export const Footer = () => {
               <li>
                 <button 
                   onClick={handleAdminAccess}
-                  className="text-left hover:text-primary w-full text-sm bg-transparent border-none cursor-pointer"
+                  disabled={isLoading}
+                  className="text-left hover:text-primary w-full text-sm bg-transparent border-none cursor-pointer disabled:opacity-50"
                 >
                   {isLoading ? 'Loading...' : (user && role === 'admin' ? 'Admin Dashboard' : 'Admin Login')}
                 </button>

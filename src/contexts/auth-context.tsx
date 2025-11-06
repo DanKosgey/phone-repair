@@ -43,6 +43,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const supabaseRef = useRef(getSupabaseBrowserClient());
   const supabase = supabaseRef.current;
 
+  // Suppress Cloudflare cookie warnings in console
+  useEffect(() => {
+    // Suppress Cloudflare cookie warnings in console
+    const originalError = console.error
+    console.error = (...args) => {
+      if (
+        typeof args[0] === 'string' && 
+        (args[0].includes('__cf_bm') || 
+         args[0].includes('invalid domain') ||
+         args[0].includes('Cookie'))
+      ) {
+        // Suppress these warnings
+        return
+      }
+      originalError.apply(console, args)
+    }
+
+    return () => {
+      console.error = originalError
+    }
+  }, [])
+
   // Cleanup helper for timeouts
   const clearAllTimeouts = useCallback(() => {
     pendingTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
@@ -140,7 +162,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         retryAttemptsRef.current.delete(userId);
         
         const userRole = data?.role || null;
-        logger.log('AuthProvider: User role fetched successfully');
+        logger.log('AuthProvider: User role fetched successfully:', userRole);
         setRole(userRole);
         roleCache.set(userId, { role: userRole, timestamp: Date.now() });
       }

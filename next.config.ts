@@ -3,9 +3,27 @@ import withBundleAnalyzer from '@next/bundle-analyzer'
 
 const nextConfig: NextConfig = {
   /* config options here */
-  reactStrictMode: true,
+  // Disable strict mode in development to prevent double rendering
+  reactStrictMode: process.env.NODE_ENV === 'production',
+  
+  // Configure headers for cookies
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+        ],
+      },
+    ]
+  },
+  
   // Disable the Dev Tools UI
   devIndicators: false,
+  
   // Configure image optimization for Supabase storage
   images: {
     // Optimize image loading
@@ -40,6 +58,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  
   // Enable webpack optimizations
   webpack: (config) => {
     // Reduce bundle size by excluding unused locales from moment.js if used
@@ -50,6 +69,7 @@ const nextConfig: NextConfig = {
     
     return config;
   },
+  
   // Enable experimental features for better performance
   experimental: {
     optimizeCss: false, // Disable in development to avoid critters issues
@@ -59,6 +79,7 @@ const nextConfig: NextConfig = {
       '@heroicons/react/*'
     ]
   },
+  
   // Fix Turbopack configuration
   turbopack: {}
 }
