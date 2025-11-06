@@ -19,6 +19,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refreshSession: () => Promise<Session | null>;
   isSessionValid: () => Promise<boolean>;
+  recoverSession: () => Promise<boolean>; // Add the new recovery function to the interface
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -199,11 +200,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     logger.log('AuthProvider: Initializing authentication');
     
+    // Enhanced session debugging
+    logger.log('AuthProvider: Document cookie state:', typeof document !== 'undefined' ? document.cookie : 'No document available');
+    
     // Check active sessions
     const initAuth = async () => {
       try {
         logger.log('AuthProvider: Checking for existing session');
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
+        // Enhanced debugging
+        logger.log('AuthProvider: Raw session data:', JSON.stringify(currentSession, null, 2));
+        logger.log('AuthProvider: Session error:', error);
         
         if (error) {
           logger.error('AuthProvider: Error getting session:', error.message);
@@ -243,11 +251,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     initAuth();
 
-    // Listen to auth changes
+    // Listen to auth changes with enhanced debugging
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         logger.log('AuthProvider: Auth state changed event:', event);
         logger.log('AuthProvider: Session in event:', currentSession ? 'Present' : 'None');
+        logger.log('AuthProvider: Full session object:', JSON.stringify(currentSession, null, 2));
         
         // Only handle specific events to avoid duplicates
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
@@ -269,6 +278,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setRole(null);
           // Clear cache on sign out
           roleCache.clear();
+        } else if (event === 'USER_UPDATED') {
+          logger.log('AuthProvider: User updated event, refreshing session');
+          // Refresh session when user is updated
+          const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+          if (refreshedSession?.user) {
+            setUser(refreshedSession.user);
+            setSession(refreshedSession);
+            await fetchUserRole(refreshedSession.user.id);
+          }
         } else {
           logger.log('AuthProvider: Ignoring event:', event);
         }
@@ -438,6 +456,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
+  // New session recovery mechanism
+  const recoverSession = async (): Promise<boolean> => {
+    try {
+      logger.log('AuthProvider: Attempting session recovery');
+      
+      // Try to get current session
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        logger.error('AuthProvider: Error during session recovery:', error.message);
+        return false;
+      }
+      
+      if (currentSession?.user) {
+        logger.log('AuthProvider: Session recovered for user:', currentSession.user.id);
+        setUser(currentSession.user);
+        setSession(currentSession);
+        await fetchUserRole(currentSession.user.id);
+        return true;
+      } else {
+        logger.log('AuthProvider: No session to recover');
+        return false;
+      }
+    } catch (error: any) {
+      logger.error('AuthProvider: Exception during session recovery:', error.message);
+      return false;
+    }
+  };
+  
   const isSessionValid = async (): Promise<boolean> => {
     try {
       logger.log('AuthProvider: Checking session validity');
@@ -458,7 +505,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const now = Math.floor(Date.now() / 1000);
         if (currentSession.expires_at <= now) {
           logger.log('AuthProvider: Session has expired');
-          return false;
+          // Try to recover session
+          const recovered = await recoverSession();
+          return recovered;
         }
       }
       
@@ -491,6 +540,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             logger.log('AuthProvider: Session auto-refresh completed');
           } catch (error: any) {
             logger.error('AuthProvider: Error during auto-refresh', error.message);
+            // Try session recovery on refresh error
+            await recoverSession();
           }
         }, refreshTime * 1000);
       }
@@ -518,13 +569,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (timeUntilExpiry <= 0) {
           // Session has expired
-          logger.log('AuthProvider: Session has expired, signing out');
-          signOut();
+          logger.log('AuthProvider: Session has expired, attempting recovery');
+          recoverSession().then(recovered => {
+            if (!recovered) {
+              logger.log('AuthProvider: Session recovery failed, signing out');
+              signOut();
+            }
+          });
         } else {
           // Check again when session expires
           expiryTimer = setTimeout(() => {
-            logger.log('AuthProvider: Session expired, signing out');
-            signOut();
+            logger.log('AuthProvider: Session expired, attempting recovery');
+            recoverSession().then(recovered => {
+              if (!recovered) {
+                logger.log('AuthProvider: Session recovery failed, signing out');
+                signOut();
+              }
+            });
           }, timeUntilExpiry * 1000);
         }
       }
@@ -566,7 +627,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signIn,
         signOut,
         refreshSession,
-        isSessionValid
+        isSessionValid,
+        recoverSession // Add the new recovery function to the context
       }}
     >
       {children}
