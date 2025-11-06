@@ -61,7 +61,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           logger.log('AuthProvider: Using role from JWT token');
           setRole('admin');
         } else {
-          setRole(null);
+          // Retry mechanism for role fetching
+          logger.log('AuthProvider: Retrying role fetch in 1 second');
+          setTimeout(async () => {
+            setIsFetchingRole(false);
+            await fetchUserRole(userId);
+          }, 1000);
+          return;
         }
       } else {
         logger.log('AuthProvider: User role fetched:', data?.role ? '[REDACTED]' : null);
@@ -93,7 +99,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logger.log('AuthProvider: Using role from JWT token as fallback');
         setRole('admin');
       } else {
-        setRole(null);
+        // Retry mechanism for exceptions
+        logger.log('AuthProvider: Retrying role fetch in 2 seconds due to exception');
+        setTimeout(async () => {
+          setIsFetchingRole(false);
+          await fetchUserRole(userId);
+        }, 2000);
+        return;
       }
     } finally {
       logger.log('AuthProvider: Role fetch completed');
@@ -142,7 +154,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setTimeout(() => {
           logger.log('AuthProvider: Finished initial loading');
           setIsLoading(false);
-        }, 500);
+        }, 1000); // Reduced delay to 1 second
       }
     }
 
