@@ -1,4 +1,4 @@
-import { createBrowserClient } from '@supabase/ssr'
+import { createBrowserClient, type CookieOptions } from '@supabase/ssr'
 
 let browserClient: ReturnType<typeof createBrowserClient> | null = null
 
@@ -30,26 +30,40 @@ export function getSupabaseBrowserClient() {
             .find(row => row.startsWith(`${name}=`))
             ?.split('=')[1]
           
-          return value
+          return value ? decodeURIComponent(value) : undefined
         },
-        set(name: string, value: string, options: any) {
+        set(name: string, value: string, options: CookieOptions) {
           // Handle cookie setting safely
           if (typeof document === 'undefined') return
           
           try {
-            let cookie = `${name}=${value}`
+            // Ensure proper encoding
+            const encodedValue = encodeURIComponent(value)
+            let cookie = `${name}=${encodedValue}`
             
+            // Set proper cookie attributes
             if (options?.maxAge) {
               cookie += `; max-age=${options.maxAge}`
             }
-            if (options?.path) {
-              cookie += `; path=${options.path}`
+            // Always set path to root
+            cookie += '; path=/'
+            
+            if (options?.domain) {
+              cookie += `; domain=${options.domain}`
             }
+            // Set SameSite attribute properly
             if (options?.sameSite) {
               cookie += `; samesite=${options.sameSite}`
+            } else {
+              // Default to Lax for better security and compatibility
+              cookie += '; samesite=Lax'
             }
-            if (options?.secure) {
-              cookie += '; secure'
+            // Set Secure attribute properly
+            if (options?.secure !== undefined) {
+              cookie += options.secure ? '; secure' : ''
+            } else {
+              // Default to secure in production (HTTPS)
+              cookie += (typeof window !== 'undefined' && window.location.protocol === 'https:') ? '; secure' : ''
             }
             
             document.cookie = cookie
@@ -57,13 +71,20 @@ export function getSupabaseBrowserClient() {
             console.warn('Failed to set cookie:', error)
           }
         },
-        remove(name: string, options: any) {
+        remove(name: string, options: CookieOptions) {
           // Handle cookie removal safely
           if (typeof document === 'undefined') return
           
           try {
-            const path = options?.path || '/'
-            document.cookie = `${name}=; path=${path}; max-age=0`
+            // Always use root path for removal
+            const path = '; path=/'
+            const domain = options?.domain || (typeof window !== 'undefined' ? window.location.hostname : '')
+            // Remove cookie with proper domain handling
+            document.cookie = `${name}=;${path}; max-age=0`
+            if (domain) {
+              document.cookie = `${name}=;${path}; domain=${domain}; max-age=0`
+              document.cookie = `${name}=;${path}; domain=.${domain}; max-age=0`
+            }
           } catch (error) {
             console.warn('Failed to remove cookie:', error)
           }

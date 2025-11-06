@@ -49,13 +49,15 @@ export default async function proxy(request: NextRequest) {
 
   response.headers.set('Access-Control-Allow-Credentials', 'true')
   
+  // Handle Cloudflare cookies properly - only remove specific problematic ones
   const cookies = request.cookies.getAll()
   cookies.forEach(cookie => {
-    if (cookie.name.startsWith('__cf_')) {
+    // Remove specific Cloudflare cookies that can cause issues with Supabase auth
+    if (cookie.name === '__cf_bm' || cookie.name === '__cfduid') {
       try {
         response.cookies.delete(cookie.name)
       } catch (error) {
-        // Silently fail
+        console.warn(`Failed to remove Cloudflare cookie ${cookie.name}:`, error)
       }
     }
   })

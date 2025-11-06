@@ -80,8 +80,10 @@ const nextConfig: NextConfig = {
     ]
   },
   
-  // Fix Turbopack configuration
-  turbopack: {}
+  // Fix Turbopack configuration - explicitly set root directory
+  turbopack: {
+    root: '.'
+  }
 }
 
 // Bundle analyzer configuration

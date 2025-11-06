@@ -43,28 +43,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const supabaseRef = useRef(getSupabaseBrowserClient());
   const supabase = supabaseRef.current;
 
-  // Suppress Cloudflare cookie warnings in console
-  useEffect(() => {
-    // Suppress Cloudflare cookie warnings in console
-    const originalError = console.error
-    console.error = (...args) => {
-      if (
-        typeof args[0] === 'string' && 
-        (args[0].includes('__cf_bm') || 
-         args[0].includes('invalid domain') ||
-         args[0].includes('Cookie'))
-      ) {
-        // Suppress these warnings
-        return
-      }
-      originalError.apply(console, args)
-    }
-
-    return () => {
-      console.error = originalError
-    }
-  }, [])
-
   // Cleanup helper for timeouts
   const clearAllTimeouts = useCallback(() => {
     pendingTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
@@ -402,39 +380,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Sign out
   const signOut = async (): Promise<void> => {
     try {
-      logger.log('AuthProvider: Signing out');
-      setIsLoading(true);
+      logger.log('AuthProvider: Signing out')
+      setIsLoading(true)
       
       // Set flag to prevent auto re-login
       if (typeof window !== 'undefined') {
-        sessionStorage.setItem('just_signed_out', 'true');
+        sessionStorage.setItem('just_signed_out', 'true')
       }
       
       // Clear all pending operations
-      clearAllTimeouts();
+      clearAllTimeouts()
       if (roleAbortControllerRef.current) {
-        roleAbortControllerRef.current.abort();
+        roleAbortControllerRef.current.abort()
       }
       
       // Clear state immediately
-      setUser(null);
-      setSession(null);
-      setRole(null);
-      roleCache.clear();
-      retryAttemptsRef.current.clear();
-      lastFetchedUserIdRef.current = null;
+      setUser(null)
+      setSession(null)
+      setRole(null)
+      roleCache.clear()
+      retryAttemptsRef.current.clear()
+      lastFetchedUserIdRef.current = null
       
       // Sign out from Supabase with global scope
       try {
         const { error } = await supabase.auth.signOut({
           scope: 'global'
-        });
+        })
         
         if (error && error.message !== 'Auth session missing!') {
-          logger.error('AuthProvider: Error during sign out:', error.message);
+          logger.error('AuthProvider: Error during sign out:', error.message)
         }
       } catch (err) {
-        logger.error('AuthProvider: Exception during sign out:', err);
+        logger.error('AuthProvider: Exception during sign out:', err)
       }
       
       // Clear all browser storage
@@ -443,54 +421,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           Object.keys(localStorage).forEach(key => {
             if (key.startsWith('sb-') || key.includes('supabase')) {
-              localStorage.removeItem(key);
+              localStorage.removeItem(key)
             }
-          });
+          })
         } catch (err) {
-          logger.error('Failed to clear localStorage:', err);
+          logger.error('Failed to clear localStorage:', err)
         }
         
         // Clear sessionStorage (except our flag)
         try {
           Object.keys(sessionStorage).forEach(key => {
             if ((key.startsWith('sb-') || key.includes('supabase')) && key !== 'just_signed_out') {
-              sessionStorage.removeItem(key);
+              sessionStorage.removeItem(key)
             }
-          });
+          })
         } catch (err) {
-          logger.error('Failed to clear sessionStorage:', err);
+          logger.error('Failed to clear sessionStorage:', err)
         }
         
-        // Clear auth cookies
+        // Clear auth cookies properly
         try {
-          document.cookie.split(';').forEach(cookie => {
-            const name = cookie.split('=')[0].trim();
+          // Get all cookies and filter for Supabase-related ones
+          const cookies = document.cookie.split(';')
+          
+          cookies.forEach(cookie => {
+            const name = cookie.trim().split('=')[0]
             if (name.includes('supabase') || name.includes('sb-') || name.includes('auth')) {
-              // Clear with different path and domain combinations
-              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
-              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}`;
+              // Remove cookie with proper domain and path handling
+              const domain = window.location.hostname
+              try {
+                document.cookie = `${name}=; path=/; max-age=0`
+                document.cookie = `${name}=; path=/; domain=${domain}; max-age=0`
+                document.cookie = `${name}=; path=/; domain=.${domain}; max-age=0`
+              } catch (removeError) {
+                logger.error(`Failed to remove cookie ${name}:`, removeError)
+              }
             }
-          });
+          })
         } catch (err) {
-          logger.error('Failed to clear cookies:', err);
+          logger.error('Failed to clear cookies:', err)
         }
       }
       
-      logger.log('AuthProvider: Sign out completed, all data cleared');
+      logger.log('AuthProvider: Sign out completed, all data cleared')
     } catch (error: any) {
-      logger.error('AuthProvider: Error signing out:', error.message);
+      logger.error('AuthProvider: Error signing out:', error.message)
       // Ensure state is cleared even on error
-      setUser(null);
-      setSession(null);
-      setRole(null);
-      lastFetchedUserIdRef.current = null;
+      setUser(null)
+      setSession(null)
+      setRole(null)
+      lastFetchedUserIdRef.current = null
     } finally {
       if (isMountedRef.current) {
-        setIsLoading(false);
+        setIsLoading(false)
       }
     }
-  };
+  }
 
   // Refresh session
   const refreshSession = useCallback(async (): Promise<Session | null> => {
