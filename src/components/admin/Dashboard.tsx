@@ -110,10 +110,13 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!authLoading) {
       if (!user || role !== 'admin') {
-        redirect('/login')
+        // Only redirect on client side
+        if (typeof window !== 'undefined') {
+          router.push('/login')
+        }
       }
     }
-  }, [user, role, authLoading])
+  }, [user, role, authLoading, router])
 
   // Add timeout to prevent infinite loading
   useEffect(() => {

@@ -15,6 +15,12 @@ export default function TestRolePage() {
   useEffect(() => {
     const fetchUserAndRole = async () => {
       try {
+        // Only run on client side
+        if (typeof window === 'undefined') {
+          setIsLoading(false);
+          return;
+        }
+
         const supabase = getSupabaseBrowserClient();
         if (!supabase) {
           throw new Error('Supabase client not available');
@@ -58,6 +64,8 @@ export default function TestRolePage() {
     // Only run on client side
     if (typeof window !== 'undefined') {
       fetchUserAndRole();
+    } else {
+      setIsLoading(false);
     }
   }, []);
 
@@ -122,6 +130,11 @@ export default function TestRolePage() {
       setApiTestResult('');
     }
   };
+
+  // Don't render anything during SSR
+  if (typeof window === 'undefined') {
+    return null;
+  }
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>

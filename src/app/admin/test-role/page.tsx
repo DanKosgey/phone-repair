@@ -8,8 +8,12 @@ export default function TestRolePage() {
   const { user, role, isLoading } = useAuth()
   const [dbRole, setDbRole] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
+    // Mark that we're on the client side
+    setIsClient(true)
+    
     const fetchDbRole = async () => {
       if (!user) return
       
@@ -35,6 +39,11 @@ export default function TestRolePage() {
       fetchDbRole()
     }
   }, [user, isLoading])
+
+  // Don't render anything during SSR
+  if (!isClient) {
+    return null
+  }
 
   if (isLoading) {
     return <div>Loading...</div>
