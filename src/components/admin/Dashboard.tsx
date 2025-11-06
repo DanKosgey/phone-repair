@@ -101,6 +101,23 @@ export default function AdminDashboard() {
     }
   }, [user, role, authLoading])
 
+  // Add timeout to prevent infinite loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isLoading) {
+        console.log('Dashboard: Timeout reached, forcing loading to complete');
+        setIsLoading(false);
+        setDataLoading({
+          stats: false,
+          tickets: false,
+          status: false
+        });
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timer);
+  }, [isLoading]);
+
   // Fetch all dashboard data
   useEffect(() => {
     fetchDashboardData()

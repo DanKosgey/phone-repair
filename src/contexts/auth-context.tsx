@@ -158,7 +158,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           logger.log('AuthProvider: Ignoring event:', event);
         }
         
-        setIsLoading(false);
+        // Ensure loading state is properly reset
+        if (!isLoading) {
+          setIsLoading(true);
+          setTimeout(() => setIsLoading(false), 100);
+        } else {
+          setIsLoading(false);
+        }
       }
     );
 

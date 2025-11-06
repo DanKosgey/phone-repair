@@ -89,6 +89,31 @@ interface CustomerLifetimeValue {
 export type Timeframe = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 
 export const dashboardDb = {
+  // Helper function to format period based on timeframe
+  formatPeriod(date: Date, timeframe: Timeframe): string {
+    switch (timeframe) {
+      case 'daily':
+        return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      case 'weekly': {
+        const day = date.getDay();
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(date);
+        monday.setDate(diff);
+        return `Week of ${monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      }
+      case 'monthly':
+        return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      case 'quarterly': {
+        const quarter = Math.floor(date.getMonth() / 3) + 1;
+        return `Q${quarter} ${date.getFullYear()}`;
+      }
+      case 'yearly':
+        return date.getFullYear().toString();
+      default:
+        return date.toLocaleDateString();
+    }
+  },
+
   // Get admin dashboard metrics
   async getAdminMetrics() {
     try {

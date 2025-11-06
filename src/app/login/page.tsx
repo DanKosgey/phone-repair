@@ -54,6 +54,8 @@ function LoginFormContent() {
       router.push('/');
     } else if (!user && !authLoading) {
       console.log('LoginPage: No user authenticated');
+      // Reset redirect flag when user logs out
+      hasRedirected.current = false;
     }
   }, [user, role, authLoading, isFetchingRole, router, searchParams]); // Add isFetchingRole to dependencies
 
@@ -72,6 +74,8 @@ function LoginFormContent() {
 
     console.log('LoginPage: Attempting sign in for:', email);
     try {
+      // Reset redirect flag before signing in
+      hasRedirected.current = false;
       await signIn(email, password);
       console.log('LoginPage: Sign in successful');
       
@@ -101,7 +105,10 @@ function LoginFormContent() {
     console.log('LoginPage: Showing loading state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="text-muted-foreground">Authenticating...</p>
+        </div>
       </div>
     );
   }
@@ -175,7 +182,10 @@ export default function AdminLoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
     }>
       <LoginFormContent />

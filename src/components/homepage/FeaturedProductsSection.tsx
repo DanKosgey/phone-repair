@@ -6,10 +6,50 @@ import { motion } from "framer-motion";
 import { FeaturedProductCard } from "@/components/homepage/FeaturedProductCard";
 import { Database } from "../../../types/database.types";
 import { Star, Zap } from "lucide-react";
+import { useFeaturedProducts } from "@/hooks/use-featured-products";
 
 type Product = Database['public']['Tables']['products']['Row'];
 
-export function FeaturedProductsSection({ featuredProducts }: { featuredProducts: Product[] }) {
+export function FeaturedProductsSection() {
+  const { data: featuredProducts = [], isLoading, error } = useFeaturedProducts();
+
+  if (isLoading) {
+    return (
+      <section className="py-16 relative overflow-hidden">
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="flex justify-between items-center mb-8">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 bg-primary/20 rounded-full animate-pulse" />
+              <div>
+                <div className="h-8 w-48 bg-primary/20 rounded animate-pulse" />
+                <div className="h-4 w-64 bg-primary/10 rounded mt-2 animate-pulse" />
+              </div>
+            </div>
+            <div className="h-10 w-48 bg-primary/20 rounded animate-pulse" />
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, index) => (
+              <div key={index} className="h-80 bg-primary/10 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="py-16 relative overflow-hidden">
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">Failed to load featured products</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-16 relative overflow-hidden">
       {/* Animated background elements */}

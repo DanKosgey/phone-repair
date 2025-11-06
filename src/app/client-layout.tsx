@@ -8,6 +8,7 @@ import { QueryClientProvider } from "@tanstack/react-query"
 import { queryClient } from "@/lib/query-client"
 import { useRealtimeTickets, useRealtimeProducts, useRealtimeOrders, useRealtimeCustomers } from "@/hooks/use-realtime"
 import { AuthProvider } from '@/contexts/auth-context'
+import { WebVitalsTracker } from '@/components/performance/WebVitalsTracker'
 
 // Component to handle real-time subscriptions
 const RealtimeHandler = () => {
@@ -29,6 +30,7 @@ export default function ClientLayout({
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
+          <WebVitalsTracker />
           <Toaster />
           <Sonner />
           <RealtimeHandler />

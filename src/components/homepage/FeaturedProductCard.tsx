@@ -34,7 +34,7 @@ export function FeaturedProductCard({ product }: { product: Product }) {
   const isBestSeller = (product.price || 0) > 50000;
 
   return (
-    <Card className="h-full border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden bg-gradient-to-br from-background to-primary/5 relative lively-bounce">
+    <Card className="h-full border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden bg-gradient-to-br from-background to-primary/5 relative flex flex-col">
       {/* Animated border for featured products */}
       {isFeatured && (
         <motion.div
@@ -65,6 +65,11 @@ export function FeaturedProductCard({ product }: { product: Product }) {
               width={300}
               height={300}
               className="h-full w-full object-cover"
+              quality={75}
+              placeholder="blur"
+              blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PC9zdmc+"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              loading="lazy"
             />
           ) : (
             <div className="bg-primary/10 rounded-full p-4">
@@ -106,7 +111,7 @@ export function FeaturedProductCard({ product }: { product: Product }) {
         {/* Hot deal badge with pulse animation */}
         {isHotDeal && (
           <motion.div
-            className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 hot-deal-pulse"
+            className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1"
             animate={{
               scale: [1, 1.1, 1],
             }}
@@ -145,7 +150,7 @@ export function FeaturedProductCard({ product }: { product: Product }) {
         </motion.div>
       </CardHeader>
       
-      <CardContent>
+      <CardContent className="mt-auto">
         <div className="flex justify-between items-center">
           <motion.span 
             className="text-2xl font-bold text-primary"
