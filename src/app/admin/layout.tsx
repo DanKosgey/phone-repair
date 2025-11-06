@@ -3,7 +3,7 @@
 import { AdminSidebar } from "@/components/layout/AdminSidebar"
 import { useAuth } from '@/contexts/auth-context'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { Button } from "@/components/ui/button"
 import { LogOut } from "lucide-react"
 import { useToast } from '@/hooks/use-toast'
@@ -13,157 +13,240 @@ export default function AdminRootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { user, role, signOut, isLoading } = useAuth()
+  const { user, role, signOut, isLoading, isFetchingRole } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
+  
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
-  const [authCheckTimeout, setAuthCheckTimeout] = useState(false)
-  const [roleCheckAttempts, setRoleCheckAttempts] = useState(0)
+  const [hasRedirected, setHasRedirected] = useState(false)
+  
+  // Refs to track component state and prevent memory leaks
+  const isMountedRef = useRef(true)
+  const authCheckTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const roleCheckTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  useEffect(() => {
-    console.log('AdminLayout: Auth state updated in useEffect', { 
-      userId: user?.id, 
-      role, 
-      isLoading
-    });
-    
-    // Check authentication and redirect if needed
-    if (!isLoading) {
-      if (!user) {
-        console.log('AdminLayout: No user authenticated, redirecting to login');
-        router.push('/login');
-      } else if (user && role !== 'admin') {
-        // Only redirect if role is explicitly not admin
-        // If role is null, we might still be fetching it
-        if (role !== null) {
-          console.log('AdminLayout: User authenticated but not admin, redirecting to home. User role:', role);
-          router.push('/');
-        } else {
-          console.log('AdminLayout: User authenticated but role still loading');
-          // Don't redirect yet, wait for role to load
-        }
-      } else if (user && role === 'admin') {
-        console.log('AdminLayout: User authorized, rendering admin layout for user:', user.id);
-        setIsCheckingAuth(false);
-      }
+  // Cleanup function for all timers
+  const clearAllTimers = useCallback(() => {
+    if (authCheckTimerRef.current) {
+      clearTimeout(authCheckTimerRef.current)
+      authCheckTimerRef.current = null
     }
-  }, [user, role, isLoading, router])
-
-  // Add timeout to prevent infinite loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (isLoading || isCheckingAuth) {
-        console.log('AdminLayout: Timeout reached, setting timeout flag');
-        setAuthCheckTimeout(true);
-        setIsCheckingAuth(false);
-      }
-    }, 5000); // 5 second timeout
-
-    return () => clearTimeout(timer);
-  }, [isLoading, isCheckingAuth]);
-
-  // Additional timeout for role confirmation with more aggressive fallback
-  useEffect(() => {
-    let roleTimer: NodeJS.Timeout | null = null;
-    
-    if (user && (isLoading || isCheckingAuth || authCheckTimeout)) {
-      // If role is still null after multiple attempts, assume admin since we're on admin route
-      if (role === null && roleCheckAttempts >= 2) { // Increased attempts to 2
-        console.log('AdminLayout: Multiple attempts to fetch role failed, assuming admin access on admin route');
-        setIsCheckingAuth(false);
-        return;
-      }
-      
-      roleTimer = setTimeout(() => {
-        console.log('AdminLayout: Role confirmation timeout reached, attempt:', roleCheckAttempts + 1);
-        if (role === 'admin') {
-          console.log('AdminLayout: Role confirmed as admin after timeout');
-          setIsCheckingAuth(false);
-        } else if (role !== null) {
-          // Role is explicitly not admin
-          console.log('AdminLayout: Role confirmed as non-admin after timeout, redirecting to home');
-          router.push('/');
-        } else {
-          // Role is still null, but we have a user on admin route
-          console.log('AdminLayout: Role still null but on admin route, incrementing attempts');
-          setRoleCheckAttempts(prev => prev + 1);
-        }
-      }, 3000); // Increased timeout to 3 seconds for role confirmation
+    if (roleCheckTimerRef.current) {
+      clearTimeout(roleCheckTimerRef.current)
+      roleCheckTimerRef.current = null
     }
+    if (redirectTimeoutRef.current) {
+      clearTimeout(redirectTimeoutRef.current)
+      redirectTimeoutRef.current = null
+    }
+  }, [])
 
-    return () => {
-      if (roleTimer) {
-        clearTimeout(roleTimer);
-      }
-    };
-  }, [user, role, isLoading, isCheckingAuth, authCheckTimeout, roleCheckAttempts, router]);
-
-  const handleSignOut = async () => {
-    console.log('AdminLayout: Signing out user:', user?.id);
+  // Handle sign out with proper error handling
+  const handleSignOut = useCallback(async () => {
+    if (!isMountedRef.current) return
+    
+    console.log('AdminLayout: Signing out user')
     try {
-      await signOut();
-      console.log('AdminLayout: Sign out completed, redirecting to login');
-      toast({
-        title: "Signed out",
-        description: "You have been successfully signed out.",
-      });
-      router.push('/login');
+      await signOut()
+      console.log('AdminLayout: Sign out completed')
+      
+      if (isMountedRef.current) {
+        toast({
+          title: "Signed out",
+          description: "You have been successfully signed out.",
+        })
+        router.push('/login')
+      }
     } catch (error: any) {
-      console.error('AdminLayout: Error during sign out:', error);
-      // Handle AuthSessionMissingError specifically
+      console.error('AdminLayout: Error during sign out:', error)
+      
+      if (!isMountedRef.current) return
+      
       if (error.message === 'Auth session missing!') {
         toast({
           title: "Session expired",
           description: "Your session has already expired. You have been logged out.",
-        });
+        })
       } else {
         toast({
           title: "Sign out issue",
           description: "There was a problem signing out. You have been logged out locally.",
           variant: "destructive",
-        });
+        })
       }
-      // Even if sign out fails, redirect to login page
-      router.push('/login');
+      
+      router.push('/login')
     }
-  }
+  }, [signOut, toast, router])
+
+  // Main authentication check effect
+  useEffect(() => {
+    // Don't run if already redirected
+    if (hasRedirected || !isMountedRef.current) return
+
+    console.log('AdminLayout: Auth state check', { 
+      userId: user?.id, 
+      role, 
+      isLoading,
+      isFetchingRole
+    })
+
+    // Wait for initial loading to complete
+    if (isLoading) {
+      return
+    }
+
+    // No user - redirect to login
+    if (!user) {
+      console.log('AdminLayout: No user authenticated, redirecting to login')
+      setHasRedirected(true)
+      router.push('/login')
+      return
+    }
+
+    // User exists but role is explicitly not admin
+    if (role !== null && role !== 'admin') {
+      console.log('AdminLayout: User not admin, redirecting to home. Role:', role)
+      setHasRedirected(true)
+      
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to access the admin dashboard.",
+        variant: "destructive",
+      })
+      
+      router.push('/')
+      return
+    }
+
+    // User exists and is admin
+    if (role === 'admin') {
+      console.log('AdminLayout: User authorized as admin')
+      setIsCheckingAuth(false)
+      return
+    }
+
+    // User exists but role is null (still fetching)
+    if (role === null) {
+      console.log('AdminLayout: User authenticated but role still loading')
+      // Keep checking auth state
+      setIsCheckingAuth(true)
+    }
+  }, [user, role, isLoading, isFetchingRole, router, toast, hasRedirected])
+
+  // Timeout for role fetching
+  useEffect(() => {
+    // Clear any existing timers
+    clearAllTimers()
+
+    // Don't set timeout if we already have a role or no user
+    if (!user || role !== null || hasRedirected) {
+      return
+    }
+
+    // If still loading after reasonable time, show warning but don't redirect
+    if (isLoading || isFetchingRole) {
+      console.log('AdminLayout: Setting role fetch timeout')
+      
+      roleCheckTimerRef.current = setTimeout(() => {
+        if (!isMountedRef.current || hasRedirected) return
+        
+        console.log('AdminLayout: Role fetch timeout reached')
+        
+        // If we still don't have a role after timeout, redirect to home
+        // This prevents users from being stuck in loading state
+        if (role === null) {
+          console.log('AdminLayout: Role fetch timed out, denying access')
+          setHasRedirected(true)
+          
+          toast({
+            title: "Authentication Timeout",
+            description: "Could not verify admin permissions. Please try again.",
+            variant: "destructive",
+          })
+          
+          router.push('/')
+        } else if (role === 'admin') {
+          console.log('AdminLayout: Role confirmed as admin after timeout')
+          setIsCheckingAuth(false)
+        }
+      }, 8000) // 8 second timeout for role verification
+    }
+
+    return clearAllTimers
+  }, [user, role, isLoading, isFetchingRole, router, toast, hasRedirected, clearAllTimers])
+
+  // Global timeout to prevent infinite loading
+  useEffect(() => {
+    if (!user || hasRedirected) return
+
+    authCheckTimerRef.current = setTimeout(() => {
+      if (!isMountedRef.current || hasRedirected) return
+      
+      console.log('AdminLayout: Global auth timeout reached')
+      
+      // If we're still loading after 10 seconds, something is wrong
+      if (isCheckingAuth) {
+        console.log('AdminLayout: Auth check taking too long, denying access')
+        setHasRedirected(true)
+        setIsCheckingAuth(false)
+        
+        toast({
+          title: "Authentication Error",
+          description: "Authentication is taking too long. Please try logging in again.",
+          variant: "destructive",
+        })
+        
+        router.push('/login')
+      }
+    }, 10000) // 10 second global timeout
+
+    return () => {
+      if (authCheckTimerRef.current) {
+        clearTimeout(authCheckTimerRef.current)
+        authCheckTimerRef.current = null
+      }
+    }
+  }, [user, isCheckingAuth, router, toast, hasRedirected])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+      clearAllTimers()
+      console.log('AdminLayout: Cleanup completed')
+    }
+  }, [clearAllTimers])
 
   // Show loading state while checking authentication
-  if (isLoading || isCheckingAuth) {
-    console.log('AdminLayout: Showing loading state', { isLoading, isCheckingAuth, authCheckTimeout, roleCheckAttempts });
+  if (isLoading || (isCheckingAuth && !hasRedirected)) {
+    console.log('AdminLayout: Showing loading state')
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p className="text-muted-foreground">Authenticating...</p>
-          {(authCheckTimeout || roleCheckAttempts > 0) && (
-            <p className="text-sm text-muted-foreground">Taking longer than expected... (Attempt {roleCheckAttempts + 1})</p>
+          <p className="text-muted-foreground">Verifying permissions...</p>
+          {isFetchingRole && (
+            <p className="text-sm text-muted-foreground">Loading user role...</p>
           )}
         </div>
       </div>
     )
   }
 
-  // If user is not authenticated, redirect to login
+  // Double-check: if no user, don't render (redirect should have happened)
   if (!user) {
-    console.log('AdminLayout: No user, redirecting to login');
-    router.push('/login');
-    return null;
+    return null
   }
 
-  // If role is explicitly not admin, redirect to home
-  if (role !== null && role !== 'admin') {
-    console.log('AdminLayout: User not admin, redirecting to home. Role:', role);
-    router.push('/');
-    return null;
+  // Double-check: if role is not admin, don't render (redirect should have happened)
+  if (role !== 'admin') {
+    return null
   }
 
-  // If we've exhausted attempts and still have no role, but we're on admin route, assume admin
-  if (role === null && roleCheckAttempts >= 2) {
-    console.log('AdminLayout: Assuming admin access after failed attempts since we are on admin route');
-  }
-
-  console.log('AdminLayout: Rendering admin layout for user:', user?.id);
+  // User is authenticated and authorized as admin
+  console.log('AdminLayout: Rendering admin layout')
   return (
     <div className="min-h-screen flex w-full bg-background">
       <AdminSidebar />

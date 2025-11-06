@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { getSupabaseBrowserClient } from '@/server/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 import { logger } from '@/lib/utils/logger';
@@ -19,7 +19,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refreshSession: () => Promise<Session | null>;
   isSessionValid: () => Promise<boolean>;
-  recoverSession: () => Promise<boolean>; // Add the new recovery function to the interface
+  recoverSession: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,306 +31,295 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isFetchingRole, setIsFetchingRole] = useState(false);
   
-  // Get Supabase client instance
-  const supabase = getSupabaseBrowserClient();
+  // Refs to prevent infinite loops and memory leaks
+  const isMountedRef = useRef(true);
+  const isInitializedRef = useRef(false);
+  const roleAbortControllerRef = useRef<AbortController | null>(null);
+  const pendingTimeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set());
+  const retryAttemptsRef = useRef<Map<string, number>>(new Map());
+  const lastFetchedUserIdRef = useRef<string | null>(null);
+  
+  // Get Supabase client instance (stable reference)
+  const supabaseRef = useRef(getSupabaseBrowserClient());
+  const supabase = supabaseRef.current;
 
-  // Check for cached role on mount
-  useEffect(() => {
-    if (user?.id) {
-      const cached = roleCache.get(user.id);
-      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-        logger.log('AuthProvider: Using cached role on mount for user:', user.id);
-        setRole(cached.role);
+  // Cleanup helper for timeouts
+  const clearAllTimeouts = useCallback(() => {
+    pendingTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+    pendingTimeoutsRef.current.clear();
+  }, []);
+
+  // Safe timeout that tracks itself
+  const safeSetTimeout = useCallback((callback: () => void, delay: number): NodeJS.Timeout => {
+    const timeout = setTimeout(() => {
+      if (isMountedRef.current) {
+        callback();
       }
-    }
-  }, [user?.id]);
+      pendingTimeoutsRef.current.delete(timeout);
+    }, delay);
+    pendingTimeoutsRef.current.add(timeout);
+    return timeout;
+  }, []);
 
-  // Memoize fetchUserRole to prevent recreation on every render
-  const fetchUserRole = useCallback(async (userId: string) => {
+  // Fetch user role with proper cleanup and error handling
+  const fetchUserRole = useCallback(async (userId: string): Promise<void> => {
+    if (!userId || !isMountedRef.current) return;
+
+    // Prevent re-fetching for the same user
+    if (lastFetchedUserIdRef.current === userId && isFetchingRole) {
+      logger.log('AuthProvider: Role fetch already in progress for this user');
+      return;
+    }
+
     // Check cache first
     const cached = roleCache.get(userId);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      logger.log('AuthProvider: Using cached role for user:', userId);
+      logger.log('AuthProvider: Using cached role');
       setRole(cached.role);
+      lastFetchedUserIdRef.current = userId;
       return;
     }
 
-    // Prevent concurrent role fetches
-    if (isFetchingRole) {
-      logger.log('AuthProvider: Role fetch already in progress, skipping');
-      return;
+    // Cancel any pending role fetch
+    if (roleAbortControllerRef.current) {
+      roleAbortControllerRef.current.abort();
     }
+
+    roleAbortControllerRef.current = new AbortController();
+    const currentAbortController = roleAbortControllerRef.current;
 
     setIsFetchingRole(true);
-    logger.log('AuthProvider: Fetching role for user:', userId);
+    lastFetchedUserIdRef.current = userId;
+    logger.log('AuthProvider: Fetching role for user');
     
     try {
-      logger.log('AuthProvider: Querying profiles table for user ID:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
+        .abortSignal(currentAbortController.signal)
         .single();
 
-      logger.log('AuthProvider: Profile query result:', { data: data ? '[REDACTED]' : null, hasError: !!error });
-      logger.log('AuthProvider: Profile query error details:', error);
+      // Check if this request was aborted
+      if (currentAbortController.signal.aborted || !isMountedRef.current) {
+        logger.log('AuthProvider: Role fetch was aborted or component unmounted');
+        return;
+      }
 
       if (error) {
         logger.error('AuthProvider: Error fetching user role:', error.message);
-        logger.error('AuthProvider: Error code:', error.code);
-        logger.error('AuthProvider: Error details:', error);
         
-        // Handle specific error types
+        // Handle network errors with exponential backoff
         if (error.code === 'PGRST301' || error.message.includes('timeout') || error.message.includes('network')) {
-          // Network or timeout error - retry with exponential backoff
-          logger.log('AuthProvider: Network error detected, implementing exponential backoff retry');
-          const retryCount = roleCache.get(`retry_${userId}`)?.role ? parseInt(roleCache.get(`retry_${userId}`)?.role || '0') : 0;
+          const retryCount = retryAttemptsRef.current.get(userId) || 0;
           const maxRetries = 3;
           
           if (retryCount < maxRetries) {
-            const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+            const delay = Math.pow(2, retryCount) * 1000;
             logger.log(`AuthProvider: Retry attempt ${retryCount + 1}/${maxRetries} in ${delay}ms`);
             
-            // Store retry count
-            roleCache.set(`retry_${userId}`, { role: (retryCount + 1).toString(), timestamp: Date.now() });
+            retryAttemptsRef.current.set(userId, retryCount + 1);
             
-            setTimeout(async () => {
-              setIsFetchingRole(false);
-              await fetchUserRole(userId);
+            safeSetTimeout(() => {
+              if (isMountedRef.current) {
+                setIsFetchingRole(false);
+                lastFetchedUserIdRef.current = null;
+                fetchUserRole(userId);
+              }
             }, delay);
             return;
           } else {
-            logger.error('AuthProvider: Max retries exceeded for role fetching');
-            // Clear retry count
-            roleCache.delete(`retry_${userId}`);
+            logger.error('AuthProvider: Max retries exceeded');
+            retryAttemptsRef.current.delete(userId);
           }
         }
         
-        // In production, if we can't fetch the role, check if we can determine it from JWT
-        if (session?.user?.role === 'admin') {
-          logger.log('AuthProvider: Using role from JWT token');
-          setRole('admin');
-          // Cache the role
-          roleCache.set(userId, { role: 'admin', timestamp: Date.now() });
-        } else {
-          // For other errors, retry once after 2 seconds
-          logger.log('AuthProvider: Retrying role fetch in 2 seconds due to error');
-          setTimeout(async () => {
-            setIsFetchingRole(false);
-            await fetchUserRole(userId);
-          }, 2000);
-          return;
-        }
+        setRole(null);
       } else {
-        // Success - clear any retry count
-        roleCache.delete(`retry_${userId}`);
+        // Success - clear retry count
+        retryAttemptsRef.current.delete(userId);
         
-        logger.log('AuthProvider: User role fetched:', data?.role ? '[REDACTED]' : null);
-        setRole(data?.role || null);
-        // Cache the role
-        roleCache.set(userId, { role: data?.role || null, timestamp: Date.now() });
-        
-        // Additional logging for debugging
-        if (data?.role === 'admin') {
-          logger.log('AuthProvider: Confirmed user has admin role');
-        } else {
-          logger.log('AuthProvider: User does not have admin role, actual role:', data?.role);
-        }
-        
-        // Refresh the session to ensure the role is properly set in the JWT
-        logger.log('AuthProvider: Refreshing session to update JWT with role claim');
-        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError) {
-          logger.error('AuthProvider: Session refresh error:', refreshError.message);
-        } else if (refreshedSession) {
-          logger.log('AuthProvider: Session refreshed successfully with role claim');
-          setSession(refreshedSession);
-        }
+        const userRole = data?.role || null;
+        logger.log('AuthProvider: User role fetched successfully');
+        setRole(userRole);
+        roleCache.set(userId, { role: userRole, timestamp: Date.now() });
       }
     } catch (error: any) {
-      logger.error('AuthProvider: Exception during role fetching:', error.message);
-      logger.error('AuthProvider: Exception stack:', error.stack);
-      
-      // Handle network exceptions
-      if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('timeout')) {
-        logger.log('AuthProvider: Network exception detected, implementing retry logic');
-        const retryCount = roleCache.get(`retry_${userId}`)?.role ? parseInt(roleCache.get(`retry_${userId}`)?.role || '0') : 0;
-        const maxRetries = 3;
-        
-        if (retryCount < maxRetries) {
-          const delay = Math.pow(2, retryCount) * 1500; // Exponential backoff: 1.5s, 3s, 6s
-          logger.log(`AuthProvider: Exception retry attempt ${retryCount + 1}/${maxRetries} in ${delay}ms`);
-          
-          // Store retry count
-          roleCache.set(`retry_${userId}`, { role: (retryCount + 1).toString(), timestamp: Date.now() });
-          
-          setTimeout(async () => {
-            setIsFetchingRole(false);
-            await fetchUserRole(userId);
-          }, delay);
-          return;
-        } else {
-          logger.error('AuthProvider: Max retries exceeded for role fetching due to exceptions');
-          // Clear retry count
-          roleCache.delete(`retry_${userId}`);
-        }
-      }
-      
-      // Fallback: check if we can determine role from JWT in case of network errors
-      if (session?.user?.role === 'admin') {
-        logger.log('AuthProvider: Using role from JWT token as fallback');
-        setRole('admin');
-        // Cache the role
-        roleCache.set(userId, { role: 'admin', timestamp: Date.now() });
-      } else {
-        // For other exceptions, retry once after 3 seconds
-        logger.log('AuthProvider: Retrying role fetch in 3 seconds due to exception');
-        setTimeout(async () => {
-          setIsFetchingRole(false);
-          await fetchUserRole(userId);
-        }, 3000);
+      if (error.name === 'AbortError' || !isMountedRef.current) {
+        logger.log('AuthProvider: Role fetch aborted');
         return;
       }
+      
+      logger.error('AuthProvider: Exception during role fetching:', error.message);
+      setRole(null);
     } finally {
-      logger.log('AuthProvider: Role fetch completed');
-      setIsFetchingRole(false);
+      if (isMountedRef.current) {
+        setIsFetchingRole(false);
+      }
     }
-  }, [isFetchingRole, supabase, session]);
+  }, [isFetchingRole, supabase, safeSetTimeout]);
 
+  // Initialize authentication - ONLY RUNS ONCE
   useEffect(() => {
+    // Prevent multiple initializations
+    if (isInitializedRef.current) {
+      return;
+    }
+    
+    isInitializedRef.current = true;
     logger.log('AuthProvider: Initializing authentication');
     
-    // Enhanced session debugging
-    logger.log('AuthProvider: Document cookie state:', typeof document !== 'undefined' ? document.cookie : 'No document available');
-    
-    // Check active sessions
     const initAuth = async () => {
       try {
-        logger.log('AuthProvider: Checking for existing session');
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-        
-        // Enhanced debugging
-        logger.log('AuthProvider: Raw session data:', JSON.stringify(currentSession, null, 2));
-        logger.log('AuthProvider: Session error:', error);
         
         if (error) {
           logger.error('AuthProvider: Error getting session:', error.message);
-          // Handle AuthSessionMissingError specifically
           if (error.message === 'Auth session missing!') {
-            logger.warn('AuthProvider: Auth session missing during initialization, treating as no session');
-            // Reset state cleanly
+            logger.warn('AuthProvider: Auth session missing during initialization');
             setUser(null);
             setSession(null);
             setRole(null);
           }
-        }
-        
-        logger.log('AuthProvider: Current session check result:', currentSession ? 'Session found' : 'No session');
-        
-        if (currentSession?.user) {
-          logger.log('AuthProvider: Setting user from session:', currentSession.user.id);
+        } else if (currentSession?.user) {
+          logger.log('AuthProvider: Setting user from session');
           setUser(currentSession.user);
           setSession(currentSession);
-          // Fetch role immediately
           await fetchUserRole(currentSession.user.id);
         } else {
           logger.log('AuthProvider: No active session found');
         }
       } catch (error: any) {
         logger.error('AuthProvider: Error initializing auth:', error.message);
-        // Even if there's an error, we still want to finish loading
-        // This prevents infinite loading states
       } finally {
-        // Set loading to false after a small delay to ensure role is fetched
-        setTimeout(() => {
-          logger.log('AuthProvider: Finished initial loading');
+        if (isMountedRef.current) {
           setIsLoading(false);
-        }, 1000); // Reduced delay to 1 second
+        }
       }
-    }
+    };
 
     initAuth();
 
-    // Listen to auth changes with enhanced debugging
+    // Listen to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        logger.log('AuthProvider: Auth state changed event:', event);
-        logger.log('AuthProvider: Session in event:', currentSession ? 'Present' : 'None');
-        logger.log('AuthProvider: Full session object:', JSON.stringify(currentSession, null, 2));
+        logger.log('AuthProvider: Auth state changed:', event);
         
-        // Only handle specific events to avoid duplicates
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (currentSession?.user) {
-            logger.log('AuthProvider: Processing sign in/refresh for user:', currentSession.user.id);
-            if (currentSession.user.id !== user?.id) {
-              logger.log('AuthProvider: User changed, updating state');
+        if (!isMountedRef.current) return;
+
+        switch (event) {
+          case 'SIGNED_IN':
+            if (currentSession?.user) {
               setUser(currentSession.user);
               setSession(currentSession);
+              lastFetchedUserIdRef.current = null; // Reset to allow fetch
               await fetchUserRole(currentSession.user.id);
-            } else {
-              logger.log('AuthProvider: Same user, skipping role fetch');
             }
-          }
-        } else if (event === 'SIGNED_OUT') {
-          logger.log('AuthProvider: Processing sign out');
-          setUser(null);
-          setSession(null);
-          setRole(null);
-          // Clear cache on sign out
-          roleCache.clear();
-        } else if (event === 'USER_UPDATED') {
-          logger.log('AuthProvider: User updated event, refreshing session');
-          // Refresh session when user is updated
-          const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
-          if (refreshedSession?.user) {
-            setUser(refreshedSession.user);
-            setSession(refreshedSession);
-            await fetchUserRole(refreshedSession.user.id);
-          }
-        } else {
-          logger.log('AuthProvider: Ignoring event:', event);
-        }
-        
-        // Ensure loading state is properly reset
-        if (!isLoading) {
-          setIsLoading(true);
-          setTimeout(() => setIsLoading(false), 100);
-        } else {
-          setIsLoading(false);
+            setIsLoading(false);
+            break;
+            
+          case 'TOKEN_REFRESHED':
+            if (currentSession?.user) {
+              setUser(currentSession.user);
+              setSession(currentSession);
+              // Don't re-fetch role on token refresh if we already have it
+              if (!role) {
+                lastFetchedUserIdRef.current = null;
+                await fetchUserRole(currentSession.user.id);
+              }
+            }
+            setIsLoading(false);
+            break;
+            
+          case 'SIGNED_OUT':
+            setUser(null);
+            setSession(null);
+            setRole(null);
+            roleCache.clear();
+            retryAttemptsRef.current.clear();
+            lastFetchedUserIdRef.current = null;
+            setIsLoading(false);
+            break;
+            
+          case 'USER_UPDATED':
+            if (currentSession?.user) {
+              setUser(currentSession.user);
+              setSession(currentSession);
+            }
+            setIsLoading(false);
+            break;
+
+          case 'INITIAL_SESSION':
+            // Ignore INITIAL_SESSION as it's handled by initAuth
+            break;
+            
+          default:
+            setIsLoading(false);
+            break;
         }
       }
     );
 
     return () => {
-      logger.log('AuthProvider: Cleaning up auth subscription');
       subscription.unsubscribe();
     };
-  }, [user?.id]); // Dependency on user ID to detect changes
+  }, []); // Empty deps - only run once
 
-  const signIn = async (email: string, password: string) => {
-    logger.log('AuthProvider: Attempting sign in for:', email);
+  // Session auto-refresh
+  useEffect(() => {
+    if (!session?.expires_at) return;
+
+    const now = Math.floor(Date.now() / 1000);
+    const timeUntilExpiry = session.expires_at - now;
+    
+    // Refresh 5 minutes before expiry
+    const refreshTime = Math.max((timeUntilExpiry - 300) * 1000, 60000);
+    
+    const refreshTimer = safeSetTimeout(async () => {
+      if (!isMountedRef.current) return;
+      
+      try {
+        logger.log('AuthProvider: Auto-refreshing session');
+        const { data: { session: refreshedSession }, error } = await supabase.auth.refreshSession();
+        
+        if (error) {
+          logger.error('AuthProvider: Error during auto-refresh:', error.message);
+        } else if (refreshedSession && isMountedRef.current) {
+          setSession(refreshedSession);
+          setUser(refreshedSession.user);
+        }
+      } catch (error: any) {
+        logger.error('AuthProvider: Exception during auto-refresh:', error.message);
+      }
+    }, refreshTime);
+    
+    return () => {
+      clearTimeout(refreshTimer);
+      pendingTimeoutsRef.current.delete(refreshTimer);
+    };
+  }, [session?.expires_at, supabase, safeSetTimeout]);
+
+  // Sign in
+  const signIn = async (email: string, password: string): Promise<void> => {
+    logger.log('AuthProvider: Attempting sign in');
     setIsLoading(true);
     
     try {
-      // Validate inputs
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         throw new Error('Please enter a valid email address');
       }
 
-      // Note: We don't validate password length for login as users may have existing passwords
       if (!password) {
         throw new Error('Password is required');
       }
 
-      logger.log('AuthProvider: Calling supabase.auth.signInWithPassword');
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        logger.error('AuthProvider: Supabase sign in error:', error.message);
-        // Provide user-friendly error messages
+        logger.error('AuthProvider: Sign in error:', error.message);
         switch (error.message) {
           case 'Invalid login credentials':
             throw new Error('Invalid email or password');
@@ -341,127 +330,131 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      if (data.user) {
-        logger.log('AuthProvider: Sign in successful, setting user and session');
+      if (data.user && isMountedRef.current) {
+        logger.log('AuthProvider: Sign in successful');
         setUser(data.user);
         setSession(data.session);
-        logger.log('AuthProvider: Fetching user role');
-        // Add timeout to role fetching to prevent hanging
-        const roleFetchTimeout = new Promise((resolve) => {
-          const timeout = setTimeout(() => {
-            logger.warn('AuthProvider: Role fetch timeout reached');
-            resolve(null);
-          }, 5000); // 5 second timeout
-          
-          fetchUserRole(data.user.id).then(() => {
-            clearTimeout(timeout);
-            resolve(null);
-          });
+        
+        // Reset fetch tracker
+        lastFetchedUserIdRef.current = null;
+        
+        // Fetch role with timeout
+        const timeoutPromise = new Promise<void>((resolve) => {
+          safeSetTimeout(() => {
+            logger.warn('AuthProvider: Role fetch timeout');
+            resolve();
+          }, 5000);
         });
         
-        // Wait for role fetch or timeout
-        await roleFetchTimeout;
-        logger.log('AuthProvider: Role fetch completed or timed out');
-      } else {
-        logger.error('AuthProvider: No user data in sign in response');
+        await Promise.race([
+          fetchUserRole(data.user.id),
+          timeoutPromise
+        ]);
+      } else if (!data.user) {
         throw new Error('Authentication failed. No user data received.');
       }
     } catch (error: any) {
       logger.error('AuthProvider: Sign in error:', error.message);
-      // Re-throw the error so it can be handled by the calling component
       throw error;
     } finally {
-      logger.log('AuthProvider: Setting isLoading to false');
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
-  const signOut = async () => {
+  // Sign out
+  const signOut = async (): Promise<void> => {
     try {
-      logger.log('AuthProvider: Signing out user:', user?.id);
+      logger.log('AuthProvider: Signing out');
       setIsLoading(true);
       
-      // Check if there's an active session before attempting to sign out
+      clearAllTimeouts();
+      if (roleAbortControllerRef.current) {
+        roleAbortControllerRef.current.abort();
+      }
+      
       if (!session) {
         logger.warn('AuthProvider: No active session to sign out');
-        // Reset state even if there's no session
         setUser(null);
         setSession(null);
         setRole(null);
+        lastFetchedUserIdRef.current = null;
         return;
       }
       
       const { error } = await supabase.auth.signOut();
-      if (error) {
-        // Handle AuthSessionMissingError specifically
-        if (error.message === 'Auth session missing!') {
-          logger.warn('AuthProvider: Auth session missing during sign out, resetting state');
-          // This is not a critical error - just reset state
-          setUser(null);
-          setSession(null);
-          setRole(null);
-          return;
-        }
+      
+      if (error && error.message !== 'Auth session missing!') {
         logger.error('AuthProvider: Error during sign out:', error.message);
         throw error;
       }
+      
       setUser(null);
       setSession(null);
       setRole(null);
-      logger.log('AuthProvider: Sign out completed successfully');
+      roleCache.clear();
+      retryAttemptsRef.current.clear();
+      lastFetchedUserIdRef.current = null;
+      logger.log('AuthProvider: Sign out completed');
     } catch (error: any) {
       logger.error('AuthProvider: Error signing out:', error.message);
-      // Still reset state on error to prevent UI issues
       setUser(null);
       setSession(null);
       setRole(null);
+      lastFetchedUserIdRef.current = null;
       throw error;
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
-  const refreshSession = async () => {
+  // Refresh session
+  const refreshSession = useCallback(async (): Promise<Session | null> => {
     try {
-      logger.log('AuthProvider: Refreshing session for user:', user?.id);
+      logger.log('AuthProvider: Refreshing session');
       const { data: { session: refreshedSession }, error } = await supabase.auth.refreshSession();
       
       if (error) {
-        // Handle AuthSessionMissingError specifically
         if (error.message === 'Auth session missing!') {
-          logger.warn('AuthProvider: Auth session missing during refresh, clearing state');
-          // Reset state cleanly
+          logger.warn('AuthProvider: Auth session missing during refresh');
           setUser(null);
           setSession(null);
           setRole(null);
+          lastFetchedUserIdRef.current = null;
           return null;
         }
         logger.error('AuthProvider: Error during session refresh:', error.message);
         throw error;
       }
       
-      if (refreshedSession) {
+      if (refreshedSession && isMountedRef.current) {
         logger.log('AuthProvider: Session refreshed successfully');
         setUser(refreshedSession.user);
         setSession(refreshedSession);
-        await fetchUserRole(refreshedSession.user.id);
+        
+        // Only fetch role if we don't have it
+        if (!role) {
+          lastFetchedUserIdRef.current = null;
+          await fetchUserRole(refreshedSession.user.id);
+        }
         return refreshedSession;
-      } else {
-        logger.log('AuthProvider: No session returned from refresh');
-        return null;
       }
+      
+      return null;
     } catch (error: any) {
       logger.error('AuthProvider: Error refreshing session:', error.message);
       throw error;
     }
-  };
-  
-  // New session recovery mechanism
-  const recoverSession = async (): Promise<boolean> => {
+  }, [supabase, fetchUserRole, role]);
+
+  // Recover session
+  const recoverSession = useCallback(async (): Promise<boolean> => {
     try {
       logger.log('AuthProvider: Attempting session recovery');
       
-      // Try to get current session
       const { data: { session: currentSession }, error } = await supabase.auth.getSession();
       
       if (error) {
@@ -469,29 +462,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
       
-      if (currentSession?.user) {
-        logger.log('AuthProvider: Session recovered for user:', currentSession.user.id);
+      if (currentSession?.user && isMountedRef.current) {
+        logger.log('AuthProvider: Session recovered');
         setUser(currentSession.user);
         setSession(currentSession);
+        lastFetchedUserIdRef.current = null;
         await fetchUserRole(currentSession.user.id);
         return true;
-      } else {
-        logger.log('AuthProvider: No session to recover');
-        return false;
       }
+      
+      logger.log('AuthProvider: No session to recover');
+      return false;
     } catch (error: any) {
       logger.error('AuthProvider: Exception during session recovery:', error.message);
       return false;
     }
-  };
-  
-  const isSessionValid = async (): Promise<boolean> => {
+  }, [supabase, fetchUserRole]);
+
+  // Check session validity
+  const isSessionValid = useCallback(async (): Promise<boolean> => {
     try {
       logger.log('AuthProvider: Checking session validity');
       const { data: { session: currentSession }, error } = await supabase.auth.getSession();
       
       if (error) {
-        logger.error('AuthProvider: Error checking session validity', error.message);
+        logger.error('AuthProvider: Error checking session validity:', error.message);
         return false;
       }
       
@@ -500,121 +495,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
       
-      // Check if session has expired
       if (currentSession.expires_at) {
         const now = Math.floor(Date.now() / 1000);
         if (currentSession.expires_at <= now) {
-          logger.log('AuthProvider: Session has expired');
-          // Try to recover session
-          const recovered = await recoverSession();
-          return recovered;
+          logger.log('AuthProvider: Session has expired, attempting recovery');
+          return await recoverSession();
         }
       }
       
       logger.log('AuthProvider: Session is valid');
       return true;
     } catch (error: any) {
-      logger.error('AuthProvider: Error validating session', error.message);
+      logger.error('AuthProvider: Error validating session:', error.message);
       return false;
     }
-  };
-  
-  // Add session timeout and refresh mechanisms
-  useEffect(() => {
-    let refreshTimer: NodeJS.Timeout;
-    
-    const setupSessionRefresh = () => {
-      if (session?.expires_at) {
-        const now = Math.floor(Date.now() / 1000);
-        const timeUntilExpiry = session.expires_at - now;
-        
-        // Refresh 5 minutes before expiry
-        const refreshTime = Math.max(timeUntilExpiry - 300, 60);
-        
-        logger.log('AuthProvider: Setting up session refresh in', refreshTime, 'seconds');
-        
-        refreshTimer = setTimeout(async () => {
-          try {
-            logger.log('AuthProvider: Auto-refreshing session');
-            await refreshSession();
-            logger.log('AuthProvider: Session auto-refresh completed');
-          } catch (error: any) {
-            logger.error('AuthProvider: Error during auto-refresh', error.message);
-            // Try session recovery on refresh error
-            await recoverSession();
-          }
-        }, refreshTime * 1000);
-      }
-    };
-    
-    if (session) {
-      setupSessionRefresh();
-    }
-    
-    return () => {
-      if (refreshTimer) {
-        clearTimeout(refreshTimer);
-      }
-    };
-  }, [session, refreshSession]);
-  
-  // Add session expiry check
-  useEffect(() => {
-    let expiryTimer: NodeJS.Timeout;
-    
-    const checkSessionExpiry = () => {
-      if (session?.expires_at) {
-        const now = Math.floor(Date.now() / 1000);
-        const timeUntilExpiry = session.expires_at - now;
-        
-        if (timeUntilExpiry <= 0) {
-          // Session has expired
-          logger.log('AuthProvider: Session has expired, attempting recovery');
-          recoverSession().then(recovered => {
-            if (!recovered) {
-              logger.log('AuthProvider: Session recovery failed, signing out');
-              signOut();
-            }
-          });
-        } else {
-          // Check again when session expires
-          expiryTimer = setTimeout(() => {
-            logger.log('AuthProvider: Session expired, attempting recovery');
-            recoverSession().then(recovered => {
-              if (!recovered) {
-                logger.log('AuthProvider: Session recovery failed, signing out');
-                signOut();
-              }
-            });
-          }, timeUntilExpiry * 1000);
-        }
-      }
-    };
-    
-    if (session) {
-      checkSessionExpiry();
-    }
-    
-    return () => {
-      if (expiryTimer) {
-        clearTimeout(expiryTimer);
-      }
-    };
-  }, [session, signOut]);
+  }, [supabase, recoverSession]);
 
-  logger.log('AuthProvider: Rendering with state:', { 
-    user: user ? `User(${user.id})` : 'null', 
-    hasRole: !!role,
-    isLoading,
-    isFetchingRole
-  });
-
-  // Log when role is set
+  // Cleanup on unmount
   useEffect(() => {
-    if (role) {
-      logger.log('AuthProvider: Role updated to:', '[REDACTED]');
-    }
-  }, [role]);
+    return () => {
+      isMountedRef.current = false;
+      clearAllTimeouts();
+      if (roleAbortControllerRef.current) {
+        roleAbortControllerRef.current.abort();
+      }
+      retryAttemptsRef.current.clear();
+      logger.log('AuthProvider: Cleaning up');
+    };
+  }, [clearAllTimeouts]);
 
   return (
     <AuthContext.Provider
@@ -628,7 +536,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signOut,
         refreshSession,
         isSessionValid,
-        recoverSession // Add the new recovery function to the context
+        recoverSession,
       }}
     >
       {children}
@@ -641,7 +549,5 @@ export const useAuth = () => {
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  // Removed excessive logging to prevent performance issues
-  // logger.log('AuthProvider: useAuth hook called');
   return context;
 };
