@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Lock } from 'lucide-react';
 import Link from 'next/link';
 
-// Separate component for the login form that uses useRouter
-function LoginFormContent() {
+export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -20,74 +19,28 @@ function LoginFormContent() {
   const router = useRouter();
   const { signIn, user, role, isLoading: authLoading, isFetchingRole } = useAuth();
   const hasRedirected = useRef(false);
-  const redirectTimeout = useRef<NodeJS.Timeout | null>(null);
-  const [roleCheckAttempts, setRoleCheckAttempts] = useState(0);
 
   useEffect(() => {
     console.log('LoginPage: Auth state updated', { 
       userId: user?.id, 
       role, 
       authLoading,
-      isFetchingRole,
-      roleCheckAttempts,
-      shouldRedirect: !authLoading && !isFetchingRole && user && (role === 'admin' || role === null)
+      isFetchingRole
     });
     
-    // Clear any existing timeout
-    if (redirectTimeout.current) {
-      clearTimeout(redirectTimeout.current);
-    }
-    
-    // If we're still loading auth or waiting for role, don't redirect yet
-    if (authLoading || isFetchingRole) {
-      return;
-    }
-    
-    // If user is authenticated and we have the role, redirect appropriately
-    if (user && role === 'admin' && !hasRedirected.current) {
-      console.log('LoginPage: User authenticated as admin, redirecting to admin dashboard');
+    // If user is authenticated, redirect appropriately
+    // Only redirect once to prevent loops
+    if (!authLoading && !isFetchingRole && user && !hasRedirected.current) {
       hasRedirected.current = true;
-      router.push('/admin');
-    } else if (user && role !== 'admin' && role !== null && !hasRedirected.current) {
-      console.log('LoginPage: User authenticated but not admin, role:', role);
-      // For non-admin users, redirect to homepage
-      hasRedirected.current = true;
-      router.push('/');
-    } else if (!user && !authLoading) {
-      console.log('LoginPage: No user authenticated');
-      // Reset redirect flag when user logs out
-      hasRedirected.current = false;
-      setRoleCheckAttempts(0);
+      if (role === 'admin') {
+        console.log('LoginPage: User authenticated as admin, redirecting to admin dashboard');
+        router.push('/admin');
+      } else {
+        console.log('LoginPage: User authenticated but not admin, redirecting to homepage');
+        router.push('/');
+      }
     }
-    
-    // Add a timeout to prevent infinite waiting for role
-    if (user && !hasRedirected.current) {
-      redirectTimeout.current = setTimeout(() => {
-        if (!hasRedirected.current) {
-          console.log('LoginPage: Redirect timeout reached, forcing redirect based on available data, attempt:', roleCheckAttempts + 1);
-          if (role === 'admin') {
-            hasRedirected.current = true;
-            router.push('/admin');
-          } else if (role !== null) {
-            // Role is explicitly not admin
-            hasRedirected.current = true;
-            router.push('/');
-          } else {
-            // Role is still null, but we have a user
-            // If we've tried multiple times, assume admin for safety since they're trying to access login
-            if (roleCheckAttempts >= 2) {
-              console.log('LoginPage: Multiple attempts failed, assuming admin role for redirect');
-              hasRedirected.current = true;
-              router.push('/admin');
-            } else {
-              // Increment attempts and try again
-              setRoleCheckAttempts(prev => prev + 1);
-            }
-          }
-        }
-      }, 3000); // 3 second timeout
-    }
-  }, [user, role, authLoading, isFetchingRole, router, roleCheckAttempts]);
+  }, [user, role, authLoading, isFetchingRole, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,41 +59,28 @@ function LoginFormContent() {
     try {
       // Reset redirect flag before signing in
       hasRedirected.current = false;
-      // Clear any existing timeout
-      if (redirectTimeout.current) {
-        clearTimeout(redirectTimeout.current);
-      }
-      // Reset role check attempts
-      setRoleCheckAttempts(0);
       
       await signIn(email, password);
       console.log('LoginPage: Sign in successful');
-      
-      // Small delay to ensure role is properly set
-      setTimeout(() => {
-        console.log('LoginPage: Redirecting to admin dashboard');
-        router.push('/admin');
-      }, 100);
+      // Redirect will be handled by the useEffect above
     } catch (error: any) {
       console.error('LoginPage: Sign in failed:', error);
-      console.error('LoginPage: Error stack:', error.stack);
       setError(error.message || 'An unexpected error occurred');
+      // Reset redirect flag on error so user can try again
+      hasRedirected.current = false;
     }
     
     setIsSubmitting(false);
   };
 
-  // If user is already logged in, show loading state or redirect
-  if (authLoading || isFetchingRole) {
+  // If user is already logged in, show loading state
+  if (authLoading || isFetchingRole || (user && !hasRedirected.current)) {
     console.log('LoginPage: Showing loading state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <p className="text-muted-foreground">Authenticating...</p>
-          {roleCheckAttempts > 0 && (
-            <p className="text-sm text-muted-foreground">Taking longer than expected... (Attempt {roleCheckAttempts + 1})</p>
-          )}
         </div>
       </div>
     );
@@ -207,21 +147,5 @@ function LoginFormContent() {
         </form>
       </Card>
     </div>
-  );
-}
-
-// Main component that wraps the login form in a Suspense boundary
-export default function AdminLoginPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    }>
-      <LoginFormContent />
-    </Suspense>
   );
 }

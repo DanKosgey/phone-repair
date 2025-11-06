@@ -18,34 +18,10 @@ export default function AdminRootLayout({
   const { toast } = useToast()
   
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
-  const [hasRedirected, setHasRedirected] = useState(false)
-  
-  // Refs to track component state and prevent memory leaks
-  const isMountedRef = useRef(true)
-  const authCheckTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const roleCheckTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Cleanup function for all timers
-  const clearAllTimers = useCallback(() => {
-    if (authCheckTimerRef.current) {
-      clearTimeout(authCheckTimerRef.current)
-      authCheckTimerRef.current = null
-    }
-    if (roleCheckTimerRef.current) {
-      clearTimeout(roleCheckTimerRef.current)
-      roleCheckTimerRef.current = null
-    }
-    if (redirectTimeoutRef.current) {
-      clearTimeout(redirectTimeoutRef.current)
-      redirectTimeoutRef.current = null
-    }
-  }, [])
+  const hasRedirected = useRef(false)
 
   // Handle sign out with proper error handling
   const handleSignOut = useCallback(async () => {
-    if (!isMountedRef.current) return
-    
     console.log('AdminLayout: Signing out user')
     
     try {
@@ -54,19 +30,15 @@ export default function AdminRootLayout({
       
       console.log('AdminLayout: Sign out completed')
       
-      if (isMountedRef.current) {
-        toast({
-          title: "Signed out",
-          description: "You have been successfully signed out.",
-        })
-        
-        // Force hard navigation (not soft navigation)
-        window.location.href = '/login'
-      }
+      toast({
+        title: "Signed out",
+        description: "You have been successfully signed out.",
+      })
+      
+      // Force hard navigation (not soft navigation)
+      window.location.href = '/login'
     } catch (error: any) {
       console.error('AdminLayout: Error during sign out:', error)
-      
-      if (!isMountedRef.current) return
       
       if (error.message === 'Auth session missing!') {
         toast({
@@ -88,7 +60,7 @@ export default function AdminRootLayout({
   // Main authentication check effect
   useEffect(() => {
     // Don't run if already redirected
-    if (hasRedirected || !isMountedRef.current) return
+    if (hasRedirected.current) return
 
     console.log('AdminLayout: Auth state check', { 
       userId: user?.id, 
@@ -105,7 +77,7 @@ export default function AdminRootLayout({
     // No user - redirect to login
     if (!user) {
       console.log('AdminLayout: No user authenticated, redirecting to login')
-      setHasRedirected(true)
+      hasRedirected.current = true
       router.push('/login')
       return
     }
@@ -113,7 +85,7 @@ export default function AdminRootLayout({
     // User exists but role is explicitly not admin
     if (role !== null && role !== 'admin') {
       console.log('AdminLayout: User not admin, redirecting to home. Role:', role)
-      setHasRedirected(true)
+      hasRedirected.current = true
       
       toast({
         title: "Access Denied",
@@ -132,100 +104,17 @@ export default function AdminRootLayout({
       return
     }
 
-    // User exists but role is null (still fetching)
-    if (role === null) {
-      console.log('AdminLayout: User authenticated but role still loading')
-      // Keep checking auth state
-      setIsCheckingAuth(true)
+    // User exists but role is null (still fetching) - wait a bit then redirect if still null
+    if (role === null && !isFetchingRole) {
+      // If we're not fetching role anymore but still have null role, redirect to login
+      console.log('AdminLayout: Role fetch completed but no role found, redirecting to login')
+      hasRedirected.current = true
+      router.push('/login')
     }
-  }, [user, role, isLoading, isFetchingRole, router, toast, hasRedirected])
-
-  // Timeout for role fetching
-  useEffect(() => {
-    // Clear any existing timers
-    clearAllTimers()
-
-    // Don't set timeout if we already have a role or no user
-    if (!user || role !== null || hasRedirected) {
-      return
-    }
-
-    // If still loading after reasonable time, show warning but don't redirect
-    if (isLoading || isFetchingRole) {
-      console.log('AdminLayout: Setting role fetch timeout')
-      
-      roleCheckTimerRef.current = setTimeout(() => {
-        if (!isMountedRef.current || hasRedirected) return
-        
-        console.log('AdminLayout: Role fetch timeout reached')
-        
-        // If we still don't have a role after timeout, redirect to home
-        // This prevents users from being stuck in loading state
-        if (role === null) {
-          console.log('AdminLayout: Role fetch timed out, denying access')
-          setHasRedirected(true)
-          
-          toast({
-            title: "Authentication Timeout",
-            description: "Could not verify admin permissions. Please try again.",
-            variant: "destructive",
-          })
-          
-          router.push('/')
-        } else if (role === 'admin') {
-          console.log('AdminLayout: Role confirmed as admin after timeout')
-          setIsCheckingAuth(false)
-        }
-      }, 8000) // 8 second timeout for role verification
-    }
-
-    return clearAllTimers
-  }, [user, role, isLoading, isFetchingRole, router, toast, hasRedirected, clearAllTimers])
-
-  // Global timeout to prevent infinite loading
-  useEffect(() => {
-    if (!user || hasRedirected) return
-
-    authCheckTimerRef.current = setTimeout(() => {
-      if (!isMountedRef.current || hasRedirected) return
-      
-      console.log('AdminLayout: Global auth timeout reached')
-      
-      // If we're still loading after 10 seconds, something is wrong
-      if (isCheckingAuth) {
-        console.log('AdminLayout: Auth check taking too long, denying access')
-        setHasRedirected(true)
-        setIsCheckingAuth(false)
-        
-        toast({
-          title: "Authentication Error",
-          description: "Authentication is taking too long. Please try logging in again.",
-          variant: "destructive",
-        })
-        
-        router.push('/login')
-      }
-    }, 10000) // 10 second global timeout
-
-    return () => {
-      if (authCheckTimerRef.current) {
-        clearTimeout(authCheckTimerRef.current)
-        authCheckTimerRef.current = null
-      }
-    }
-  }, [user, isCheckingAuth, router, toast, hasRedirected])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false
-      clearAllTimers()
-      console.log('AdminLayout: Cleanup completed')
-    }
-  }, [clearAllTimers])
+  }, [user, role, isLoading, isFetchingRole, router, toast])
 
   // Show loading state while checking authentication
-  if (isLoading || (isCheckingAuth && !hasRedirected)) {
+  if (isLoading || (isCheckingAuth && !hasRedirected.current)) {
     console.log('AdminLayout: Showing loading state')
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
