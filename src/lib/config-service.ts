@@ -38,7 +38,7 @@ export async function getBusinessConfig(): Promise<BusinessConfig> {
       // Try to get config from localStorage
       const storedConfig = localStorage.getItem('businessConfig')
       if (storedConfig) {
-        return { ...DEFAULT_CONFIG, ...JSON.parse(storedConfig) }
+        return { ...config, ...JSON.parse(storedConfig) }
       }
     }
     
@@ -49,7 +49,7 @@ export async function getBusinessConfig(): Promise<BusinessConfig> {
   }
 }
 
-// Save configuration
+// Save configuration to localStorage
 export async function saveBusinessConfig(config: Partial<BusinessConfig>): Promise<void> {
   try {
     // In a real implementation, this would save to a database
@@ -63,10 +63,4 @@ export async function saveBusinessConfig(config: Partial<BusinessConfig>): Promi
     console.error('Error saving business config:', error)
     throw error
   }
-}
-
-// Get a specific configuration value
-export async function getConfigValue<K extends keyof BusinessConfig>(key: K): Promise<BusinessConfig[K]> {
-  const config = await getBusinessConfig()
-  return config[key]
 }

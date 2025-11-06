@@ -6,16 +6,13 @@ import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getBusinessConfig, type BusinessConfig } from '@/lib/config-service';
+import { useContactInfo } from '@/hooks/use-contact-info';
 
 export const Footer = () => {
   const { user, role, isLoading } = useAuth();
   const router = useRouter();
   const [businessConfig, setBusinessConfig] = useState<BusinessConfig | null>(null);
-  const [contactInfo, setContactInfo] = useState({
-    phone: "(555) 123-4567",
-    email: "support@repairhub.com",
-    hours: "Mon-Sat 9AM-6PM"
-  });
+  const contactInfo = useContactInfo();
 
   useEffect(() => {
     console.log('Footer: Auth state updated:', { user, role, isLoading });
@@ -31,14 +28,6 @@ export const Footer = () => {
     };
     
     loadConfig();
-    
-    // Load contact information
-    if (typeof window !== 'undefined') {
-      const storedContactInfo = localStorage.getItem('homepageContactInfo');
-      if (storedContactInfo) {
-        setContactInfo(JSON.parse(storedContactInfo));
-      }
-    }
   }, [user, role, isLoading]);
 
   const handleAdminAccess = () => {
@@ -52,23 +41,19 @@ export const Footer = () => {
     }
   };
 
-  // Use default values if config hasn't loaded yet
-  const config = businessConfig || {
-    businessName: "Jay's Shop",
-    businessDescription: "Professional phone repair services and quality products.",
-    copyrightText: "2024 Jay's Shop. All rights reserved."
-  };
-
   return (
-    <footer className="border-t bg-card mt-auto pb-16 lg:pb-0">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="col-span-1 md:col-span-2">
-            <h3 className="text-lg font-semibold mb-4">{config.businessName}</h3>
-            <p className="text-muted-foreground mb-4">
-              {config.businessDescription}
+    <footer className="border-t border-border bg-background text-foreground">
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <Smartphone className="h-6 w-6 text-primary" />
+              <span className="text-xl font-bold">{businessConfig?.businessName || "Jay's Shop"}</span>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              {businessConfig?.businessDescription || "Professional phone repair services and quality products."}
             </p>
-            <div className="flex space-x-4">
+            <div className="flex gap-4">
               <a href="#" className="text-muted-foreground hover:text-foreground">
                 <Facebook className="h-5 w-5" />
               </a>
@@ -117,7 +102,7 @@ export const Footer = () => {
         </div>
 
         <div className="border-t border-border mt-8 pt-8 text-center">
-          <p>&copy; {config.copyrightText}</p>
+          <p>&copy; {businessConfig?.copyrightText || "2024 Jay's Shop. All rights reserved."}</p>
         </div>
       </div>
     </footer>

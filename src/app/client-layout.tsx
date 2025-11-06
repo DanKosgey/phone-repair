@@ -9,6 +9,8 @@ import { queryClient } from "@/lib/query-client"
 import { useRealtimeTickets, useRealtimeProducts, useRealtimeOrders, useRealtimeCustomers } from "@/hooks/use-realtime"
 import { AuthProvider } from '@/contexts/auth-context'
 import { WebVitalsTracker } from '@/components/performance/WebVitalsTracker'
+import { ThemeProvider } from 'next-themes'
+import { useAppearanceSettings } from '@/hooks/use-appearance-settings'
 
 // Component to handle real-time subscriptions
 const RealtimeHandler = () => {
@@ -26,17 +28,26 @@ export default function ClientLayout({
 }: {
   children: React.ReactNode
 }) {
+  useAppearanceSettings()
+  
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <WebVitalsTracker />
-          <Toaster />
-          <Sonner />
-          <RealtimeHandler />
-          {children}
-        </TooltipProvider>
-      </QueryClientProvider>
-    </AuthProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <WebVitalsTracker />
+            <Toaster />
+            <Sonner />
+            <RealtimeHandler />
+            {children}
+          </TooltipProvider>
+        </QueryClientProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }

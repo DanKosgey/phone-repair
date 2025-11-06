@@ -10,14 +10,11 @@ import { getBusinessConfig } from '@/lib/config-service'
 import { useEffect, useState } from 'react'
 import { notificationsDb } from '@/lib/db/notifications'
 import { useToast } from "@/hooks/use-toast"
+import { useContactInfo } from '@/hooks/use-contact-info'
 
 export default function ContactPage() {
   const [businessConfig, setBusinessConfig] = useState(null);
-  const [contactInfo, setContactInfo] = useState({
-    phone: "(555) 123-4567",
-    email: "support@repairhub.com",
-    hours: "Mon-Sat 9AM-6PM"
-  });
+  const contactInfo = useContactInfo();
   
   const [formData, setFormData] = useState({
     name: "",
@@ -42,14 +39,6 @@ export default function ContactPage() {
     };
     
     loadBusinessConfig();
-    
-    // Load contact information
-    if (typeof window !== 'undefined') {
-      const storedContactInfo = localStorage.getItem('homepageContactInfo');
-      if (storedContactInfo) {
-        setContactInfo(JSON.parse(storedContactInfo));
-      }
-    }
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

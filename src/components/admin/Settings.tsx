@@ -105,15 +105,25 @@ export default function Settings() {
       try {
         const config = await getBusinessConfig()
         setBusinessSettings(config)
-        setAppearanceSettings({
-          theme: "light",
-          primaryColor: config.primaryColor,
-          secondaryColor: config.secondaryColor
-        })
         
         // Load feature settings
         const featureConfig = await getFeatureSettings()
         setFeatureSettings(featureConfig)
+        
+        // Load appearance settings from localStorage or use business config colors
+        if (typeof window !== 'undefined') {
+          const storedAppearanceSettings = localStorage.getItem('appearanceSettings')
+          if (storedAppearanceSettings) {
+            setAppearanceSettings(JSON.parse(storedAppearanceSettings))
+          } else {
+            // Fallback to business config colors
+            setAppearanceSettings({
+              theme: "light",
+              primaryColor: config.primaryColor,
+              secondaryColor: config.secondaryColor
+            })
+          }
+        }
         
         // Load contact info from localStorage or use defaults
         if (typeof window !== 'undefined') {
@@ -181,11 +191,25 @@ export default function Settings() {
     setIsLoading(true)
 
     try {
-      // Save business settings
-      await saveBusinessConfig(businessSettings)
+      // Save business settings including appearance colors
+      await saveBusinessConfig({
+        ...businessSettings,
+        primaryColor: appearanceSettings.primaryColor,
+        secondaryColor: appearanceSettings.secondaryColor
+      })
       
       // Save feature settings
       await saveFeatureSettings(featureSettings)
+      
+      // Save appearance settings (theme only)
+      if (typeof window !== 'undefined') {
+        const appearanceSettingsToSave = {
+          theme: appearanceSettings.theme,
+          primaryColor: appearanceSettings.primaryColor,
+          secondaryColor: appearanceSettings.secondaryColor
+        }
+        localStorage.setItem('appearanceSettings', JSON.stringify(appearanceSettingsToSave))
+      }
       
       // Save contact info to localStorage
       if (typeof window !== 'undefined') {
