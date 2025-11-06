@@ -1,13 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/auth-context';
 import { getSupabaseBrowserClient } from '@/server/supabase/client';
 
 export default function TestRolePage() {
-  const { user, role, isLoading, isFetchingRole } = useAuth();
+  const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isFetchingRole, setIsFetchingRole] = useState<boolean>(false);
   const [testResult, setTestResult] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [apiTestResult, setApiTestResult] = useState<string>('');
   const [apiError, setApiError] = useState<string>('');
+
+  // Fetch user and role on client side only
+  useEffect(() => {
+    const fetchUserAndRole = async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        if (!supabase) {
+          throw new Error('Supabase client not available');
+        }
+
+        // Get current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Error getting session:', sessionError);
+          setIsLoading(false);
+          return;
+        }
+
+        if (session?.user) {
+          setUser(session.user);
+          
+          // Fetch role
+          setIsFetchingRole(true);
+          const { data, error: roleError } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+
+          if (roleError) {
+            console.error('Error fetching role:', roleError);
+            setRole(null);
+          } else {
+            setRole(data?.role || null);
+          }
+          setIsFetchingRole(false);
+        }
+      } catch (err: any) {
+        console.error('Exception during user/role fetch:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      fetchUserAndRole();
+    }
+  }, []);
 
   const testRoleFetch = async () => {
     if (!user?.id) {
@@ -18,6 +70,7 @@ export default function TestRolePage() {
     try {
       setTestResult('Testing role fetch...');
       setError('');
+      setIsFetchingRole(true);
 
       const supabase = getSupabaseBrowserClient();
       if (!supabase) {
@@ -44,6 +97,8 @@ export default function TestRolePage() {
       console.error('Exception during role fetch:', err);
       setError(`Exception: ${err.message}`);
       setTestResult('');
+    } finally {
+      setIsFetchingRole(false);
     }
   };
 
