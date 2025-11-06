@@ -325,13 +325,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 // Fetch role with improved handling during sign in
                 // We don't want to block the sign-in process if role fetching fails initially
                 // The role will be fetched again when needed
-                fetchUserRole(currentSession.user.id).catch((roleError: any) => {
-                  logger.warn('AuthProvider: Non-critical error fetching role during sign in event (will retry):', roleError.message);
-                  // Set role to null but don't fail the sign in
-                  if (isMountedRef.current) {
-                    setRole(null);
-                  }
-                });
+                if (isMountedRef.current) {
+                  fetchUserRole(currentSession.user.id).catch((roleError: any) => {
+                    if (isMountedRef.current) {
+                      logger.warn('AuthProvider: Non-critical error fetching role during sign in event (will retry):', roleError.message);
+                      // Set role to null but don't fail the sign in
+                      setRole(null);
+                    }
+                  });
+                }
               }
               if (isMountedRef.current) {
                 setIsLoading(false);
@@ -508,9 +510,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Fetch role with improved handling
         // We don't want to block the sign-in process if role fetching fails initially
         fetchUserRole(data.user.id).catch((roleError: any) => {
-          logger.warn('AuthProvider: Non-critical error fetching role during sign in (will retry):', roleError.message);
-          // Set role to null but don't fail the sign in
           if (isMountedRef.current) {
+            logger.warn('AuthProvider: Non-critical error fetching role during sign in (will retry):', roleError.message);
+            // Set role to null but don't fail the sign in
             setRole(null);
           }
         });
@@ -519,11 +521,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error: any) {
       logger.error('AuthProvider: Sign in error:', error.message);
-      throw error;
-    } finally {
+      // Ensure loading state is reset on error
       if (isMountedRef.current) {
         setIsLoading(false);
       }
+      throw error;
     }
   };
 

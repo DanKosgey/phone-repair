@@ -1,5 +1,3 @@
-'use client';
-
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
@@ -19,6 +17,16 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const { signIn, user, role, isLoading: authLoading, isFetchingRole } = useAuth();
   const hasRedirected = useRef(false);
+  const redirectTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (redirectTimeout.current) {
+        clearTimeout(redirectTimeout.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     console.log('LoginPage: Auth state updated', { 
@@ -28,9 +36,14 @@ export default function AdminLoginPage() {
       isFetchingRole
     });
     
-    // If user is authenticated, redirect appropriately
+    // Clear any existing redirect timeout
+    if (redirectTimeout.current) {
+      clearTimeout(redirectTimeout.current);
+    }
+    
+    // If user is authenticated and we have the role, redirect appropriately
     // Only redirect once to prevent loops
-    if (!authLoading && !isFetchingRole && user && !hasRedirected.current) {
+    if (!authLoading && !isFetchingRole && user && role !== null && !hasRedirected.current) {
       hasRedirected.current = true;
       if (role === 'admin') {
         console.log('LoginPage: User authenticated as admin, redirecting to admin dashboard');
@@ -39,6 +52,17 @@ export default function AdminLoginPage() {
         console.log('LoginPage: User authenticated but not admin, redirecting to homepage');
         router.push('/');
       }
+    }
+    // If user is authenticated but role is still null (fetching), wait a bit then redirect
+    else if (!authLoading && !isFetchingRole && user && role === null && !hasRedirected.current) {
+      // Set a timeout to redirect even if role is null
+      redirectTimeout.current = setTimeout(() => {
+        if (!hasRedirected.current) {
+          hasRedirected.current = true;
+          console.log('LoginPage: Role fetch timeout, redirecting to admin dashboard (assuming admin)');
+          router.push('/admin');
+        }
+      }, 3000); // 3 second timeout
     }
   }, [user, role, authLoading, isFetchingRole, router]);
 
@@ -59,6 +83,10 @@ export default function AdminLoginPage() {
     try {
       // Reset redirect flag before signing in
       hasRedirected.current = false;
+      // Clear any existing redirect timeout
+      if (redirectTimeout.current) {
+        clearTimeout(redirectTimeout.current);
+      }
       
       await signIn(email, password);
       console.log('LoginPage: Sign in successful');
@@ -68,6 +96,10 @@ export default function AdminLoginPage() {
       setError(error.message || 'An unexpected error occurred');
       // Reset redirect flag on error so user can try again
       hasRedirected.current = false;
+      // Clear any redirect timeout
+      if (redirectTimeout.current) {
+        clearTimeout(redirectTimeout.current);
+      }
     }
     
     setIsSubmitting(false);

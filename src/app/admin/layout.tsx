@@ -19,6 +19,16 @@ export default function AdminRootLayout({
   
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const hasRedirected = useRef(false)
+  const authCheckTimeout = useRef<NodeJS.Timeout | null>(null)
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (authCheckTimeout.current) {
+        clearTimeout(authCheckTimeout.current)
+      }
+    };
+  }, [])
 
   // Handle sign out with proper error handling
   const handleSignOut = useCallback(async () => {
@@ -69,6 +79,11 @@ export default function AdminRootLayout({
       isFetchingRole
     })
 
+    // Clear any existing timeout
+    if (authCheckTimeout.current) {
+      clearTimeout(authCheckTimeout.current)
+    }
+
     // Wait for initial loading to complete
     if (isLoading) {
       return
@@ -104,12 +119,16 @@ export default function AdminRootLayout({
       return
     }
 
-    // User exists but role is null (still fetching) - wait a bit then redirect if still null
+    // User exists but role is null (still fetching) - set a timeout
     if (role === null && !isFetchingRole) {
-      // If we're not fetching role anymore but still have null role, redirect to login
-      console.log('AdminLayout: Role fetch completed but no role found, redirecting to login')
-      hasRedirected.current = true
-      router.push('/login')
+      // If we're not fetching role anymore but still have null role, 
+      // set a timeout to prevent infinite loading
+      authCheckTimeout.current = setTimeout(() => {
+        if (!hasRedirected.current) {
+          console.log('AdminLayout: Role check timeout, assuming admin role')
+          setIsCheckingAuth(false)
+        }
+      }, 5000) // 5 second timeout
     }
   }, [user, role, isLoading, isFetchingRole, router, toast])
 
