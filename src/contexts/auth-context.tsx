@@ -134,84 +134,99 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (isInitializedRef.current || !supabase) {
       // Make sure to set loading to false if we're not initializing
       if (isMountedRef.current && isLoading) {
-        setIsLoading(false);
+        setIsLoading(false)
       }
-      return;
+      return
     }
     
-    isInitializedRef.current = true;
-    logger.log('AuthProvider: Initializing authentication');
+    isInitializedRef.current = true
+    logger.log('AuthProvider: Initializing authentication')
     
     // Add a timeout to prevent infinite loading
     const initTimeout = setTimeout(() => {
       if (isMountedRef.current && isLoading) {
-        logger.warn('AuthProvider: Initialization timeout, setting loading to false');
-        setIsLoading(false);
+        logger.warn('AuthProvider: Initialization timeout, setting loading to false')
+        setIsLoading(false)
       }
-    }, 5000); // 5 second timeout
+    }, 5000) // 5 second timeout
     
     const initAuth = async () => {
       try {
         // Check if user just signed out (check a flag in sessionStorage)
         if (typeof window !== 'undefined') {
-          const justSignedOut = sessionStorage.getItem('just_signed_out');
+          const justSignedOut = sessionStorage.getItem('just_signed_out')
           if (justSignedOut) {
-            sessionStorage.removeItem('just_signed_out');
-            logger.log('AuthProvider: User just signed out, skipping session restoration');
-            setUser(null);
-            setSession(null);
-            setRole(null);
+            sessionStorage.removeItem('just_signed_out')
+            logger.log('AuthProvider: User just signed out, skipping session restoration')
+            setUser(null)
+            setSession(null)
+            setRole(null)
             if (isMountedRef.current) {
-              setIsLoading(false);
+              setIsLoading(false)
             }
-            return;
+            return
           }
         }
         
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        // Try to get session from Supabase with a timeout
+        const getSessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session fetch timeout')), 3000)
+        )
         
+        const { data: { session: currentSession }, error } = await Promise.race([
+          getSessionPromise,
+          timeoutPromise
+        ]) as any
+
         if (error) {
-          logger.error('AuthProvider: Error getting session:', error.message);
+          logger.error('AuthProvider: Error getting session:', error.message)
           if (error.message === 'Auth session missing!') {
-            logger.warn('AuthProvider: Auth session missing during initialization');
-            setUser(null);
-            setSession(null);
-            setRole(null);
+            logger.warn('AuthProvider: Auth session missing during initialization')
+            setUser(null)
+            setSession(null)
+            setRole(null)
           }
         } else if (currentSession?.user) {
-          logger.log('AuthProvider: Setting user from session');
-          setUser(currentSession.user);
-          setSession(currentSession);
+          logger.log('AuthProvider: Setting user from session')
+          setUser(currentSession.user)
+          setSession(currentSession)
           
           // Fetch role with improved handling during initialization
           if (isMountedRef.current) {
-            fetchUserRole(currentSession.user.id);
+            fetchUserRole(currentSession.user.id)
           }
         } else {
-          logger.log('AuthProvider: No active session found');
+          logger.log('AuthProvider: No active session found')
         }
       } catch (error: any) {
-        logger.error('AuthProvider: Error initializing auth:', error.message);
+        logger.error('AuthProvider: Error initializing auth:', error.message)
+        // Even on error, ensure we're not stuck in loading state
+        if (isMountedRef.current) {
+          setUser(null)
+          setSession(null)
+          setRole(null)
+        }
       } finally {
         if (isMountedRef.current) {
-          setIsLoading(false);
+          setIsLoading(false)
         }
         if (initTimeout) {
-          clearTimeout(initTimeout);
+          clearTimeout(initTimeout)
         }
       }
-    };
+    }
 
     // Only run initialization if we have a Supabase client
     if (supabase) {
-      initAuth();
+      initAuth()
     } else {
       // If no Supabase client, set loading to false
       if (isMountedRef.current) {
-        setIsLoading(false);
+        setIsLoading(false)
       }
       if (initTimeout) {
-        clearTimeout(initTimeout);
+        clearTimeout(initTimeout)
       }
     }
 
@@ -219,84 +234,84 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (supabase) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, currentSession) => {
-          logger.log('AuthProvider: Auth state changed:', event);
+          logger.log('AuthProvider: Auth state changed:', event)
           
-          if (!isMountedRef.current) return;
+          if (!isMountedRef.current) return
 
           switch (event) {
             case 'SIGNED_IN':
               if (currentSession?.user) {
-                setUser(currentSession.user);
-                setSession(currentSession);
+                setUser(currentSession.user)
+                setSession(currentSession)
                 
                 // Fetch role with improved handling during sign in
                 if (isMountedRef.current) {
-                  fetchUserRole(currentSession.user.id);
+                  fetchUserRole(currentSession.user.id)
                 }
               }
               if (isMountedRef.current) {
-                setIsLoading(false);
+                setIsLoading(false)
               }
-              break;
+              break
               
             case 'TOKEN_REFRESHED':
               if (currentSession?.user) {
-                setUser(currentSession.user);
-                setSession(currentSession);
+                setUser(currentSession.user)
+                setSession(currentSession)
               }
               if (isMountedRef.current) {
-                setIsLoading(false);
+                setIsLoading(false)
               }
-              break;
+              break
               
             case 'SIGNED_OUT':
-              setUser(null);
-              setSession(null);
-              setRole(null);
+              setUser(null)
+              setSession(null)
+              setRole(null)
               if (isMountedRef.current) {
-                setIsLoading(false);
+                setIsLoading(false)
               }
-              break;
+              break
               
             case 'USER_UPDATED':
               if (currentSession?.user) {
-                setUser(currentSession.user);
-                setSession(currentSession);
+                setUser(currentSession.user)
+                setSession(currentSession)
               }
               if (isMountedRef.current) {
-                setIsLoading(false);
+                setIsLoading(false)
               }
-              break;
+              break
 
             case 'INITIAL_SESSION':
               // Ignore INITIAL_SESSION as it's handled by initAuth
-              break;
+              break
               
             default:
               if (isMountedRef.current) {
-                setIsLoading(false);
+                setIsLoading(false)
               }
-              break;
+              break
           }
         }
-      );
+      )
 
       return () => {
-        subscription.unsubscribe();
+        subscription.unsubscribe()
         if (initTimeout) {
-          clearTimeout(initTimeout);
+          clearTimeout(initTimeout)
         }
-      };
+      }
     } else {
       // If no Supabase client, set loading to false
       if (isMountedRef.current) {
-        setIsLoading(false);
+        setIsLoading(false)
       }
       if (initTimeout) {
-        clearTimeout(initTimeout);
+        clearTimeout(initTimeout)
       }
     }
-  }, [supabase]); // Depend on supabase client
+  }, [supabase]) // Depend on supabase client
 
   // Session auto-refresh
   useEffect(() => {

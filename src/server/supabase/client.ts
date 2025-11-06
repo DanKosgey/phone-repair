@@ -72,6 +72,12 @@ export function getSupabaseBrowserClient() {
             
             if (options?.domain) {
               cookie += `; domain=${options.domain}`
+            } else {
+              // For production, explicitly set domain to avoid issues
+              const hostname = isBrowser ? window.location.hostname : ''
+              if (hostname && !hostname.includes('localhost')) {
+                cookie += `; domain=.${hostname.split('.').slice(-2).join('.')}`
+              }
             }
             // Set SameSite attribute properly
             if (options?.sameSite) {

@@ -16,6 +16,7 @@ export default async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
+      // Important: preserve cookies in the response
     },
   })
 
@@ -28,6 +29,19 @@ export default async function proxy(request: NextRequest) {
                   request.nextUrl.protocol === 'https:' ||
                   hostname.includes('.vercel.app') ||
                   isProduction
+
+  // Extract domain for cookie settings
+  let domain = hostname
+  if (domain.includes(':')) {
+    domain = domain.split(':')[0]
+  }
+  // For production domains, use the root domain
+  if (domain !== 'localhost' && domain !== '127.0.0.1') {
+    const parts = domain.split('.')
+    if (parts.length > 2) {
+      domain = parts.slice(-2).join('.')
+    }
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,6 +61,8 @@ export default async function proxy(request: NextRequest) {
             secure: options?.secure ?? isHttps,
             // Ensure path is set
             path: options?.path || '/',
+            // Set domain explicitly for better cross-subdomain support
+            domain: options?.domain || (hostname !== 'localhost' ? `.${domain}` : undefined),
           }
           
           request.cookies.set({ name, value, ...cookieOptions })
@@ -63,6 +79,8 @@ export default async function proxy(request: NextRequest) {
             secure: options?.secure ?? isHttps,
             path: options?.path || '/',
             maxAge: 0,
+            // Set domain for removal
+            domain: options?.domain || (hostname !== 'localhost' ? `.${domain}` : undefined),
           }
           
           request.cookies.set({ name, value: '', ...cookieOptions })
