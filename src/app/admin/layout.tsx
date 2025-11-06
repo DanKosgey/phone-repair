@@ -17,6 +17,7 @@ export default function AdminRootLayout({
   const router = useRouter()
   const { toast } = useToast()
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const [authCheckTimeout, setAuthCheckTimeout] = useState(false)
 
   useEffect(() => {
     console.log('AdminLayout: Auth state updated in useEffect', { 
@@ -51,13 +52,43 @@ export default function AdminRootLayout({
   useEffect(() => {
     const timer = setTimeout(() => {
       if (isLoading || isCheckingAuth) {
-        console.log('AdminLayout: Timeout reached, forcing loading to complete');
+        console.log('AdminLayout: Timeout reached, setting timeout flag');
+        setAuthCheckTimeout(true);
         setIsCheckingAuth(false);
       }
     }, 5000); // 5 second timeout
 
     return () => clearTimeout(timer);
   }, [isLoading, isCheckingAuth]);
+
+  // Additional timeout for role confirmation
+  useEffect(() => {
+    let roleTimer: NodeJS.Timeout | null = null;
+    
+    if (user && (isLoading || isCheckingAuth || authCheckTimeout)) {
+      roleTimer = setTimeout(() => {
+        console.log('AdminLayout: Role confirmation timeout reached');
+        if (role === 'admin') {
+          console.log('AdminLayout: Role confirmed as admin after timeout');
+          setIsCheckingAuth(false);
+        } else if (role !== null) {
+          // Role is explicitly not admin
+          console.log('AdminLayout: Role confirmed as non-admin after timeout, redirecting to home');
+          router.push('/');
+        } else {
+          // Role is still null, but we have a user on admin route, assume admin
+          console.log('AdminLayout: Role still null but on admin route, assuming admin access');
+          setIsCheckingAuth(false);
+        }
+      }, 3000); // 3 second timeout for role confirmation
+    }
+
+    return () => {
+      if (roleTimer) {
+        clearTimeout(roleTimer);
+      }
+    };
+  }, [user, role, isLoading, isCheckingAuth, authCheckTimeout, router]);
 
   const handleSignOut = async () => {
     console.log('AdminLayout: Signing out user:', user?.id);
@@ -90,13 +121,16 @@ export default function AdminRootLayout({
   }
 
   // Show loading state while checking authentication
-  if (isLoading || isCheckingAuth) {
-    console.log('AdminLayout: Showing loading state', { isLoading, isCheckingAuth });
+  if (isLoading || isCheckingAuth || authCheckTimeout) {
+    console.log('AdminLayout: Showing loading state', { isLoading, isCheckingAuth, authCheckTimeout });
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <p className="text-muted-foreground">Authenticating...</p>
+          {authCheckTimeout && (
+            <p className="text-sm text-muted-foreground">Taking longer than expected...</p>
+          )}
         </div>
       </div>
     )

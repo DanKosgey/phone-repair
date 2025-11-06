@@ -10,7 +10,7 @@ interface AuthContextType {
   session: Session | null;
   role: string | null;
   isLoading: boolean;
-  isFetchingRole: boolean; // Add this to the context type
+  isFetchingRole: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<Session | null>;
@@ -213,8 +213,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(data.user);
         setSession(data.session);
         logger.log('AuthProvider: Fetching user role');
-        await fetchUserRole(data.user.id);
-        logger.log('AuthProvider: Role fetch completed');
+        // Add timeout to role fetching to prevent hanging
+        const roleFetchTimeout = new Promise((resolve) => {
+          const timeout = setTimeout(() => {
+            logger.warn('AuthProvider: Role fetch timeout reached');
+            resolve(null);
+          }, 5000); // 5 second timeout
+          
+          fetchUserRole(data.user.id).then(() => {
+            clearTimeout(timeout);
+            resolve(null);
+          });
+        });
+        
+        // Wait for role fetch or timeout
+        await roleFetchTimeout;
+        logger.log('AuthProvider: Role fetch completed or timed out');
       } else {
         logger.error('AuthProvider: No user data in sign in response');
         throw new Error('Authentication failed. No user data received.');
@@ -433,7 +447,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         session,
         role,
         isLoading,
-        isFetchingRole, // Expose this state
+        isFetchingRole,
         signIn,
         signOut,
         refreshSession,

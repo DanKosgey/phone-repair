@@ -19,8 +19,9 @@ function LoginFormContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn, user, role, isLoading: authLoading, isFetchingRole } = useAuth(); // Add isFetchingRole
+  const { signIn, user, role, isLoading: authLoading, isFetchingRole } = useAuth();
   const hasRedirected = useRef(false);
+  const redirectTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     console.log('LoginPage: Auth state updated', { 
@@ -30,6 +31,11 @@ function LoginFormContent() {
       isFetchingRole,
       shouldRedirect: !authLoading && !isFetchingRole && user && (role === 'admin' || role === null)
     });
+    
+    // Clear any existing timeout
+    if (redirectTimeout.current) {
+      clearTimeout(redirectTimeout.current);
+    }
     
     // If we're still loading auth or waiting for role, don't redirect yet
     if (authLoading || isFetchingRole) {
@@ -57,7 +63,34 @@ function LoginFormContent() {
       // Reset redirect flag when user logs out
       hasRedirected.current = false;
     }
-  }, [user, role, authLoading, isFetchingRole, router, searchParams]); // Add isFetchingRole to dependencies
+    
+    // Add a timeout to prevent infinite waiting for role
+    if (user && !hasRedirected.current) {
+      redirectTimeout.current = setTimeout(() => {
+        if (!hasRedirected.current) {
+          console.log('LoginPage: Redirect timeout reached, forcing redirect based on available data');
+          if (role === 'admin') {
+            hasRedirected.current = true;
+            const redirectTo = searchParams.get('redirectTo');
+            if (redirectTo && redirectTo.startsWith('/admin')) {
+              router.push(redirectTo);
+            } else {
+              router.push('/admin');
+            }
+          } else if (role !== null) {
+            // Role is explicitly not admin
+            hasRedirected.current = true;
+            router.push('/');
+          } else {
+            // Role is still null, but we have a user, assume non-admin for safety
+            console.log('LoginPage: Role still null but user exists, redirecting to home');
+            hasRedirected.current = true;
+            router.push('/');
+          }
+        }
+      }, 3000); // 3 second timeout
+    }
+  }, [user, role, authLoading, isFetchingRole, router, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +109,10 @@ function LoginFormContent() {
     try {
       // Reset redirect flag before signing in
       hasRedirected.current = false;
+      // Clear any existing timeout
+      if (redirectTimeout.current) {
+        clearTimeout(redirectTimeout.current);
+      }
       await signIn(email, password);
       console.log('LoginPage: Sign in successful');
       
@@ -101,7 +138,7 @@ function LoginFormContent() {
   };
 
   // If user is already logged in, show loading state or redirect
-  if (authLoading || isFetchingRole) { // Add isFetchingRole condition
+  if (authLoading || isFetchingRole) {
     console.log('LoginPage: Showing loading state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
