@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Fetch user role with proper cleanup and error handling
   const fetchUserRole = useCallback(async (userId: string): Promise<void> => {
-    if (!userId || !isMountedRef.current || !supabase) return;
+    if (!userId || !isMountedRef.current) return;
 
     // Prevent re-fetching for the same user
     if (lastFetchedUserIdRef.current === userId && isFetchingRole) {
@@ -86,8 +86,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const cached = roleCache.get(userId);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
       logger.log('AuthProvider: Using cached role');
-      setRole(cached.role);
-      lastFetchedUserIdRef.current = userId;
+      if (isMountedRef.current) {
+        setRole(cached.role);
+        lastFetchedUserIdRef.current = userId;
+      }
       return;
     }
 
@@ -99,70 +101,96 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     roleAbortControllerRef.current = new AbortController();
     const currentAbortController = roleAbortControllerRef.current;
 
-    setIsFetchingRole(true);
+    if (isMountedRef.current) {
+      setIsFetchingRole(true);
+    }
     lastFetchedUserIdRef.current = userId;
     logger.log('AuthProvider: Fetching role for user');
     
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .abortSignal(currentAbortController.signal)
-        .single();
+      // Add a timeout to prevent infinite waiting
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Role fetch timeout')), 10000); // 10 second timeout
+      });
 
-      // Check if this request was aborted
-      if (currentAbortController.signal.aborted || !isMountedRef.current) {
-        logger.log('AuthProvider: Role fetch was aborted or component unmounted');
-        return;
-      }
+      const fetchPromise = (async () => {
+        if (!supabase) {
+          throw new Error('Supabase client not available');
+        }
 
-      if (error) {
-        logger.error('AuthProvider: Error fetching user role:', error.message);
-        
-        // Handle network errors with exponential backoff
-        if (error.code === 'PGRST301' || error.message.includes('timeout') || error.message.includes('network')) {
-          const retryCount = retryAttemptsRef.current.get(userId) || 0;
-          const maxRetries = 3;
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .abortSignal(currentAbortController.signal)
+          .single();
+
+        // Check if this request was aborted
+        if (currentAbortController.signal.aborted || !isMountedRef.current) {
+          logger.log('AuthProvider: Role fetch was aborted or component unmounted');
+          throw new Error('Aborted');
+        }
+
+        if (error) {
+          logger.error('AuthProvider: Error fetching user role:', error.message);
           
-          if (retryCount < maxRetries) {
-            const delay = Math.pow(2, retryCount) * 1000;
-            logger.log(`AuthProvider: Retry attempt ${retryCount + 1}/${maxRetries} in ${delay}ms`);
+          // Handle network errors with exponential backoff
+          if (error.code === 'PGRST301' || error.message.includes('timeout') || error.message.includes('network')) {
+            const retryCount = retryAttemptsRef.current.get(userId) || 0;
+            const maxRetries = 3;
             
-            retryAttemptsRef.current.set(userId, retryCount + 1);
-            
-            safeSetTimeout(() => {
+            if (retryCount < maxRetries) {
+              const delay = Math.pow(2, retryCount) * 1000;
+              logger.log(`AuthProvider: Retry attempt ${retryCount + 1}/${maxRetries} in ${delay}ms`);
+              
+              retryAttemptsRef.current.set(userId, retryCount + 1);
+              
+              await new Promise(resolve => setTimeout(resolve, delay));
               if (isMountedRef.current) {
                 setIsFetchingRole(false);
                 lastFetchedUserIdRef.current = null;
-                fetchUserRole(userId);
+                return fetchUserRole(userId);
               }
-            }, delay);
-            return;
-          } else {
-            logger.error('AuthProvider: Max retries exceeded');
-            retryAttemptsRef.current.delete(userId);
+              return;
+            } else {
+              logger.error('AuthProvider: Max retries exceeded');
+              retryAttemptsRef.current.delete(userId);
+            }
+          }
+          
+          if (isMountedRef.current) {
+            setRole(null);
+          }
+        } else {
+          // Success - clear retry count
+          retryAttemptsRef.current.delete(userId);
+          
+          const userRole = data?.role || null;
+          logger.log('AuthProvider: User role fetched successfully:', userRole);
+          if (isMountedRef.current) {
+            setRole(userRole);
+            roleCache.set(userId, { role: userRole, timestamp: Date.now() });
           }
         }
-        
-        setRole(null);
-      } else {
-        // Success - clear retry count
-        retryAttemptsRef.current.delete(userId);
-        
-        const userRole = data?.role || null;
-        logger.log('AuthProvider: User role fetched successfully:', userRole);
-        setRole(userRole);
-        roleCache.set(userId, { role: userRole, timestamp: Date.now() });
-      }
+      })();
+
+      // Race the fetch against the timeout
+      await Promise.race([fetchPromise, timeoutPromise]);
     } catch (error: any) {
-      if (error.name === 'AbortError' || !isMountedRef.current) {
+      if (error.message === 'Aborted' || !isMountedRef.current) {
         logger.log('AuthProvider: Role fetch aborted');
         return;
       }
       
-      logger.error('AuthProvider: Exception during role fetching:', error.message);
-      setRole(null);
+      if (error.message === 'Role fetch timeout') {
+        logger.error('AuthProvider: Role fetch timed out');
+      } else {
+        logger.error('AuthProvider: Exception during role fetching:', error.message);
+      }
+      
+      if (isMountedRef.current) {
+        setRole(null);
+      }
     } finally {
       if (isMountedRef.current) {
         setIsFetchingRole(false);
