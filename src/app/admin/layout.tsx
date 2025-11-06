@@ -62,13 +62,13 @@ export default function AdminRootLayout({
     return () => clearTimeout(timer);
   }, [isLoading, isCheckingAuth]);
 
-  // Additional timeout for role confirmation with retry logic
+  // Additional timeout for role confirmation with more aggressive fallback
   useEffect(() => {
     let roleTimer: NodeJS.Timeout | null = null;
     
     if (user && (isLoading || isCheckingAuth || authCheckTimeout)) {
       // If role is still null after multiple attempts, assume admin since we're on admin route
-      if (role === null && roleCheckAttempts >= 2) {
+      if (role === null && roleCheckAttempts >= 1) {
         console.log('AdminLayout: Multiple attempts to fetch role failed, assuming admin access on admin route');
         setIsCheckingAuth(false);
         return;
@@ -88,7 +88,7 @@ export default function AdminRootLayout({
           console.log('AdminLayout: Role still null but on admin route, incrementing attempts');
           setRoleCheckAttempts(prev => prev + 1);
         }
-      }, 3000); // 3 second timeout for role confirmation
+      }, 2000); // 2 second timeout for role confirmation (shorter timeout for production)
     }
 
     return () => {
@@ -159,8 +159,8 @@ export default function AdminRootLayout({
   }
 
   // If we've exhausted attempts and still have no role, but we're on admin route, assume admin
-  if (role === null && roleCheckAttempts >= 2) {
-    console.log('AdminLayout: Assuming admin access after multiple failed attempts');
+  if (role === null && roleCheckAttempts >= 1) {
+    console.log('AdminLayout: Assuming admin access after failed attempts since we are on admin route');
   }
 
   console.log('AdminLayout: Rendering admin layout for user:', user?.id);

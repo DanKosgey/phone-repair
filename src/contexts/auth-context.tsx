@@ -55,7 +55,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logger.error('AuthProvider: Error fetching user role:', error.message);
         logger.error('AuthProvider: Error code:', error.code);
         logger.error('AuthProvider: Error details:', error);
-        setRole(null);
+        
+        // In production, if we can't fetch the role, check if we can determine it from JWT
+        if (session?.user?.role === 'admin') {
+          logger.log('AuthProvider: Using role from JWT token');
+          setRole('admin');
+        } else {
+          setRole(null);
+        }
       } else {
         logger.log('AuthProvider: User role fetched:', data?.role ? '[REDACTED]' : null);
         setRole(data?.role || null);
@@ -80,12 +87,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error: any) {
       logger.error('AuthProvider: Exception during role fetching:', error.message);
       logger.error('AuthProvider: Exception stack:', error.stack);
-      setRole(null);
+      
+      // Fallback: check if we can determine role from JWT in case of network errors
+      if (session?.user?.role === 'admin') {
+        logger.log('AuthProvider: Using role from JWT token as fallback');
+        setRole('admin');
+      } else {
+        setRole(null);
+      }
     } finally {
       logger.log('AuthProvider: Role fetch completed');
       setIsFetchingRole(false);
     }
-  }, [isFetchingRole, supabase]);
+  }, [isFetchingRole, supabase, session]);
 
   useEffect(() => {
     logger.log('AuthProvider: Initializing authentication');

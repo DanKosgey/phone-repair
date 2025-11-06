@@ -77,7 +77,7 @@ export default async function proxy(request: NextRequest) {
         console.error('Proxy: Error fetching profile:', error);
         // If there's a network error or any error, allow access but log it
         // This prevents redirect loops and lets client-side handle auth properly
-        console.log('Proxy: Error fetching profile, allowing access for now');
+        console.log('Proxy: Error fetching profile, allowing access for now to prevent redirect loops');
       } else if (profile?.role !== 'admin') {
         console.log('Proxy: User not admin, redirecting to home');
         return NextResponse.redirect(new URL('/', request.url))
@@ -87,7 +87,7 @@ export default async function proxy(request: NextRequest) {
     } catch (error) {
       console.error('Proxy: Error checking user role:', error);
       // If there's an error checking the role, allow access but log it
-      console.log('Proxy: Error checking role, allowing access for now');
+      console.log('Proxy: Error checking role, allowing access for now to prevent redirect loops');
       // We'll let the client-side handle authentication in this case
     }
   }
