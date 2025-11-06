@@ -53,9 +53,9 @@ const MobileMenu = () => {
   const menuItems = [
     { name: "Home", href: "/", icon: Home },
     { name: "Shop Products", href: "/products", icon: ShoppingCart },
-    { name: "Device Marketplace", href: "/marketplace", icon: Recycle },
+    { name: "Marketplace", href: "/marketplace", icon: Recycle },
     { name: "Track Repair", href: "/track", icon: FileSearch },
-  ] as { name: string; href: string; icon: any }[];
+  ];
 
   const closeMenu = () => setIsOpen(false);
 

@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 
 const quickLinks = [
   { name: "Shop Products", href: "/products", icon: ShoppingCart },
-  { name: "Device Marketplace", href: "/marketplace", icon: Recycle },
+  { name: "Marketplace", href: "/marketplace", icon: Recycle },
   { name: "Track Repair", href: "/track", icon: FileSearch },
 ];
 

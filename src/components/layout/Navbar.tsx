@@ -67,7 +67,7 @@ export const Navbar = () => {
             {[
               { name: "Home", href: "/" },
               { name: "Shop Products", href: "/products" },
-              { name: "Device Marketplace", href: "/marketplace" },
+              { name: "Marketplace", href: "/marketplace" },
               { name: "Track Repair", href: "/track" },
             ].map((item: any) => (
               <Link 

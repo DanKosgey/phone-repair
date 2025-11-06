@@ -134,7 +134,7 @@ export function WhyChooseUsSection() {
               <motion.div
                 className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 mb-6 mx-auto border border-primary/10 group-hover:from-primary/20 group-hover:to-primary/10"
                 whileHover={{ 
-                  rotate: [0, 10, 0],
+                  rotate: [0, 10],
                   scale: 1.1,
                 }}
                 transition={{ 

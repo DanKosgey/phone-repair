@@ -184,7 +184,7 @@ export function FeaturedProductCard({ product }: { product: Product }) {
                 <motion.span 
                   className="inline-block"
                   animate={{ 
-                    x: [0, 5, 0],
+                    x: [0, 5],
                   }}
                   transition={{ 
                     duration: 1.5,

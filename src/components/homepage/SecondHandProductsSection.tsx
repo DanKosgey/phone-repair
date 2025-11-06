@@ -15,14 +15,9 @@ export function SecondHandProductsSection() {
   const { data: secondHandProducts = [], isLoading, error } = useSecondHandProducts();
   const { enableSecondHandProducts, loading: featureLoading } = useFeatureToggle();
   const [isClient, setIsClient] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
-
-  useEffect(() => {
-    setMounted(true);
   }, []);
 
   // Don't render if feature is disabled or still loading feature toggle
@@ -61,31 +56,6 @@ export function SecondHandProductsSection() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center py-8">
             <p className="text-muted-foreground">Failed to load second-hand products</p>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (!mounted) {
-    return (
-      <section className="py-16 relative overflow-hidden">
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="flex justify-between items-center mb-8">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-primary/20 rounded-full animate-pulse" />
-              <div>
-                <div className="h-8 w-48 bg-primary/20 rounded animate-pulse" />
-                <div className="h-4 w-64 bg-primary/10 rounded mt-2 animate-pulse" />
-              </div>
-            </div>
-            <div className="h-10 w-48 bg-primary/20 rounded animate-pulse" />
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, index) => (
-              <div key={index} className="h-80 bg-primary/10 rounded-lg animate-pulse" />
-            ))}
           </div>
         </div>
       </section>
@@ -155,7 +125,7 @@ export function SecondHandProductsSection() {
           <div className="flex items-center gap-3">
             <motion.div
               animate={{ 
-                rotate: [0, 15, -15, 0],
+                rotate: [0, 15],
               }}
               transition={{ 
                 duration: 3,
@@ -223,10 +193,10 @@ export function SecondHandProductsSection() {
                 className="border-primary text-primary hover:bg-primary/10 relative overflow-hidden group"
               >
                 <span className="relative z-10 flex items-center gap-2">
-                  View All Products
+                  View All Marketplace Items
                   <motion.span
                     animate={{ 
-                      x: [0, 5, 0],
+                      x: [0, 5],
                     }}
                     transition={{ 
                       duration: 1.5,
@@ -237,78 +207,132 @@ export function SecondHandProductsSection() {
                     →
                   </motion.span>
                 </span>
+                {/* Animated background on hover */}
                 <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                  animate={{
-                    x: ["-100%", "100%"],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
+                  className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/10"
+                  initial={{ x: "-100%" }}
+                  whileHover={{ x: "100%" }}
+                  transition={{ duration: 0.5 }}
                 />
               </Button>
             </Link>
           </motion.div>
         </motion.div>
-
-        <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-        >
-          {secondHandProducts.slice(0, 4).map((product) => (
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {secondHandProducts.slice(0, 4).map((product, index) => (
             <motion.div
               key={product.id}
-              className="group relative overflow-hidden rounded-xl border bg-card text-card-foreground shadow transition-all duration-300 hover:shadow-xl"
-              whileHover={{ y: -10 }}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
+              transition={{ 
+                duration: 0.6,
+                delay: index * 0.1,
+                ease: "easeOut"
+              }}
+              whileHover={{ 
+                y: -15,
+                transition: { duration: 0.3 }
+              }}
+              className="h-full relative"
             >
-              <div className="relative overflow-hidden rounded-t-xl">
-                {product.image_url ? (
-                  <img 
-                    src={product.image_url} 
-                    alt={product.name}
-                    className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="h-48 w-full bg-muted flex items-center justify-center">
-                    <Recycle className="h-12 w-12 text-muted-foreground" />
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                <div className="absolute bottom-2 left-2 right-2 text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                  <p className="text-sm font-medium truncate">{product.name}</p>
-                  <p className="text-xs">Condition: {product.condition}</p>
-                </div>
-                {product.is_featured && (
-                  <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                    Featured
-                  </div>
-                )}
-              </div>
-              <div className="p-4">
-                <h3 className="font-semibold mb-1 truncate">{product.name}</h3>
-                <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                  {product.description}
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-lg">KSh {product.price.toLocaleString()}</span>
-                  <div className="flex items-center gap-1">
-                    <Zap className="h-4 w-4 text-yellow-500" />
-                    <span className="text-xs text-muted-foreground">Refurbished</span>
+              {/* Product card */}
+              <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 h-full flex flex-col">
+                {/* Product image */}
+                <div className="aspect-square relative overflow-hidden">
+                  {product.image_url ? (
+                    <img 
+                      src={product.image_url} 
+                      alt={product.description || "Second-hand product"} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-muted flex items-center justify-center">
+                      <Recycle className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs font-semibold px-2 py-1 rounded-full">
+                    Marketplace
                   </div>
                 </div>
+                
+                {/* Product info */}
+                <div className="p-4 flex-1 flex flex-col">
+                  <h3 className="font-semibold text-lg mb-1 line-clamp-1">{product.description}</h3>
+                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2 flex-1">
+                    {product.description}
+                  </p>
+                  
+                  <div className="flex items-center justify-between mt-auto">
+                    <div>
+                      <p className="font-bold text-lg">
+                        KSh {product.price?.toLocaleString()}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" className="text-xs">
+                      View Details
+                    </Button>
+                  </div>
+                </div>
               </div>
+              
+              {/* Animated border glow on hover */}
+              <motion.div
+                className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary/30 via-green-500/30 to-primary/30 blur-md -z-10"
+                initial={{ opacity: 0 }}
+                whileHover={{ opacity: 0.8 }}
+                transition={{ duration: 0.3 }}
+              />
+              
+              {/* Floating animation for each card with more bounce */}
+              <motion.div
+                animate={{
+                  y: [0, -10, 0],
+                }}
+                transition={{
+                  duration: 2 + index * 0.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
+              
+              {/* Sparkle effects */}
+              <motion.div
+                className="absolute -top-2 -right-2 w-3 h-3 bg-green-400 rounded-full"
+                initial={{ opacity: 0, scale: 0 }}
+                whileHover={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+              />
+              <motion.div
+                className="absolute -bottom-2 -left-2 w-2 h-2 bg-green-400 rounded-full"
+                initial={{ opacity: 0, scale: 0 }}
+                whileHover={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+              />
+              
+              {/* Additional sparkle effects for more liveliness */}
+              <motion.div
+                className="absolute top-4 left-4 w-2 h-2 bg-blue-400 rounded-full"
+                animate={{
+                  opacity: [0, 1, 0],
+                  scale: [0, 1, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: index * 0.5,
+                }}
+              />
             </motion.div>
           ))}
-        </motion.div>
+          {secondHandProducts.length === 0 && (
+            <div className="col-span-full text-center py-8 text-muted-foreground">
+              <p>No second-hand products available</p>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

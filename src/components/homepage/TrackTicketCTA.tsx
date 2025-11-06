@@ -52,8 +52,8 @@ const CIRCLES = [
 
 export function TrackTicketCTA() {
   const [mounted, setMounted] = useState(false);
-  const { enableTracking, loading: featureLoading } = useFeatureToggle();
   const [isClient, setIsClient] = useState(false);
+  const { enableTracking, loading: featureLoading } = useFeatureToggle();
 
   useEffect(() => {
     setIsClient(true);
@@ -216,7 +216,7 @@ export function TrackTicketCTA() {
                 <motion.span 
                   className="ml-2 inline-block"
                   animate={{ 
-                    x: [0, 5, 0],
+                    x: [0, 5],
                   }}
                   transition={{ 
                     duration: 2,

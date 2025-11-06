@@ -16,14 +16,9 @@ export function FeaturedProductsSection() {
   const { data: featuredProducts = [], isLoading, error } = useFeaturedProducts();
   const { enableShop, loading: featureLoading } = useFeatureToggle();
   const [isClient, setIsClient] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
-
-  useEffect(() => {
-    setMounted(true);
   }, []);
 
   // Don't render if feature is disabled or still loading feature toggle
@@ -62,31 +57,6 @@ export function FeaturedProductsSection() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center py-8">
             <p className="text-muted-foreground">Failed to load featured products</p>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (!mounted) {
-    return (
-      <section className="py-16 relative overflow-hidden">
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="flex justify-between items-center mb-8">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-primary/20 rounded-full animate-pulse" />
-              <div>
-                <div className="h-8 w-48 bg-primary/20 rounded animate-pulse" />
-                <div className="h-4 w-64 bg-primary/10 rounded mt-2 animate-pulse" />
-              </div>
-            </div>
-            <div className="h-10 w-48 bg-primary/20 rounded animate-pulse" />
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, index) => (
-              <div key={index} className="h-80 bg-primary/10 rounded-lg animate-pulse" />
-            ))}
           </div>
         </div>
       </section>
@@ -156,7 +126,7 @@ export function FeaturedProductsSection() {
           <div className="flex items-center gap-3">
             <motion.div
               animate={{ 
-                rotate: [0, 15, -15, 0],
+                rotate: [0, 15],
               }}
               transition={{ 
                 duration: 3,
@@ -227,7 +197,7 @@ export function FeaturedProductsSection() {
                   View All Products
                   <motion.span
                     animate={{ 
-                      x: [0, 5, 0],
+                      x: [0, 5],
                     }}
                     transition={{ 
                       duration: 1.5,
@@ -238,33 +208,94 @@ export function FeaturedProductsSection() {
                     →
                   </motion.span>
                 </span>
+                {/* Animated background on hover */}
                 <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                  animate={{
-                    x: ["-100%", "100%"],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
+                  className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/10"
+                  initial={{ x: "-100%" }}
+                  whileHover={{ x: "100%" }}
+                  transition={{ duration: 0.5 }}
                 />
               </Button>
             </Link>
           </motion.div>
         </motion.div>
-
-        <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-        >
-          {featuredProducts.slice(0, 4).map((product) => (
-            <FeaturedProductCard key={product.id} product={product} />
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {featuredProducts.slice(0, 4).map((product, index) => (
+            <motion.div
+              key={product.id}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ 
+                duration: 0.6,
+                delay: index * 0.1,
+                ease: "easeOut"
+              }}
+              whileHover={{ 
+                y: -15,
+                transition: { duration: 0.3 }
+              }}
+              className="h-full relative"
+            >
+              {/* Animated border glow on hover */}
+              <motion.div
+                className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary/30 via-purple-500/30 to-primary/30 blur-md -z-10"
+                initial={{ opacity: 0 }}
+                whileHover={{ opacity: 0.8 }}
+                transition={{ duration: 0.3 }}
+              />
+              
+              {/* Floating animation for each card with more bounce */}
+              <motion.div
+                animate={{
+                  y: [0, -10, 0],
+                }}
+                transition={{
+                  duration: 2 + index * 0.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                <FeaturedProductCard product={product} />
+              </motion.div>
+              
+              {/* Sparkle effects */}
+              <motion.div
+                className="absolute -top-2 -right-2 w-3 h-3 bg-yellow-400 rounded-full"
+                initial={{ opacity: 0, scale: 0 }}
+                whileHover={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+              />
+              <motion.div
+                className="absolute -bottom-2 -left-2 w-2 h-2 bg-yellow-400 rounded-full"
+                initial={{ opacity: 0, scale: 0 }}
+                whileHover={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+              />
+              
+              {/* Additional sparkle effects for more liveliness */}
+              <motion.div
+                className="absolute top-4 left-4 w-2 h-2 bg-blue-400 rounded-full"
+                animate={{
+                  opacity: [0, 1, 0],
+                  scale: [0, 1, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: index * 0.5,
+                }}
+              />
+            </motion.div>
           ))}
-        </motion.div>
+          {featuredProducts.length === 0 && (
+            <div className="col-span-full text-center py-8 text-muted-foreground">
+              <p>No featured products available</p>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

@@ -171,7 +171,7 @@ const ServicesSection = () => {
                   <motion.div 
                     className="mx-auto mb-6"
                     whileHover={{ 
-                      rotate: [0, 15, 0],
+                      rotate: [0, 15],
                       scale: 1.15,
                     }}
                     transition={{ 

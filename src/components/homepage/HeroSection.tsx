@@ -284,10 +284,10 @@ export function HeroSection() {
                   className="w-full sm:w-auto border border-green-500/30 text-lg px-8 py-6 relative overflow-hidden group bg-background/80 backdrop-blur-sm theme-glow-animation"
                 >
                   <span className="relative z-10 font-semibold flex items-center gap-2">
-                    Device Marketplace
+                    Marketplace
                     <motion.span
                       animate={{ 
-                        x: [0, 5, 0],
+                        x: [0, 5],
                       }}
                       transition={{ 
                         duration: 1.5,
@@ -354,10 +354,10 @@ export function HeroSection() {
                   className="w-full sm:w-auto border border-primary/30 text-lg px-8 py-6 relative overflow-hidden group bg-background/80 backdrop-blur-sm theme-glow-animation"
                 >
                   <span className="relative z-10 font-semibold flex items-center gap-2">
-                    Shop Products
+                    Buy New Products
                     <motion.span
                       animate={{ 
-                        x: [0, 5, 0],
+                        x: [0, 5],
                       }}
                       transition={{ 
                         duration: 1.5,
@@ -412,7 +412,7 @@ export function HeroSection() {
                   <span className="relative z-10 flex items-center gap-2">
                     Track Your Repair
                     <motion.span
-                      animate={showNonCriticalAnimations ? { x: [0, 5, 0] } : {}}
+                      animate={showNonCriticalAnimations ? { x: [0, 5] } : {}}
                       transition={{
                         duration: 1.5,
                         repeat: Infinity,
@@ -458,7 +458,7 @@ export function HeroSection() {
               >
                 <motion.div
                   animate={showNonCriticalAnimations ? {
-                    rotate: [0, 10, -10, 0],
+                    rotate: [0, 10],
                   } : {}}
                   transition={{
                     duration: 3,
@@ -483,7 +483,7 @@ export function HeroSection() {
             className="absolute top-1/4 left-10 md:left-20"
             animate={showNonCriticalAnimations ? {
               y: [0, -40, 0],
-              rotate: [0, 15, 0],
+              rotate: [0, 15],
             } : {}}
             transition={{
               duration: 6,
@@ -511,7 +511,7 @@ export function HeroSection() {
             className="absolute bottom-1/4 right-10 md:right-20"
             animate={showNonCriticalAnimations ? {
               y: [0, 40, 0],
-              rotate: [0, -15, 0],
+              rotate: [0, -15],
             } : {}}
             transition={{
               duration: 7,
