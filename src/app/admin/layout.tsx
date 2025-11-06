@@ -20,14 +20,17 @@ export default function AdminRootLayout({
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const hasRedirected = useRef(false)
   const authCheckTimeout = useRef<NodeJS.Timeout | null>(null)
+  const mountedRef = useRef(true)
 
   // Clear timeout on unmount
   useEffect(() => {
+    mountedRef.current = true
     return () => {
+      mountedRef.current = false
       if (authCheckTimeout.current) {
         clearTimeout(authCheckTimeout.current)
       }
-    };
+    }
   }, [])
 
   // Handle sign out with proper error handling
@@ -40,37 +43,47 @@ export default function AdminRootLayout({
       
       console.log('AdminLayout: Sign out completed')
       
-      toast({
-        title: "Signed out",
-        description: "You have been successfully signed out.",
-      })
-      
-      // Force hard navigation (not soft navigation)
-      window.location.href = '/login'
+      if (mountedRef.current) {
+        toast({
+          title: "Signed out",
+          description: "You have been successfully signed out.",
+        })
+        
+        // Force hard navigation (not soft navigation)
+        window.location.href = '/login'
+      }
     } catch (error: any) {
       console.error('AdminLayout: Error during sign out:', error)
       
+      if (!mountedRef.current) return
+      
       if (error.message === 'Auth session missing!') {
-        toast({
-          title: "Session expired",
-          description: "Your session has already expired.",
-        })
+        if (mountedRef.current) {
+          toast({
+            title: "Session expired",
+            description: "Your session has already expired.",
+          })
+        }
       } else {
-        toast({
-          title: "Signed out",
-          description: "You have been signed out.",
-        })
+        if (mountedRef.current) {
+          toast({
+            title: "Signed out",
+            description: "You have been signed out.",
+          })
+        }
       }
       
       // Force hard navigation even on error
-      window.location.href = '/login'
+      if (mountedRef.current) {
+        window.location.href = '/login'
+      }
     }
   }, [signOut, toast])
 
   // Main authentication check effect
   useEffect(() => {
-    // Don't run if already redirected
-    if (hasRedirected.current) return
+    // Don't run if already redirected or component is unmounted
+    if (hasRedirected.current || !mountedRef.current) return
 
     console.log('AdminLayout: Auth state check', { 
       userId: user?.id, 
@@ -93,7 +106,9 @@ export default function AdminRootLayout({
     if (!user) {
       console.log('AdminLayout: No user authenticated, redirecting to login')
       hasRedirected.current = true
-      router.push('/login')
+      if (mountedRef.current) {
+        router.push('/login')
+      }
       return
     }
 
@@ -102,20 +117,24 @@ export default function AdminRootLayout({
       console.log('AdminLayout: User not admin, redirecting to home. Role:', role)
       hasRedirected.current = true
       
-      toast({
-        title: "Access Denied",
-        description: "You don't have permission to access the admin dashboard.",
-        variant: "destructive",
-      })
-      
-      router.push('/')
+      if (mountedRef.current) {
+        toast({
+          title: "Access Denied",
+          description: "You don't have permission to access the admin dashboard.",
+          variant: "destructive",
+        })
+        
+        router.push('/')
+      }
       return
     }
 
     // User exists and is admin
     if (role === 'admin') {
       console.log('AdminLayout: User authorized as admin')
-      setIsCheckingAuth(false)
+      if (mountedRef.current) {
+        setIsCheckingAuth(false)
+      }
       return
     }
 
@@ -124,11 +143,11 @@ export default function AdminRootLayout({
       // If we're not fetching role anymore but still have null role, 
       // set a timeout to prevent infinite loading
       authCheckTimeout.current = setTimeout(() => {
-        if (!hasRedirected.current) {
+        if (!hasRedirected.current && mountedRef.current) {
           console.log('AdminLayout: Role check timeout, assuming admin role')
           setIsCheckingAuth(false)
         }
-      }, 5000) // 5 second timeout
+      }, 8000) // 8 second timeout
     }
   }, [user, role, isLoading, isFetchingRole, router, toast])
 
@@ -154,7 +173,7 @@ export default function AdminRootLayout({
   }
 
   // Double-check: if role is not admin, don't render (redirect should have happened)
-  if (role !== 'admin') {
+  if (role !== 'admin' && role !== null) {
     return null
   }
 

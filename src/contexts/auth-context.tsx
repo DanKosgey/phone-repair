@@ -236,7 +236,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logger.warn('AuthProvider: Initialization timeout, setting loading to false');
         setIsLoading(false);
       }
-    }, 5000); // 5 second timeout
+    }, 8000); // 8 second timeout
     
     const initAuth = async () => {
       try {
@@ -249,14 +249,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(null);
             setSession(null);
             setRole(null);
-            setIsLoading(false);
+            if (isMountedRef.current) {
+              setIsLoading(false);
+            }
             return;
           }
         }
         
         // Add a small delay to ensure cookies are properly set
         if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
         
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
@@ -275,14 +277,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setSession(currentSession);
           
           // Fetch role with improved handling during initialization
-          // We don't want to block the initialization process if role fetching fails initially
-          fetchUserRole(currentSession.user.id).catch((roleError: any) => {
-            logger.warn('AuthProvider: Non-critical error fetching role during initialization (will retry):', roleError.message);
-            // Set role to null but continue with initialization
-            if (isMountedRef.current) {
-              setRole(null);
-            }
-          });
+          if (isMountedRef.current) {
+            fetchUserRole(currentSession.user.id).catch((roleError: any) => {
+              if (isMountedRef.current) {
+                logger.warn('AuthProvider: Non-critical error fetching role during initialization (will retry):', roleError.message);
+                // Set role to null but continue with initialization
+                setRole(null);
+              }
+            });
+          }
         } else {
           logger.log('AuthProvider: No active session found');
         }
@@ -292,7 +295,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (isMountedRef.current) {
           setIsLoading(false);
         }
-        clearTimeout(initTimeout);
+        if (initTimeout) {
+          clearTimeout(initTimeout);
+        }
       }
     };
 
@@ -304,7 +309,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (isMountedRef.current) {
         setIsLoading(false);
       }
-      clearTimeout(initTimeout);
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+      }
     }
 
     // Listen to auth changes (only if we have a Supabase client)
@@ -348,24 +355,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 if (!role) {
                   lastFetchedUserIdRef.current = null;
                   
-                  // Fetch role with timeout during token refresh
-                  try {
-                    const timeoutPromise = new Promise<void>((resolve, reject) => {
-                      setTimeout(() => {
-                        reject(new Error('Role fetch timeout during token refresh'));
-                      }, 5000);
+                  // Fetch role with improved handling during token refresh
+                  if (isMountedRef.current) {
+                    fetchUserRole(currentSession.user.id).catch((roleError: any) => {
+                      if (isMountedRef.current) {
+                        logger.warn('AuthProvider: Non-critical error fetching role during token refresh (will retry):', roleError.message);
+                        // Set role to null but continue with token refresh
+                        setRole(null);
+                      }
                     });
-                    
-                    await Promise.race([
-                      fetchUserRole(currentSession.user.id),
-                      timeoutPromise
-                    ]);
-                  } catch (roleError: any) {
-                    logger.error('AuthProvider: Error fetching role during token refresh:', roleError.message);
-                    // Set role to null but continue with token refresh
-                    if (isMountedRef.current) {
-                      setRole(null);
-                    }
                   }
                 }
               }
@@ -411,14 +409,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       return () => {
         subscription.unsubscribe();
-        clearTimeout(initTimeout);
+        if (initTimeout) {
+          clearTimeout(initTimeout);
+        }
       };
     } else {
       // If no Supabase client, set loading to false
       if (isMountedRef.current) {
         setIsLoading(false);
       }
-      clearTimeout(initTimeout);
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+      }
     }
   }, [supabase]); // Depend on supabase client
 
@@ -516,6 +518,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setRole(null);
           }
         });
+        
+        // Add a small delay to ensure state is properly set before any potential redirect
+        await new Promise(resolve => setTimeout(resolve, 100));
       } else if (!data.user) {
         throw new Error('Authentication failed. No user data received.');
       }

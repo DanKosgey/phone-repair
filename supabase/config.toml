@@ -118,31 +118,44 @@ file_size_limit = "50MiB"
 
 [auth]
 enabled = true
-# The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
-# in emails.
-site_url = "https://your-production-domain.vercel.app"
-# A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["http://127.0.0.1:9002", "http://localhost:9002", "https://your-production-domain.vercel.app", "https://your-production-domain.vercel.app/**"]
-# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
-jwt_expiry = 86400
-# Path to JWT signing key. DO NOT commit your signing keys file to git.
-# signing_keys_path = "./signing_keys.json"
+# The site URL is used to determine the redirect URL for the OAuth flows. It's also used in emails sent to users,
+# like the email confirmation and password reset emails.
+# The site URL should be the URL of your application's root, e.g. https://your-production-domain.vercel.app
+site_url = "https://jays-shop.vercel.app"
+
+# A list of additional redirect URLs which Supabase Auth will consider as valid. These are
+# commonly used for local development, e.g. http://localhost:3000.
+# With wildcard support, e.g. https://*.vercel.app, it can be used to automatically
+# allow all Vercel deployment URLs.
+additional_redirect_urls = ["http://127.0.0.1:9002", "http://localhost:9002", "https://jays-shop.vercel.app", "https://jays-shop.vercel.app/**", "https://*.vercel.app"]
+
+# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour).
+# jwt_expiry = 3600
+
 # If disabled, the refresh token will never expire.
 enable_refresh_token_rotation = true
+
 # Allows refresh tokens to be reused after expiry, up to the specified interval in seconds.
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
-# Allow/disallow new user signups to your project.
-enable_signup = true
-# Allow/disallow anonymous sign-ins to your project.
-enable_anonymous_sign_ins = false
-# Allow/disallow testing manual linking of accounts
-enable_manual_linking = false
-# Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
-# Passwords that do not meet the following requirements will be rejected as weak. Supported values
-# are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
-password_requirements = ""
+
+# Date format for timestamps in logs. Defaults to RFC3339.
+# log_format_time = "RFC3339"
+
+# The minimum level to log. Can be one of "debug", "info", "warn", "error". Defaults to "info".
+# log_level = "info"
+
+# The maximum number of concurrent connections allowed to the database. Defaults to 100.
+# max_connections = 100
+
+# The maximum number of rows that can be returned from a single query. Defaults to 1000.
+# max_rows = 1000
+
+# The maximum size of a single vector store file, in bytes. The default value is 10MB.
+# vector_store_max_file_size = "10MB"
+
+# The maximum number of vector store files that can be uploaded per project. The default value is 1000.
+# vector_store_max_files_per_project = 1000
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.

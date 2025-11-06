@@ -1,32 +1,37 @@
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Lock } from 'lucide-react';
-import Link from 'next/link';
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/auth-context'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertCircle, Lock } from 'lucide-react'
+import Link from 'next/link'
 
 export default function AdminLoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const router = useRouter();
-  const { signIn, user, role, isLoading: authLoading, isFetchingRole } = useAuth();
-  const hasRedirected = useRef(false);
-  const redirectTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const router = useRouter()
+  const { signIn, user, role, isLoading: authLoading, isFetchingRole } = useAuth()
+  const hasRedirected = useRef(false)
+  const redirectTimeout = useRef<NodeJS.Timeout | null>(null)
+  const mountedRef = useRef(true)
 
   // Clear timeout on unmount
   useEffect(() => {
+    mountedRef.current = true
     return () => {
+      mountedRef.current = false
       if (redirectTimeout.current) {
-        clearTimeout(redirectTimeout.current);
+        clearTimeout(redirectTimeout.current)
       }
-    };
-  }, []);
+    }
+  }, [])
 
   useEffect(() => {
     console.log('LoginPage: Auth state updated', { 
@@ -34,91 +39,97 @@ export default function AdminLoginPage() {
       role, 
       authLoading,
       isFetchingRole
-    });
+    })
     
     // Clear any existing redirect timeout
     if (redirectTimeout.current) {
-      clearTimeout(redirectTimeout.current);
+      clearTimeout(redirectTimeout.current)
     }
     
     // If user is authenticated and we have the role, redirect appropriately
     // Only redirect once to prevent loops
-    if (!authLoading && !isFetchingRole && user && role !== null && !hasRedirected.current) {
-      hasRedirected.current = true;
+    if (!authLoading && !isFetchingRole && user && role !== null && !hasRedirected.current && mountedRef.current) {
+      hasRedirected.current = true
       if (role === 'admin') {
-        console.log('LoginPage: User authenticated as admin, redirecting to admin dashboard');
-        router.push('/admin');
+        console.log('LoginPage: User authenticated as admin, redirecting to admin dashboard')
+        router.push('/admin')
       } else {
-        console.log('LoginPage: User authenticated but not admin, redirecting to homepage');
-        router.push('/');
+        console.log('LoginPage: User authenticated but not admin, redirecting to homepage')
+        router.push('/')
       }
     }
     // If user is authenticated but role is still null (fetching), wait a bit then redirect
-    else if (!authLoading && !isFetchingRole && user && role === null && !hasRedirected.current) {
+    else if (!authLoading && !isFetchingRole && user && role === null && !hasRedirected.current && mountedRef.current) {
       // Set a timeout to redirect even if role is null
       redirectTimeout.current = setTimeout(() => {
-        if (!hasRedirected.current) {
-          hasRedirected.current = true;
-          console.log('LoginPage: Role fetch timeout, redirecting to admin dashboard (assuming admin)');
-          router.push('/admin');
+        if (!hasRedirected.current && mountedRef.current) {
+          hasRedirected.current = true
+          console.log('LoginPage: Role fetch timeout, redirecting to admin dashboard (assuming admin)')
+          router.push('/admin')
         }
-      }, 3000); // 3 second timeout
+      }, 5000) // 5 second timeout
     }
-  }, [user, role, authLoading, isFetchingRole, router]);
+  }, [user, role, authLoading, isFetchingRole, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('LoginPage: Submitting login form for email:', email);
-    setIsSubmitting(true);
-    setError('');
+    e.preventDefault()
+    console.log('LoginPage: Submitting login form for email:', email)
+    setIsSubmitting(true)
+    setError('')
 
     if (!email || !password) {
-      console.log('LoginPage: Missing email or password');
-      setError('Please enter both email and password');
-      setIsSubmitting(false);
-      return;
+      console.log('LoginPage: Missing email or password')
+      setError('Please enter both email and password')
+      setIsSubmitting(false)
+      return
     }
 
-    console.log('LoginPage: Attempting sign in for:', email);
+    console.log('LoginPage: Attempting sign in for:', email)
     try {
       // Reset redirect flag before signing in
-      hasRedirected.current = false;
+      hasRedirected.current = false
       // Clear any existing redirect timeout
       if (redirectTimeout.current) {
-        clearTimeout(redirectTimeout.current);
+        clearTimeout(redirectTimeout.current)
       }
       
-      await signIn(email, password);
-      console.log('LoginPage: Sign in successful');
+      await signIn(email, password)
+      console.log('LoginPage: Sign in successful')
       // Redirect will be handled by the useEffect above
     } catch (error: any) {
-      console.error('LoginPage: Sign in failed:', error);
-      setError(error.message || 'An unexpected error occurred');
+      console.error('LoginPage: Sign in failed:', error)
+      setError(error.message || 'An unexpected error occurred')
       // Reset redirect flag on error so user can try again
-      hasRedirected.current = false;
+      hasRedirected.current = false
       // Clear any redirect timeout
       if (redirectTimeout.current) {
-        clearTimeout(redirectTimeout.current);
+        clearTimeout(redirectTimeout.current)
       }
     }
     
-    setIsSubmitting(false);
-  };
+    // Only set isSubmitting to false if we haven't redirected
+    if (!hasRedirected.current) {
+      setIsSubmitting(false)
+    }
+  }
 
   // If user is already logged in, show loading state
   if (authLoading || isFetchingRole || (user && !hasRedirected.current)) {
-    console.log('LoginPage: Showing loading state');
+    console.log('LoginPage: Showing loading state')
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <p className="text-muted-foreground">Authenticating...</p>
+          {(authLoading || isFetchingRole) && (
+            <p className="text-sm text-muted-foreground">Please wait...</p>
+          )}
         </div>
       </div>
-    );
+    )
   }
 
-  console.log('LoginPage: Rendering login form');
+  console.log('LoginPage: Rendering login form')
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
       <Card className="w-full max-w-md">
@@ -179,5 +190,5 @@ export default function AdminLoginPage() {
         </form>
       </Card>
     </div>
-  );
+  )
 }
