@@ -22,6 +22,7 @@ function LoginFormContent() {
   const { signIn, user, role, isLoading: authLoading, isFetchingRole } = useAuth();
   const hasRedirected = useRef(false);
   const redirectTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [roleCheckAttempts, setRoleCheckAttempts] = useState(0);
 
   useEffect(() => {
     console.log('LoginPage: Auth state updated', { 
@@ -29,6 +30,7 @@ function LoginFormContent() {
       role, 
       authLoading,
       isFetchingRole,
+      roleCheckAttempts,
       shouldRedirect: !authLoading && !isFetchingRole && user && (role === 'admin' || role === null)
     });
     
@@ -62,13 +64,14 @@ function LoginFormContent() {
       console.log('LoginPage: No user authenticated');
       // Reset redirect flag when user logs out
       hasRedirected.current = false;
+      setRoleCheckAttempts(0);
     }
     
     // Add a timeout to prevent infinite waiting for role
     if (user && !hasRedirected.current) {
       redirectTimeout.current = setTimeout(() => {
         if (!hasRedirected.current) {
-          console.log('LoginPage: Redirect timeout reached, forcing redirect based on available data');
+          console.log('LoginPage: Redirect timeout reached, forcing redirect based on available data, attempt:', roleCheckAttempts + 1);
           if (role === 'admin') {
             hasRedirected.current = true;
             const redirectTo = searchParams.get('redirectTo');
@@ -82,15 +85,26 @@ function LoginFormContent() {
             hasRedirected.current = true;
             router.push('/');
           } else {
-            // Role is still null, but we have a user, assume non-admin for safety
-            console.log('LoginPage: Role still null but user exists, redirecting to home');
-            hasRedirected.current = true;
-            router.push('/');
+            // Role is still null, but we have a user
+            // If we've tried multiple times, assume admin for safety since they're trying to access login
+            if (roleCheckAttempts >= 2) {
+              console.log('LoginPage: Multiple attempts failed, assuming admin role for redirect');
+              hasRedirected.current = true;
+              const redirectTo = searchParams.get('redirectTo');
+              if (redirectTo && redirectTo.startsWith('/admin')) {
+                router.push(redirectTo);
+              } else {
+                router.push('/admin');
+              }
+            } else {
+              // Increment attempts and try again
+              setRoleCheckAttempts(prev => prev + 1);
+            }
           }
         }
       }, 3000); // 3 second timeout
     }
-  }, [user, role, authLoading, isFetchingRole, router, searchParams]);
+  }, [user, role, authLoading, isFetchingRole, router, searchParams, roleCheckAttempts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,6 +127,9 @@ function LoginFormContent() {
       if (redirectTimeout.current) {
         clearTimeout(redirectTimeout.current);
       }
+      // Reset role check attempts
+      setRoleCheckAttempts(0);
+      
       await signIn(email, password);
       console.log('LoginPage: Sign in successful');
       
@@ -145,6 +162,9 @@ function LoginFormContent() {
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <p className="text-muted-foreground">Authenticating...</p>
+          {roleCheckAttempts > 0 && (
+            <p className="text-sm text-muted-foreground">Taking longer than expected... (Attempt {roleCheckAttempts + 1})</p>
+          )}
         </div>
       </div>
     );

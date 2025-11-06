@@ -49,9 +49,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .single();
 
       logger.log('AuthProvider: Profile query result:', { data: data ? '[REDACTED]' : null, hasError: !!error });
+      logger.log('AuthProvider: Profile query error details:', error);
 
       if (error) {
         logger.error('AuthProvider: Error fetching user role:', error.message);
+        logger.error('AuthProvider: Error code:', error.code);
+        logger.error('AuthProvider: Error details:', error);
         setRole(null);
       } else {
         logger.log('AuthProvider: User role fetched:', data?.role ? '[REDACTED]' : null);
@@ -61,7 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (data?.role === 'admin') {
           logger.log('AuthProvider: Confirmed user has admin role');
         } else {
-          logger.log('AuthProvider: User does not have admin role');
+          logger.log('AuthProvider: User does not have admin role, actual role:', data?.role);
         }
         
         // Refresh the session to ensure the role is properly set in the JWT
@@ -75,7 +78,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     } catch (error: any) {
-      logger.error('AuthProvider: Error fetching user role:', error.message);
+      logger.error('AuthProvider: Exception during role fetching:', error.message);
+      logger.error('AuthProvider: Exception stack:', error.stack);
       setRole(null);
     } finally {
       logger.log('AuthProvider: Role fetch completed');
