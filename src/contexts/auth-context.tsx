@@ -110,7 +110,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       // Add a timeout to prevent infinite waiting
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Role fetch timeout')), 10000); // 10 second timeout
+        const timeout = setTimeout(() => {
+          reject(new Error('Role fetch timeout'));
+          if (isMountedRef.current) {
+            setIsFetchingRole(false);
+          }
+        }, 10000); // 10 second timeout
+        
+        // Clean up timeout on abort
+        currentAbortController.signal.addEventListener('abort', () => {
+          clearTimeout(timeout);
+        });
       });
 
       const fetchPromise = (async () => {
@@ -195,8 +205,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (isMountedRef.current) {
         setIsFetchingRole(false);
       }
+      // Clean up abort controller
+      if (roleAbortControllerRef.current === currentAbortController) {
+        roleAbortControllerRef.current = null;
+      }
     }
-  }, [isFetchingRole, supabase, safeSetTimeout]);
+  }, [isFetchingRole, supabase]);
 
   // Initialize authentication - ONLY RUNS ONCE
   useEffect(() => {
@@ -255,7 +269,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           logger.log('AuthProvider: Setting user from session');
           setUser(currentSession.user);
           setSession(currentSession);
-          await fetchUserRole(currentSession.user.id);
+          
+          // Fetch role with timeout during initialization
+          try {
+            const timeoutPromise = new Promise<void>((resolve, reject) => {
+              setTimeout(() => {
+                reject(new Error('Role fetch timeout during initialization'));
+              }, 5000);
+            });
+            
+            await Promise.race([
+              fetchUserRole(currentSession.user.id),
+              timeoutPromise
+            ]);
+          } catch (roleError: any) {
+            logger.error('AuthProvider: Error fetching role during initialization:', roleError.message);
+            // Set role to null but continue with initialization
+            if (isMountedRef.current) {
+              setRole(null);
+            }
+          }
         } else {
           logger.log('AuthProvider: No active session found');
         }
@@ -294,9 +327,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setUser(currentSession.user);
                 setSession(currentSession);
                 lastFetchedUserIdRef.current = null; // Reset to allow fetch
-                await fetchUserRole(currentSession.user.id);
+                
+                // Fetch role with timeout during sign in
+                try {
+                  const timeoutPromise = new Promise<void>((resolve, reject) => {
+                    setTimeout(() => {
+                      reject(new Error('Role fetch timeout during sign in event'));
+                    }, 5000);
+                  });
+                  
+                  await Promise.race([
+                    fetchUserRole(currentSession.user.id),
+                    timeoutPromise
+                  ]);
+                } catch (roleError: any) {
+                  logger.error('AuthProvider: Error fetching role during sign in event:', roleError.message);
+                  // Set role to null but continue with sign in
+                  if (isMountedRef.current) {
+                    setRole(null);
+                  }
+                }
               }
-              setIsLoading(false);
+              if (isMountedRef.current) {
+                setIsLoading(false);
+              }
               break;
               
             case 'TOKEN_REFRESHED':
@@ -306,10 +360,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 // Don't re-fetch role on token refresh if we already have it
                 if (!role) {
                   lastFetchedUserIdRef.current = null;
-                  await fetchUserRole(currentSession.user.id);
+                  
+                  // Fetch role with timeout during token refresh
+                  try {
+                    const timeoutPromise = new Promise<void>((resolve, reject) => {
+                      setTimeout(() => {
+                        reject(new Error('Role fetch timeout during token refresh'));
+                      }, 5000);
+                    });
+                    
+                    await Promise.race([
+                      fetchUserRole(currentSession.user.id),
+                      timeoutPromise
+                    ]);
+                  } catch (roleError: any) {
+                    logger.error('AuthProvider: Error fetching role during token refresh:', roleError.message);
+                    // Set role to null but continue with token refresh
+                    if (isMountedRef.current) {
+                      setRole(null);
+                    }
+                  }
                 }
               }
-              setIsLoading(false);
+              if (isMountedRef.current) {
+                setIsLoading(false);
+              }
               break;
               
             case 'SIGNED_OUT':
@@ -319,7 +394,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               roleCache.clear();
               retryAttemptsRef.current.clear();
               lastFetchedUserIdRef.current = null;
-              setIsLoading(false);
+              if (isMountedRef.current) {
+                setIsLoading(false);
+              }
               break;
               
             case 'USER_UPDATED':
@@ -327,7 +404,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setUser(currentSession.user);
                 setSession(currentSession);
               }
-              setIsLoading(false);
+              if (isMountedRef.current) {
+                setIsLoading(false);
+              }
               break;
 
             case 'INITIAL_SESSION':
@@ -335,7 +414,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               break;
               
             default:
-              setIsLoading(false);
+              if (isMountedRef.current) {
+                setIsLoading(false);
+              }
               break;
           }
         }
@@ -440,17 +521,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         lastFetchedUserIdRef.current = null;
         
         // Fetch role with timeout
-        const timeoutPromise = new Promise<void>((resolve) => {
-          safeSetTimeout(() => {
-            logger.warn('AuthProvider: Role fetch timeout');
-            resolve();
-          }, 5000);
-        });
-        
-        await Promise.race([
-          fetchUserRole(data.user.id),
-          timeoutPromise
-        ]);
+        try {
+          const timeoutPromise = new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('Role fetch timeout during sign in'));
+            }, 5000);
+            
+            // Clean up on successful role fetch
+            const cleanup = () => clearTimeout(timeout);
+            
+            // Listen for abort signal
+            if (roleAbortControllerRef.current) {
+              roleAbortControllerRef.current.signal.addEventListener('abort', () => {
+                clearTimeout(timeout);
+                reject(new Error('Role fetch aborted'));
+              });
+            }
+          });
+          
+          await Promise.race([
+            fetchUserRole(data.user.id),
+            timeoutPromise
+          ]);
+        } catch (roleError: any) {
+          logger.error('AuthProvider: Error fetching role during sign in:', roleError.message);
+          // Set role to null but don't fail the sign in
+          if (isMountedRef.current) {
+            setRole(null);
+          }
+        }
       } else if (!data.user) {
         throw new Error('Authentication failed. No user data received.');
       }
@@ -623,7 +722,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Only fetch role if we don't have it
         if (!role) {
           lastFetchedUserIdRef.current = null;
-          await fetchUserRole(refreshedSession.user.id);
+          try {
+            // Add timeout for role fetching during refresh
+            const timeoutPromise = new Promise<void>((resolve, reject) => {
+              setTimeout(() => {
+                reject(new Error('Role fetch timeout during session refresh'));
+              }, 5000);
+            });
+            
+            await Promise.race([
+              fetchUserRole(refreshedSession.user.id),
+              timeoutPromise
+            ]);
+          } catch (roleError: any) {
+            logger.error('AuthProvider: Error fetching role during session refresh:', roleError.message);
+            // Set role to null but continue with session refresh
+            if (isMountedRef.current) {
+              setRole(null);
+            }
+          }
         }
         return refreshedSession;
       }
@@ -656,7 +773,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(currentSession.user);
         setSession(currentSession);
         lastFetchedUserIdRef.current = null;
-        await fetchUserRole(currentSession.user.id);
+        
+        try {
+          // Add timeout for role fetching during recovery
+          const timeoutPromise = new Promise<void>((resolve, reject) => {
+            setTimeout(() => {
+              reject(new Error('Role fetch timeout during session recovery'));
+            }, 5000);
+          });
+          
+          await Promise.race([
+            fetchUserRole(currentSession.user.id),
+            timeoutPromise
+          ]);
+        } catch (roleError: any) {
+          logger.error('AuthProvider: Error fetching role during session recovery:', roleError.message);
+          // Set role to null but continue with session recovery
+          if (isMountedRef.current) {
+            setRole(null);
+          }
+        }
         return true;
       }
       
