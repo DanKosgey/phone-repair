@@ -35,6 +35,7 @@ import { productsDb } from '@/lib/db/products'
 import { notificationsDb } from '@/lib/db/notifications'
 import { getSupabaseBrowserClient } from '@/server/supabase/client'
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts'
+import ImprovedTicketStatusChart from './analytics/ImprovedTicketStatusChart';
 
 // Types
 type StatCard = {
@@ -96,6 +97,7 @@ export default function AdminDashboard() {
   const [ticketStatusData, setTicketStatusData] = useState<TicketStatus[]>([])
   const [unreadNotifications, setUnreadNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
   
   // Loading states
   const [isLoading, setIsLoading] = useState(true)
@@ -105,6 +107,7 @@ export default function AdminDashboard() {
     status: true,
     notifications: true
   })
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -192,6 +195,9 @@ export default function AdminDashboard() {
     try {
       setIsLoading(true)
       
+      // Refresh materialized views to ensure data is up to date
+      await refreshDashboardData()
+      
       // Fetch stats
       await fetchStats()
       
@@ -209,6 +215,24 @@ export default function AdminDashboard() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const refreshDashboardData = async () => {
+    try {
+      setIsRefreshing(true)
+      await dashboardDb.refreshMaterializedViews()
+      setLastRefreshed(new Date())
+      console.log('Dashboard data refreshed at:', new Date())
+    } catch (error) {
+      console.error("Failed to refresh dashboard data:", error)
+      toast({
+        title: "Refresh Error",
+        description: "Failed to refresh dashboard data. Showing cached data.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsRefreshing(false)
     }
   }
 
@@ -291,10 +315,39 @@ export default function AdminDashboard() {
     try {
       setDataLoading(prev => ({ ...prev, status: true }))
       const statusData = await dashboardDb.getTicketStatusDistribution()
+      console.log('Raw ticket status data from materialized view:', statusData)
+      
+      // For debugging, also calculate status distribution directly
+      try {
+        const directStatusData = await dashboardDb.calculateTicketStatusDistribution()
+        console.log('Directly calculated ticket status data:', directStatusData)
+        
+        // Compare the two datasets
+        console.log('Comparison - Materialized View vs Direct Calculation:')
+        statusData.forEach(materialized => {
+          const direct = directStatusData.find(d => d.status === materialized.status)
+          if (direct) {
+            console.log(`Status: ${materialized.status}, Materialized: ${materialized.count}, Direct: ${direct.count}, Match: ${materialized.count === direct.count}`)
+          } else {
+            console.log(`Status: ${materialized.status} exists in materialized view but not in direct calculation`)
+          }
+        })
+        
+        directStatusData.forEach(direct => {
+          const materialized = statusData.find(m => m.status === direct.status)
+          if (!materialized) {
+            console.log(`Status: ${direct.status} exists in direct calculation but not in materialized view`)
+          }
+        })
+      } catch (calcError) {
+        console.error('Error calculating direct status distribution:', calcError)
+      }
+      
       const transformed = statusData.map(item => ({
         status: item.status,
         count: item.count
       }))
+      console.log('Transformed ticket status data:', transformed)
       setTicketStatusData(transformed)
     } catch (error) {
       console.error("Failed to fetch ticket status:", error)
@@ -335,13 +388,28 @@ export default function AdminDashboard() {
   }
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'open': return 'bg-blue-100 text-blue-800'
-      case 'in_progress': return 'bg-yellow-100 text-yellow-800'
-      case 'pending_parts': return 'bg-orange-100 text-orange-800'
-      case 'completed': return 'bg-green-100 text-green-800'
-      case 'cancelled': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+    // Normalize status values to match database values
+    const normalizedStatus = status.toLowerCase().replace(' ', '_');
+    
+    switch (normalizedStatus) {
+      case 'received':
+        return 'bg-blue-100 text-blue-800'
+      case 'repairing':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'awaiting_parts':
+        return 'bg-orange-100 text-orange-800'
+      case 'quality_check':
+        return 'bg-purple-100 text-purple-800'
+      case 'completed':
+        return 'bg-green-100 text-green-800'
+      case 'cancelled':
+        return 'bg-red-100 text-red-800'
+      case 'ready':
+        return 'bg-indigo-100 text-indigo-800'
+      case 'diagnosing':
+        return 'bg-teal-100 text-teal-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
     }
   }
 
@@ -378,6 +446,10 @@ export default function AdminDashboard() {
     localStorage.setItem('dashboardTimeframe', newTimeframe);
   }
 
+  const handleRefresh = () => {
+    fetchDashboardData()
+  }
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -386,10 +458,30 @@ export default function AdminDashboard() {
           <div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
             <p className="text-muted-foreground">Monitor and manage your shop operations</p>
+            {lastRefreshed && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Last refreshed: {lastRefreshed.toLocaleTimeString()}
+              </p>
+            )}
           </div>
           
           {/* Timeframe Selector */}
           <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                  Refreshing...
+                </>
+              ) : (
+                'Refresh Data'
+              )}
+            </Button>
             <span className="text-sm font-medium">Timeframe:</span>
             <Select value={timeframe} onValueChange={(value) => handleTimeframeChange(value as Timeframe)}>
               <SelectTrigger className="w-[180px]">
@@ -593,49 +685,19 @@ export default function AdminDashboard() {
         </div>
 
         {/* Simple Data Insight: Ticket Status Distribution */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <PieChartIcon className="h-5 w-5 text-primary" />
-                Ticket Status Overview
-              </CardTitle>
-              <CardDescription>
-                Quick insight into current ticket statuses
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="h-64">
-              {ticketStatusData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={ticketStatusData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="count"
-                      label={({ status, percent }) => `${status}: ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {ticketStatusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
-                  No status data available
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-3">
+            <ImprovedTicketStatusChart 
+              data={ticketStatusData} 
+              title="Ticket Status Overview"
+              height={350}
+            />
+          </div>
+        </div>
 
-          {/* Additional Quick Links Section */}
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
+        {/* Additional Quick Links Section */}
+        <div className="lg:col-span-1">
+          <Card className="shadow-md hover:shadow-lg transition-shadow h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plus className="h-5 w-5 text-primary" />

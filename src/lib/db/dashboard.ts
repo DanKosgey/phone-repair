@@ -1349,5 +1349,55 @@ export const dashboardDb = {
     }
     
     return { correlation, pValue, confidenceInterval };
+  },
+
+  // Function to manually refresh materialized views
+  async refreshMaterializedViews() {
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error } = await supabase.rpc('refresh_dashboard_materialized_views');
+      
+      if (error) throw error;
+      console.log('Materialized views refreshed successfully');
+      return true;
+    } catch (error) {
+      console.error('Error refreshing materialized views:', error);
+      throw error;
+    }
+  },
+
+  // Function to calculate ticket status distribution directly from tickets table (for verification)
+  async calculateTicketStatusDistribution() {
+    try {
+      const supabase = getSupabaseBrowserClient();
+      
+      // Get all tickets to calculate status distribution
+      const { data: tickets, error: ticketsError } = await supabase
+        .from('tickets')
+        .select('status')
+        .is('deleted_at', null);
+      
+      if (ticketsError) throw ticketsError;
+      
+      // Calculate status distribution manually
+      const statusCounts: Record<string, number> = {};
+      tickets.forEach(ticket => {
+        const status = ticket.status || 'unknown';
+        statusCounts[status] = (statusCounts[status] || 0) + 1;
+      });
+      
+      // Convert to array format
+      const statusData = Object.entries(statusCounts).map(([status, count]) => ({
+        status,
+        count,
+        percentage: parseFloat(((count / tickets.length) * 100).toFixed(2))
+      }));
+      
+      console.log('Manually calculated ticket status distribution:', statusData);
+      return statusData;
+    } catch (error) {
+      console.error('Error calculating ticket status distribution:', error);
+      throw error;
+    }
   }
 }

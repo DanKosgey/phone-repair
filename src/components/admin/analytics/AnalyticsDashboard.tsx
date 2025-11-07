@@ -35,6 +35,7 @@ import { redirect } from 'next/navigation';
 import { dashboardDb, Timeframe } from '@/lib/db/dashboard';
 import { ticketsDb } from '@/lib/db/tickets';
 import { productsDb } from '@/lib/db/products';
+import ImprovedTicketStatusChart from './ImprovedTicketStatusChart';
 
 // Types
 type TicketData = {
@@ -100,6 +101,8 @@ export default function AnalyticsDashboard() {
 
   // New state for revenue type toggle
   const [revenueType, setRevenueType] = useState<'all' | 'paid'>('all');
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [ticketData, setTicketData] = useState<TicketData[]>([]);
   const [ticketStatusData, setTicketStatusData] = useState<TicketStatusData[]>([]);
@@ -143,6 +146,9 @@ export default function AnalyticsDashboard() {
     try {
       setIsLoading(true);
       
+      // Refresh materialized views to ensure data is up to date
+      await refreshAnalyticsData();
+      
       // Fetch chart data
       await fetchChartData();
       
@@ -154,6 +160,24 @@ export default function AnalyticsDashboard() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const refreshAnalyticsData = async () => {
+    try {
+      setIsRefreshing(true);
+      await dashboardDb.refreshMaterializedViews();
+      setLastRefreshed(new Date());
+      console.log('Analytics data refreshed at:', new Date());
+    } catch (error) {
+      console.error("Failed to refresh analytics data:", error);
+      toast({
+        title: "Refresh Error",
+        description: "Failed to refresh analytics data. Showing cached data.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -229,6 +253,34 @@ export default function AnalyticsDashboard() {
       
       // Fetch ticket status distribution
       const statusData = await dashboardDb.getTicketStatusDistribution();
+      console.log('Analytics Dashboard - Raw ticket status data from materialized view:', statusData);
+      
+      // For debugging, also calculate status distribution directly
+      try {
+        const directStatusData = await dashboardDb.calculateTicketStatusDistribution();
+        console.log('Analytics Dashboard - Directly calculated ticket status data:', directStatusData);
+        
+        // Compare the two datasets
+        console.log('Analytics Dashboard - Comparison - Materialized View vs Direct Calculation:');
+        statusData.forEach(materialized => {
+          const direct = directStatusData.find(d => d.status === materialized.status);
+          if (direct) {
+            console.log(`Status: ${materialized.status}, Materialized: ${materialized.count}, Direct: ${direct.count}, Match: ${materialized.count === direct.count}`);
+          } else {
+            console.log(`Status: ${materialized.status} exists in materialized view but not in direct calculation`);
+          }
+        });
+        
+        directStatusData.forEach(direct => {
+          const materialized = statusData.find(m => m.status === direct.status);
+          if (!materialized) {
+            console.log(`Status: ${direct.status} exists in direct calculation but not in materialized view`);
+          }
+        });
+      } catch (calcError) {
+        console.error('Error calculating direct status distribution:', calcError);
+      }
+      
       setTicketStatusData(statusData);
       
       // Fetch top products
@@ -293,6 +345,10 @@ export default function AnalyticsDashboard() {
     }
   };
 
+  const handleRefresh = () => {
+    fetchAnalyticsData();
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -310,8 +366,29 @@ export default function AnalyticsDashboard() {
             <p className="text-muted-foreground">
               Advanced insights and business intelligence
             </p>
+            {lastRefreshed && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Last refreshed: {lastRefreshed.toLocaleTimeString()}
+              </p>
+            )}
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                  Refreshing...
+                </>
+              ) : (
+                'Refresh Data'
+              )}
+            </Button>
+            
             {/* Revenue Type Toggle */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Revenue:</span>
@@ -478,47 +555,16 @@ export default function AnalyticsDashboard() {
       {/* Ticket Status Distribution and Top Products */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Ticket Status Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ticket Status Distribution</CardTitle>
-            <CardDescription>Current distribution of ticket statuses</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {dataLoading.charts ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : ticketStatusData.length > 0 ? (
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPieChart>
-                    <Pie
-                      data={ticketStatusData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={true}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="count"
-                      nameKey="status"
-                    >
-                      {ticketStatusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => [value, 'Tickets']} />
-                    <Legend />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-64 text-muted-foreground">
-                No status data available
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <div className="lg:col-span-2">
+          <ImprovedTicketStatusChart 
+            data={ticketStatusData.map(item => ({ 
+              status: item.status, 
+              count: item.count 
+            }))} 
+            title="Ticket Status Distribution"
+            height={400}
+          />
+        </div>
 
         {/* Top Selling Products */}
         <Card>
