@@ -1,0 +1,43 @@
+version: '3.8'
+
+# Development override for docker-compose
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  app:
+    # Development-specific settings
+    environment:
+      # Enable development mode
+      NODE_ENV: development
+      
+      # Supabase Configuration (loaded from .env.docker)
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      
+      # Next.js Configuration
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+    
+    # Development volume mounts for hot reload
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    
+    # Command to run in development mode
+    command: [
+      "/wait-for-it.sh",
+      "http://localhost:3000",
+      "--",
+      "npm",
+      "run",
+      "dev"
+    ]
+
+  supabase:
+    # Use the same environment variables as the main docker-compose.yml
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres

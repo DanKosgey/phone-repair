@@ -9,10 +9,13 @@
     "start": "next start",
     "lint": "next lint",
     "analyze": "cross-env ANALYZE=true next build --webpack",
-    "docker:build": "docker-compose build",
-    "docker:up": "docker-compose up -d",
+    "docker:build": "docker build -t jays-shop-app .",
+    "docker:up": "docker-compose up",
+    "docker:up:build": "docker-compose up --build",
     "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f"
+    "docker:logs": "docker-compose logs -f app",
+    "docker:shell": "docker exec -it jays-shop-app sh",
+    "docker:clean": "docker-compose down -v && docker rmi jays-shop-app"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

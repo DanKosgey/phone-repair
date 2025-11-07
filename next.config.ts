@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   // Disable strict mode in development to prevent double rendering
   reactStrictMode: process.env.NODE_ENV === 'production',
   
-  // Configure headers for cookies
+  // Configure headers for cookies and API access
   async headers() {
     return [
       {
@@ -27,6 +27,12 @@ const nextConfig: NextConfig = {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
           },
+        ],
+      },
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
         ],
       },
     ]

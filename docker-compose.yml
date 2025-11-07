@@ -5,36 +5,56 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: jays-shop-app
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
-      # You'll need to set these environment variables for Supabase
-      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-    env_file:
-      - .env.local
-    depends_on:
-      - db
+      # Supabase Configuration
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      
+      # Next.js Configuration
+      NODE_ENV: production
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      
+    volumes:
+      # Mount source for hot reload in development
+      - .:/app
+      - /app/node_modules
+      - /app/.next
     networks:
-      - app-network
+      - jays-shop-network
+    depends_on:
+      - supabase
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  db:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: phone_repair
+  supabase:
+    image: supabase/supabase:latest
+    container_name: supabase-local
     ports:
       - "5432:5432"
+      - "54321:54321"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - supabase-data:/var/lib/postgresql/data
     networks:
-      - app-network
+      - jays-shop-network
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
+  supabase-data:
 
 networks:
-  app-network:
+  jays-shop-network:
     driver: bridge
