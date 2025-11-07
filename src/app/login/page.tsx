@@ -69,6 +69,10 @@ export default function AdminLoginPage() {
       console.log('LoginPage: Still loading authentication state')
     } else if (!user) {
       console.log('LoginPage: No user authenticated')
+    } else if (!authLoading && user && isFetchingRole) {
+      console.log('LoginPage: User authenticated but still fetching role', { 
+        userId: user.id 
+      })
     }
   }, [user, role, authLoading, isFetchingRole, router])
   
@@ -85,7 +89,7 @@ export default function AdminLoginPage() {
           // Default to admin dashboard since user is authenticated
           router.push('/admin')
         }
-      }, 5000) // 5 second timeout
+      }, 10000) // Increased from 5000ms to 10000ms (10 seconds)
     }
     
     return () => {
@@ -106,6 +110,8 @@ export default function AdminLoginPage() {
       console.log('LoginPage: Non-admin role confirmed, redirecting to homepage')
       hasRedirected.current = true
       router.push('/')
+    } else if (role === null && !authLoading && user && !hasRedirected.current && mountedRef.current) {
+      console.log('LoginPage: Role is null but user is authenticated, waiting for role to load...')
     }
   }, [role, user, authLoading, router])
 

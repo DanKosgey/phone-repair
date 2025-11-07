@@ -122,6 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('AuthProvider: Setting user role', userRole);
         if (isMountedRef.current) {
           setRole(userRole);
+          console.log('AuthProvider: Role set in state', userRole);
         }
       }
     } catch (error: any) {
@@ -133,6 +134,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       if (isMountedRef.current) {
         setIsFetchingRole(false);
+        console.log('AuthProvider: Finished fetching role, isFetchingRole set to false');
       }
       // Clean up abort controller
       if (roleAbortControllerRef.current === currentAbortController) {
@@ -147,6 +149,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (isInitializedRef.current || !supabase) {
       // Make sure to set loading to false if we're not initializing
       if (isMountedRef.current && isLoading) {
+        console.log('AuthProvider: Already initialized, setting loading to false');
         setIsLoading(false)
       }
       return
@@ -154,64 +157,80 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     isInitializedRef.current = true
     logger.log('AuthProvider: Initializing authentication')
+    console.log('AuthProvider: Starting initialization');
     
     // Add a timeout to prevent infinite loading
     const initTimeout = setTimeout(() => {
       if (isMountedRef.current && isLoading) {
         logger.warn('AuthProvider: Initialization timeout, setting loading to false')
+        console.log('AuthProvider: Initialization timeout, setting loading to false');
         setIsLoading(false)
       }
     }, 5000) // 5 second timeout
     
     // Listen to auth changes (only if we have a Supabase client)
     if (supabase) {
+      console.log('AuthProvider: Setting up auth state change listener');
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, currentSession) => {
           logger.log('AuthProvider: Auth state changed:', event, currentSession?.user?.id)
+          console.log('AuthProvider: Auth state changed:', event, currentSession?.user?.id);
           
-          if (!isMountedRef.current) return
+          if (!isMountedRef.current) {
+            console.log('AuthProvider: Component not mounted, skipping auth state change');
+            return;
+          }
 
           switch (event) {
             case 'SIGNED_IN':
               if (currentSession?.user) {
+                console.log('AuthProvider: User signed in', currentSession.user.id);
                 setUser(currentSession.user)
                 setSession(currentSession)
                 
                 // Fetch role with improved handling during sign in
                 if (isMountedRef.current) {
+                  console.log('AuthProvider: Fetching role for signed in user');
                   fetchUserRole(currentSession.user.id)
                 }
               }
               if (isMountedRef.current) {
+                console.log('AuthProvider: Setting loading to false after SIGNED_IN');
                 setIsLoading(false)
               }
               break
               
             case 'TOKEN_REFRESHED':
               if (currentSession?.user) {
+                console.log('AuthProvider: Token refreshed', currentSession.user.id);
                 setUser(currentSession.user)
                 setSession(currentSession)
               }
               if (isMountedRef.current) {
+                console.log('AuthProvider: Setting loading to false after TOKEN_REFRESHED');
                 setIsLoading(false)
               }
               break
               
             case 'SIGNED_OUT':
+              console.log('AuthProvider: User signed out');
               setUser(null)
               setSession(null)
               setRole(null)
               if (isMountedRef.current) {
+                console.log('AuthProvider: Setting loading to false after SIGNED_OUT');
                 setIsLoading(false)
               }
               break
               
             case 'USER_UPDATED':
               if (currentSession?.user) {
+                console.log('AuthProvider: User updated', currentSession.user.id);
                 setUser(currentSession.user)
                 setSession(currentSession)
               }
               if (isMountedRef.current) {
+                console.log('AuthProvider: Setting loading to false after USER_UPDATED');
                 setIsLoading(false)
               }
               break
@@ -219,26 +238,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             case 'INITIAL_SESSION':
               // Handle INITIAL_SESSION to restore session on page load
               logger.log('AuthProvider: Processing INITIAL_SESSION event')
+              console.log('AuthProvider: Processing INITIAL_SESSION event', currentSession?.user?.id);
               if (currentSession?.user) {
                 logger.log('AuthProvider: Restoring session from INITIAL_SESSION')
+                console.log('AuthProvider: Restoring session from INITIAL_SESSION', currentSession.user.id);
                 setUser(currentSession.user)
                 setSession(currentSession)
                 
                 // Fetch role with improved handling
                 if (isMountedRef.current) {
+                  console.log('AuthProvider: Fetching role for restored session');
                   fetchUserRole(currentSession.user.id)
                 }
               } else {
                 logger.log('AuthProvider: No initial session found')
+                console.log('AuthProvider: No initial session found');
               }
               if (isMountedRef.current) {
+                console.log('AuthProvider: Setting loading to false after INITIAL_SESSION');
                 setIsLoading(false)
               }
               break
               
             default:
               logger.log('AuthProvider: Unhandled auth event:', event)
+              console.log('AuthProvider: Unhandled auth event:', event);
               if (isMountedRef.current) {
+                console.log('AuthProvider: Setting loading to false after unhandled event');
                 setIsLoading(false)
               }
               break
@@ -247,6 +273,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       )
 
       return () => {
+        console.log('AuthProvider: Cleaning up auth state change listener');
         subscription.unsubscribe()
         if (initTimeout) {
           clearTimeout(initTimeout)
@@ -255,6 +282,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } else {
       // If no Supabase client, set loading to false
       if (isMountedRef.current) {
+        console.log('AuthProvider: No Supabase client, setting loading to false');
         setIsLoading(false)
       }
       if (initTimeout) {
@@ -356,9 +384,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('AuthProvider: Fetching role for signed in user');
         fetchUserRole(data.user.id);
         
-        // Add a small delay to ensure state is properly set before any potential redirect
+        // Add a longer delay to ensure state is properly set before any potential redirect
         console.log('AuthProvider: Waiting for state to settle');
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Increased from 300ms to 1000ms
         console.log('AuthProvider: State settled, sign in complete');
       } else if (!data.user) {
         throw new Error('Authentication failed. No user data received.');
@@ -507,6 +535,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(refreshedSession);
         return refreshedSession;
       }
+      
       
       return null;
     } catch (error: any) {

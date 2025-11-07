@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
+import { config } from 'dotenv';
+config({ path: '.env.local' });
 
-// Replace with your actual Supabase URL and anon key
+// Use the environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
