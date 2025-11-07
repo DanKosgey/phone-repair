@@ -90,8 +90,8 @@ export default function AdminRootLayout({
     })
 
     // Wait for initial loading to complete
-    if (isLoading) {
-      console.log('AdminLayout: Still loading auth state')
+    if (isLoading || isFetchingRole) {
+      console.log('AdminLayout: Still loading auth state or fetching role')
       return
     }
 
@@ -140,7 +140,7 @@ export default function AdminRootLayout({
           console.log('AdminLayout: Proceeding with admin access (role loading timeout)')
           setIsCheckingAuth(false)
         }
-      }, 1000) // Short 1 second delay
+      }, 2000) // 2 second delay
       
       return () => clearTimeout(timer)
     }

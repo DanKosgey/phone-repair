@@ -17,7 +17,7 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
-  const { signIn, user, role, isLoading: authLoading } = useAuth()
+  const { signIn, user, role, isLoading: authLoading, isFetchingRole } = useAuth()
   const hasRedirected = useRef(false)
   const mountedRef = useRef(true)
 
@@ -34,13 +34,14 @@ export default function AdminLoginPage() {
       userId: user?.id, 
       role, 
       authLoading,
+      isFetchingRole,
       hasRedirected: hasRedirected.current,
       mounted: mountedRef.current
     })
     
     // If user is authenticated, redirect based on role - one way flow
-    if (!authLoading && user && !hasRedirected.current && mountedRef.current) {
-      console.log('LoginPage: User is authenticated, preparing redirect', { 
+    if (!authLoading && user && !isFetchingRole && !hasRedirected.current && mountedRef.current) {
+      console.log('LoginPage: User is authenticated and role is loaded, preparing redirect', { 
         role, 
         userId: user.id 
       })
@@ -52,9 +53,8 @@ export default function AdminLoginPage() {
         console.log('LoginPage: User authenticated but not admin, redirecting to homepage')
         router.push('/')
       } else {
-        // If role is null, give it a moment then assume admin for better UX
-        console.log('LoginPage: Role not yet loaded, proceeding with admin assumption')
-        router.push('/admin')
+        // If role is null but user exists, wait a bit more for role to load
+        console.log('LoginPage: Role not yet loaded, waiting...')
       }
     } else if (!authLoading && user && hasRedirected.current) {
       console.log('LoginPage: User is authenticated but already redirected', { 
@@ -66,7 +66,20 @@ export default function AdminLoginPage() {
     } else if (!user) {
       console.log('LoginPage: No user authenticated')
     }
-  }, [user, role, authLoading, router])
+    
+    // Special case: if user exists but we've been waiting for role for too long, redirect anyway
+    if (!authLoading && user && !hasRedirected.current && mountedRef.current) {
+      const timer = setTimeout(() => {
+        if (!hasRedirected.current && mountedRef.current) {
+          console.log('LoginPage: Timeout waiting for role, redirecting anyway')
+          hasRedirected.current = true
+          router.push('/admin') // Default to admin for now
+        }
+      }, 3000) // 3 second timeout
+      
+      return () => clearTimeout(timer)
+    }
+  }, [user, role, authLoading, isFetchingRole, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
