@@ -39,22 +39,26 @@ export default function AdminLoginPage() {
       mounted: mountedRef.current
     })
     
-    // If user is authenticated, redirect based on role - one way flow
+    // If user is authenticated and role is loaded, redirect based on role - one way flow
     if (!authLoading && user && !isFetchingRole && !hasRedirected.current && mountedRef.current) {
       console.log('LoginPage: User is authenticated and role is loaded, preparing redirect', { 
         role, 
         userId: user.id 
       })
-      hasRedirected.current = true
-      if (role === 'admin') {
-        console.log('LoginPage: User authenticated as admin, redirecting to admin dashboard')
-        router.push('/admin')
-      } else if (role !== null) {
-        console.log('LoginPage: User authenticated but not admin, redirecting to homepage')
-        router.push('/')
-      } else {
-        // If role is null but user exists, wait a bit more for role to load
-        console.log('LoginPage: Role not yet loaded, waiting...')
+      
+      // Only redirect if we're not already redirecting
+      if (!hasRedirected.current) {
+        hasRedirected.current = true
+        if (role === 'admin') {
+          console.log('LoginPage: User authenticated as admin, redirecting to admin dashboard')
+          router.push('/admin')
+        } else if (role !== null) {
+          console.log('LoginPage: User authenticated but not admin, redirecting to homepage')
+          router.push('/')
+        } else {
+          // If role is null but user exists, wait a bit more for role to load
+          console.log('LoginPage: Role not yet loaded, waiting...')
+        }
       }
     } else if (!authLoading && user && hasRedirected.current) {
       console.log('LoginPage: User is authenticated but already redirected', { 
@@ -66,51 +70,77 @@ export default function AdminLoginPage() {
     } else if (!user) {
       console.log('LoginPage: No user authenticated')
     }
+  }, [user, role, authLoading, isFetchingRole, router])
+  
+  // Separate effect for handling timeout when role doesn't load
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null
     
-    // Special case: if user exists but we've been waiting for role for too long, redirect anyway
     if (!authLoading && user && !hasRedirected.current && mountedRef.current) {
-      const timer = setTimeout(() => {
+      console.log('LoginPage: Setting timeout for role loading')
+      timeoutId = setTimeout(() => {
         if (!hasRedirected.current && mountedRef.current) {
           console.log('LoginPage: Timeout waiting for role, redirecting anyway')
           hasRedirected.current = true
-          router.push('/admin') // Default to admin for now
+          // Default to admin dashboard since user is authenticated
+          router.push('/admin')
         }
-      }, 3000) // 3 second timeout
-      
-      return () => clearTimeout(timer)
+      }, 5000) // 5 second timeout
     }
-  }, [user, role, authLoading, isFetchingRole, router])
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    }
+  }, [user, authLoading, router])
+  
+  // Effect to monitor role changes specifically
+  useEffect(() => {
+    console.log('LoginPage: Role updated', role)
+    if (role === 'admin' && !authLoading && user && !hasRedirected.current && mountedRef.current) {
+      console.log('LoginPage: Admin role confirmed, redirecting to admin dashboard')
+      hasRedirected.current = true
+      router.push('/admin')
+    } else if (role !== null && role !== 'admin' && !authLoading && user && !hasRedirected.current && mountedRef.current) {
+      console.log('LoginPage: Non-admin role confirmed, redirecting to homepage')
+      hasRedirected.current = true
+      router.push('/')
+    }
+  }, [role, user, authLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log('LoginPage: Submitting login form for email:', email)
-    setIsSubmitting(true)
-    setError('')
+    e.preventDefault();
+    console.log('LoginPage: Submitting login form for email:', email);
+    setIsSubmitting(true);
+    setError('');
 
     if (!email || !password) {
-      console.log('LoginPage: Missing email or password')
-      setError('Please enter both email and password')
-      setIsSubmitting(false)
-      return
+      console.log('LoginPage: Missing email or password');
+      setError('Please enter both email and password');
+      setIsSubmitting(false);
+      return;
     }
 
-    console.log('LoginPage: Attempting sign in for:', email)
+    console.log('LoginPage: Attempting sign in for:', email);
     try {
       // Reset redirect flag before signing in
-      hasRedirected.current = false
+      hasRedirected.current = false;
       
-      await signIn(email, password)
-      console.log('LoginPage: Sign in successful')
+      console.log('LoginPage: Calling signIn function');
+      await signIn(email, password);
+      console.log('LoginPage: Sign in function completed');
       // Redirect will be handled by the useEffect above
     } catch (error: any) {
-      console.error('LoginPage: Sign in failed:', error)
-      setError(error.message || 'An unexpected error occurred')
+      console.error('LoginPage: Sign in failed:', error);
+      setError(error.message || 'An unexpected error occurred');
       // Reset redirect flag on error so user can try again
-      hasRedirected.current = false
+      hasRedirected.current = false;
     } finally {
       // Only set isSubmitting to false if we haven't redirected
       if (!hasRedirected.current) {
-        setIsSubmitting(false)
+        console.log('LoginPage: Setting isSubmitting to false');
+        setIsSubmitting(false);
       }
     }
   }

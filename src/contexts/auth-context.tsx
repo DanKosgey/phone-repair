@@ -68,10 +68,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Fetch user role with proper cleanup and error handling
   const fetchUserRole = useCallback(async (userId: string): Promise<void> => {
-    if (!userId || !isMountedRef.current) return;
+    console.log('AuthProvider: Fetching role for user', userId);
+    
+    if (!userId || !isMountedRef.current) {
+      console.log('AuthProvider: Skipping role fetch - no userId or not mounted');
+      return;
+    }
 
     // Cancel any pending role fetch
     if (roleAbortControllerRef.current) {
+      console.log('AuthProvider: Aborting previous role fetch');
       roleAbortControllerRef.current.abort();
     }
 
@@ -87,6 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Supabase client not available');
       }
 
+      console.log('AuthProvider: Making Supabase request for role');
       // Use maybeSingle() instead of single() to handle cases where profile doesn't exist yet
       const { data, error } = await supabase
         .from('profiles')
@@ -97,9 +104,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Check if this request was aborted
       if (currentAbortController.signal.aborted || !isMountedRef.current) {
+        console.log('AuthProvider: Role fetch was aborted or component unmounted');
         return;
       }
 
+      console.log('AuthProvider: Role fetch response', { data, error });
+      
       if (error) {
         console.error('AuthProvider: Error fetching user role:', error.message);
         // Even on error, we continue with null role to prevent blocking the flow
@@ -109,6 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         // data might be null if profile doesn't exist, which is handled gracefully
         const userRole = data?.role || null;
+        console.log('AuthProvider: Setting user role', userRole);
         if (isMountedRef.current) {
           setRole(userRole);
         }
@@ -295,6 +306,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Sign in
   const signIn = async (email: string, password: string): Promise<void> => {
+    console.log('AuthProvider: Attempting sign in for email', email);
+    
     if (!supabase) {
       throw new Error('Supabase client not available');
     }
@@ -311,10 +324,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Password is required');
       }
 
+      console.log('AuthProvider: Calling Supabase signInWithPassword');
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      console.log('AuthProvider: Supabase signInWithPassword response', { data, error });
 
       if (error) {
         logger.error('AuthProvider: Sign in error:', error.message);
@@ -329,20 +344,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (data.user && isMountedRef.current) {
-        logger.log('AuthProvider: Sign in successful')
-        setUser(data.user)
-        setSession(data.session)
+        logger.log('AuthProvider: Sign in successful');
+        console.log('AuthProvider: Setting user and session', { 
+          userId: data.user.id,
+          session: data.session 
+        });
+        setUser(data.user);
+        setSession(data.session);
         
         // Fetch role with improved handling
-        fetchUserRole(data.user.id)
+        console.log('AuthProvider: Fetching role for signed in user');
+        fetchUserRole(data.user.id);
         
         // Add a small delay to ensure state is properly set before any potential redirect
+        console.log('AuthProvider: Waiting for state to settle');
         await new Promise(resolve => setTimeout(resolve, 300));
+        console.log('AuthProvider: State settled, sign in complete');
       } else if (!data.user) {
         throw new Error('Authentication failed. No user data received.');
       }
     } catch (error: any) {
       logger.error('AuthProvider: Sign in error:', error.message);
+      console.error('AuthProvider: Sign in error:', error);
       // Ensure loading state is reset on error
       if (isMountedRef.current) {
         setIsLoading(false);
