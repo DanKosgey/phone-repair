@@ -4,25 +4,25 @@
 
 @layer base {
   :root {
-    --background: 0 0% 95%; /* Slightly darker background */
+    --background: 0 0% 98%; /* Brighter background */
     --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 97%; /* Slightly darker card background */
+    --card: 0 0% 99%; /* Brighter card background */
     --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 97%; /* Slightly darker popover background */
+    --popover: 0 0% 99%; /* Brighter popover background */
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 195 100% 55%; /* Darker primary color */
+    --primary: 195 100% 60%; /* Brighter primary color */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 90%; /* Darker secondary color */
+    --secondary: 210 40% 95%; /* Brighter secondary color */
     --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 90%; /* Darker muted background */
-    --muted-foreground: 215.4 16.3% 40%; /* Darker muted text */
-    --accent: 210 40% 90%; /* Darker accent background */
+    --muted: 210 40% 95%; /* Brighter muted background */
+    --muted-foreground: 215.4 16.3% 45%; /* Brighter muted text */
+    --accent: 210 40% 95%; /* Brighter accent background */
     --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 50%; /* Darker destructive color */
+    --destructive: 0 84.2% 55%; /* Brighter destructive color */
     --destructive-foreground: 0 0% 98%;
-    --border: 214.3 31.8% 85%; /* Darker border */
-    --input: 214.3 31.8% 85%; /* Darker input border */
-    --ring: 195 100% 55%; /* Darker ring color */
+    --border: 214.3 31.8% 90%; /* Brighter border */
+    --input: 214.3 31.8% 90%; /* Brighter input border */
+    --ring: 195 100% 60%; /* Brighter ring color */
     --radius: 0.5rem;
     
     /* Status Colors */
@@ -58,29 +58,29 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222.2 84% 6%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 222.2 84% 6%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 222.2 84% 6%;
     --popover-foreground: 210 40% 98%;
-    --primary: 195 100% 55%; /* Darker primary color */
+    --primary: 195 100% 60%; /* Brighter primary color */
     --primary-foreground: 0 0% 100%;
-    --secondary: 217.2 32.6% 15%; /* Darker secondary color */
+    --secondary: 217.2 32.6% 20%; /* Brighter secondary color */
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 15%; /* Darker muted background */
-    --muted-foreground: 215 20.2% 60%; /* Darker muted text */
-    --accent: 217.2 32.6% 15%; /* Darker accent background */
+    --muted: 217.2 32.6% 20%; /* Brighter muted background */
+    --muted-foreground: 215 20.2% 65%; /* Brighter muted text */
+    --accent: 217.2 32.6% 20%; /* Brighter accent background */
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 25%; /* Darker destructive color */
+    --destructive: 0 62.8% 30%; /* Brighter destructive color */
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 15%; /* Darker border */
-    --input: 217.2 32.6% 15%; /* Darker input border */
-    --ring: 195 100% 55%; /* Darker ring color */
+    --border: 217.2 32.6% 20%; /* Brighter border */
+    --input: 217.2 32.6% 20%; /* Brighter input border */
+    --ring: 195 100% 60%; /* Brighter ring color */
     
     /* Custom color variables for appearance settings */
-    --custom-primary: 195 100% 55%;
-    --custom-secondary: 217.2 32.6% 15%;
+    --custom-primary: 195 100% 60%;
+    --custom-secondary: 217.2 32.6% 20%;
   }
 }
 
@@ -218,92 +218,92 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 95%; /* Slightly darker background */
+    --background: 0 0% 98%; /* Brighter background */
     --foreground: 222.2 84% 4.9%;
 
-    --card: 0 0% 97%; /* Slightly darker card background */
+    --card: 0 0% 99%; /* Brighter card background */
     --card-foreground: 222.2 84% 4.9%;
 
-    --popover: 0 0% 97%; /* Slightly darker popover background */
+    --popover: 0 0% 99%; /* Brighter popover background */
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 195 100% 55%; /* Darker primary color */
+    --primary: 195 100% 60%; /* Brighter primary color */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 90%; /* Darker secondary color */
+    --secondary: 210 40% 95%; /* Brighter secondary color */
     --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 210 40% 90%; /* Darker muted background */
-    --muted-foreground: 215.4 16.3% 40%; /* Darker muted text */
+    --muted: 210 40% 95%; /* Brighter muted background */
+    --muted-foreground: 215.4 16.3% 45%; /* Brighter muted text */
 
-    --accent: 210 40% 90%; /* Darker accent background */
+    --accent: 210 40% 95%; /* Brighter accent background */
     --accent-foreground: 222.2 47.4% 11.2%;
 
-    --destructive: 0 84.2% 50%; /* Darker destructive color */
+    --destructive: 0 84.2% 55%; /* Brighter destructive color */
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 85%; /* Darker border */
-    --input: 214.3 31.8% 85%; /* Darker input border */
-    --ring: 195 100% 55%; /* Darker ring color */
+    --border: 214.3 31.8% 90%; /* Brighter border */
+    --input: 214.3 31.8% 90%; /* Brighter input border */
+    --ring: 195 100% 60%; /* Brighter ring color */
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 95%; /* Darker sidebar background */
+    --sidebar-background: 0 0% 98%; /* Brighter sidebar background */
 
-    --sidebar-foreground: 240 5.3% 20%; /* Darker sidebar text */
+    --sidebar-foreground: 240 5.3% 25%; /* Brighter sidebar text */
 
-    --sidebar-primary: 240 5.9% 15%; /* Darker sidebar primary */
+    --sidebar-primary: 240 5.9% 20%; /* Brighter sidebar primary */
 
     --sidebar-primary-foreground: 0 0% 98%;
 
-    --sidebar-accent: 240 4.8% 90%; /* Darker sidebar accent */
+    --sidebar-accent: 240 4.8% 95%; /* Brighter sidebar accent */
 
-    --sidebar-accent-foreground: 240 5.9% 15%;
+    --sidebar-accent-foreground: 240 5.9% 20%;
 
-    --sidebar-border: 220 13% 85%; /* Darker sidebar border */
+    --sidebar-border: 220 13% 90%; /* Brighter sidebar border */
 
-    --sidebar-ring: 195 100% 55%; /* Darker sidebar ring */
+    --sidebar-ring: 195 100% 60%; /* Brighter sidebar ring */
     
     /* Font definitions */
     --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222.2 84% 6%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222.2 84% 6%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222.2 84% 6%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 195 100% 55%; /* Darker primary color */
+    --primary: 195 100% 60%; /* Brighter primary color */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 15%; /* Darker secondary color */
+    --secondary: 217.2 32.6% 20%; /* Brighter secondary color */
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 15%; /* Darker muted background */
-    --muted-foreground: 215 20.2% 60%; /* Darker muted text */
+    --muted: 217.2 32.6% 20%; /* Brighter muted background */
+    --muted-foreground: 215 20.2% 65%; /* Brighter muted text */
 
-    --accent: 217.2 32.6% 15%; /* Darker accent background */
+    --accent: 217.2 32.6% 20%; /* Brighter accent background */
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 62.8% 25%; /* Darker destructive color */
+    --destructive: 0 62.8% 30%; /* Brighter destructive color */
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 15%; /* Darker border */
-    --input: 217.2 32.6% 15%; /* Darker input border */
-    --ring: 195 100% 55%; /* Darker ring color */
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 90%;
-    --sidebar-primary: 224.3 76.3% 40%;
+    --border: 217.2 32.6% 20%; /* Brighter border */
+    --input: 217.2 32.6% 20%; /* Brighter input border */
+    --ring: 195 100% 60%; /* Brighter ring color */
+    --sidebar-background: 240 5.9% 15%;
+    --sidebar-foreground: 240 4.8% 95%;
+    --sidebar-primary: 224.3 76.3% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 12%;
-    --sidebar-accent-foreground: 240 4.8% 90%;
-    --sidebar-border: 240 3.7% 12%;
-    --sidebar-ring: 195 100% 55%; /* Darker sidebar ring */
+    --sidebar-accent: 240 3.7% 17%;
+    --sidebar-accent-foreground: 240 4.8% 95%;
+    --sidebar-border: 240 3.7% 17%;
+    --sidebar-ring: 195 100% 60%; /* Brighter sidebar ring */
   }
 }
 

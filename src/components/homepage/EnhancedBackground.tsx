@@ -57,13 +57,13 @@ export function EnhancedBackground() {
   return (
     <div className="fixed inset-0 overflow-hidden -z-10">
       {/* Animated gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10" />
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-primary/20" />
       
       {/* Floating particles - reduced count and optimized */}
       {particleElements.map((i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full bg-primary/15"
+          className="absolute rounded-full bg-primary/20"
           style={{
             top: `${Math.random() * 100}%`,
             left: `${Math.random() * 100}%`,
@@ -74,7 +74,7 @@ export function EnhancedBackground() {
             y: [0, Math.random() * 50 - 25],
             x: [0, Math.random() * 50 - 25],
             scale: [1, Math.random() * 0.3 + 0.7],
-            opacity: [0.1, 0.25],
+            opacity: [0.2, 0.4],
           }}
           transition={{
             duration: Math.random() * 10 + 10,
@@ -90,7 +90,7 @@ export function EnhancedBackground() {
       {circleElements.map((i) => (
         <motion.div
           key={`circle-${i}`}
-          className="absolute rounded-full border border-primary/30"
+          className="absolute rounded-full border border-primary/40"
           style={{
             top: `${Math.random() * 100}%`,
             left: `${Math.random() * 100}%`,
@@ -99,7 +99,7 @@ export function EnhancedBackground() {
           }}
           animate={{
             scale: [1, Math.random() * 0.3 + 1.1],
-            opacity: [0.1, 0.3],
+            opacity: [0.2, 0.5],
           }}
           transition={{
             duration: Math.random() * 8 + 8,
@@ -115,7 +115,7 @@ export function EnhancedBackground() {
       {beamElements.map((i) => (
         <motion.div
           key={`beam-${i}`}
-          className="absolute top-0 h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent"
+          className="absolute top-0 h-1 bg-gradient-to-r from-transparent via-primary/60 to-transparent"
           style={{
             left: `${Math.random() * 100}%`,
             width: `${Math.random() * 200 + 50}px`,
@@ -123,7 +123,7 @@ export function EnhancedBackground() {
           }}
           animate={{
             x: [0, typeof window !== 'undefined' ? window.innerWidth : 1000],
-            opacity: [0, 0.7],
+            opacity: [0, 0.9],
           }}
           transition={{
             duration: Math.random() * 4 + 4,
@@ -140,7 +140,7 @@ export function EnhancedBackground() {
       {mobileElements.map((i) => (
         <motion.div
           key={`mobile-${i}`}
-          className="absolute rounded-full bg-primary/10 blur-sm"
+          className="absolute rounded-full bg-primary/20"
           style={{
             top: `${Math.random() * 100}%`,
             left: `${Math.random() * 100}%`,
@@ -151,7 +151,7 @@ export function EnhancedBackground() {
             y: [0, Math.random() * 30 - 15],
             x: [0, Math.random() * 30 - 15],
             scale: [1, Math.random() * 0.5 + 0.6],
-            opacity: [0.1, 0.3],
+            opacity: [0.2, 0.5],
           }}
           transition={{
             duration: Math.random() * 10 + 6,

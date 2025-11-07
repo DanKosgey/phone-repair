@@ -92,12 +92,12 @@ export function HeroSection() {
   };
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-background py-20 lg:py-32">
+    <section className="relative overflow-hidden bg-gradient-to-br from-primary/20 via-background to-background py-20 lg:py-32">
       {/* Enhanced animated background with better performance */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Large gradient orbs with optimized animation */}
         <motion.div
-          className="absolute -top-1/2 -left-1/4 w-[800px] h-[800px] rounded-full bg-gradient-to-r from-primary/20 to-primary/5 blur-3xl"
+          className="absolute -top-1/2 -left-1/4 w-[800px] h-[800px] rounded-full bg-gradient-to-r from-primary/30 to-primary/10 blur-2xl"
           animate={showNonCriticalAnimations ? {
             x: [0, 150, 0],
             y: [0, -150, 0],
@@ -110,7 +110,7 @@ export function HeroSection() {
           }}
         />
         <motion.div
-          className="absolute -bottom-1/2 -right-1/4 w-[800px] h-[800px] rounded-full bg-gradient-to-r from-primary/10 to-primary/20 blur-3xl"
+          className="absolute -bottom-1/2 -right-1/4 w-[800px] h-[800px] rounded-full bg-gradient-to-r from-primary/20 to-primary/30 blur-2xl"
           animate={showNonCriticalAnimations ? {
             x: [0, -150, 0],
             y: [0, 150, 0],
@@ -125,7 +125,7 @@ export function HeroSection() {
 
         {/* Medium accent blob */}
         <motion.div
-          className="absolute top-1/4 right-1/3 w-[400px] h-[400px] rounded-full bg-gradient-to-r from-primary/15 to-primary/5 blur-3xl"
+          className="absolute top-1/4 right-1/3 w-[400px] h-[400px] rounded-full bg-gradient-to-r from-primary/25 to-primary/10 blur-2xl"
           animate={showNonCriticalAnimations ? {
             x: [0, -100, 0],
             y: [0, 100, 0],
@@ -143,7 +143,7 @@ export function HeroSection() {
           {showNonCriticalAnimations && FLOATING_ELEMENTS.map((element, i) => (
             <motion.div
               key={`float-${i}`}
-              className="absolute rounded-full bg-primary/10 backdrop-blur-sm"
+              className="absolute rounded-full bg-primary/20"
               style={{
                 top: element.top,
                 left: element.left,
@@ -168,7 +168,7 @@ export function HeroSection() {
         </AnimatePresence>
 
         {/* Grid pattern overlay for depth - static for better performance */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(var(--primary-rgb,0,0,0),0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--primary-rgb,0,0,0),0.03)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black,transparent)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(var(--primary-rgb,0,0,0),0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--primary-rgb,0,0,0),0.05)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black,transparent)]" />
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
@@ -197,9 +197,9 @@ export function HeroSection() {
                 Professional Phone{" "}
               </span>
               <motion.span
-                className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/40 blur-2xl"
+                className="absolute inset-0 bg-gradient-to-r from-primary/30 to-primary/50 blur-xl"
                 animate={showNonCriticalAnimations ? {
-                  opacity: [0.3, 0.6, 0.3],
+                  opacity: [0.4, 0.7, 0.4],
                   scale: [1, 1.1, 1],
                 } : {}}
                 transition={{
@@ -225,9 +225,9 @@ export function HeroSection() {
                 Repair
               </motion.span>
               <motion.span
-                className="absolute inset-0 bg-gradient-to-r from-primary to-primary/50 blur-xl"
+                className="absolute inset-0 bg-gradient-to-r from-primary to-primary/70 blur-lg"
                 animate={showNonCriticalAnimations ? {
-                  opacity: [0.5, 0.8, 0.5],
+                  opacity: [0.6, 0.9, 0.6],
                   scale: [1, 1.2, 1],
                 } : {}}
                 transition={{
@@ -265,11 +265,11 @@ export function HeroSection() {
                 whileTap={isMobile ? {} : { scale: 0.95 }}
                 className="relative"
               >
-                {/* Outer glow ring - reduced intensity */}
+                {/* Outer glow ring - increased intensity */}
                 <motion.div
-                  className="absolute inset-0 rounded-lg blur-sm bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-green-500/10"
+                  className="absolute inset-0 rounded-lg blur-sm bg-gradient-to-r from-green-500/20 via-emerald-500/20 to-green-500/20"
                   animate={showNonCriticalAnimations ? {
-                    opacity: [0.15, 0.3, 0.15],
+                    opacity: [0.25, 0.4, 0.25],
                     scale: [1, 1.01, 1],
                   } : {}}
                   transition={{
@@ -281,7 +281,7 @@ export function HeroSection() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full sm:w-auto border border-green-500/30 text-lg px-8 py-6 relative overflow-hidden group bg-background/80 backdrop-blur-sm theme-glow-animation"
+                  className="w-full sm:w-auto border border-green-500/40 text-lg px-8 py-6 relative overflow-hidden group bg-background/90 backdrop-blur-sm theme-glow-animation"
                 >
                   <span className="relative z-10 font-semibold flex items-center gap-2">
                     Marketplace
@@ -298,9 +298,9 @@ export function HeroSection() {
                       →
                     </motion.span>
                   </span>
-                  {/* Animated gradient sweep - reduced intensity */}
+                  {/* Animated gradient sweep - increased intensity */}
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent"
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
                     animate={showNonCriticalAnimations ? {
                       x: ["-200%", "200%"],
                     } : {}}
@@ -310,11 +310,11 @@ export function HeroSection() {
                       ease: "easeInOut",
                     }}
                   />
-                  {/* Pulsing background glow - reduced intensity */}
+                  {/* Pulsing background glow - increased intensity */}
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-green-500/8 via-emerald-500/8 to-green-500/8"
+                    className="absolute inset-0 bg-gradient-to-r from-green-500/15 via-emerald-500/15 to-green-500/15"
                     animate={showNonCriticalAnimations ? {
-                      opacity: [0.1, 0.2, 0.1],
+                      opacity: [0.2, 0.3, 0.2],
                     } : {}}
                     transition={{
                       duration: 3,
@@ -335,11 +335,11 @@ export function HeroSection() {
                 whileTap={isMobile ? {} : { scale: 0.95 }}
                 className="relative"
               >
-                {/* Outer glow ring - reduced intensity */}
+                {/* Outer glow ring - increased intensity */}
                 <motion.div
-                  className="absolute inset-0 rounded-lg blur-sm bg-gradient-to-r from-primary/10 via-purple-500/10 to-primary/10"
+                  className="absolute inset-0 rounded-lg blur-sm bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20"
                   animate={showNonCriticalAnimations ? {
-                    opacity: [0.15, 0.3, 0.15],
+                    opacity: [0.25, 0.4, 0.25],
                     scale: [1, 1.01, 1],
                   } : {}}
                   transition={{
@@ -351,7 +351,7 @@ export function HeroSection() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full sm:w-auto border border-primary/30 text-lg px-8 py-6 relative overflow-hidden group bg-background/80 backdrop-blur-sm theme-glow-animation"
+                  className="w-full sm:w-auto border border-primary/40 text-lg px-8 py-6 relative overflow-hidden group bg-background/90 backdrop-blur-sm theme-glow-animation"
                 >
                   <span className="relative z-10 font-semibold flex items-center gap-2">
                     Buy New Products
@@ -368,9 +368,9 @@ export function HeroSection() {
                       →
                     </motion.span>
                   </span>
-                  {/* Animated gradient sweep - reduced intensity */}
+                  {/* Animated gradient sweep - increased intensity */}
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent"
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
                     animate={showNonCriticalAnimations ? {
                       x: ["-200%", "200%"],
                     } : {}}
@@ -380,11 +380,11 @@ export function HeroSection() {
                       ease: "easeInOut",
                     }}
                   />
-                  {/* Pulsing background glow - reduced intensity */}
+                  {/* Pulsing background glow - increased intensity */}
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-primary/8 via-purple-500/8 to-primary/8"
+                    className="absolute inset-0 bg-gradient-to-r from-primary/15 via-purple-500/15 to-primary/15"
                     animate={showNonCriticalAnimations ? {
-                      opacity: [0.1, 0.2, 0.1],
+                      opacity: [0.2, 0.3, 0.2],
                     } : {}}
                     transition={{
                       duration: 3,
@@ -423,7 +423,7 @@ export function HeroSection() {
                     </motion.span>
                   </span>
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-primary/50 to-primary/30"
+                    className="absolute inset-0 bg-gradient-to-r from-primary/70 to-primary/50"
                     animate={showNonCriticalAnimations ? {
                       x: ["-100%", "100%"],
                     } : {}}
@@ -447,7 +447,7 @@ export function HeroSection() {
             {FEATURES.map((item, index) => (
               <motion.div
                 key={item.text}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/50 backdrop-blur-sm border border-primary/10"
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/70 backdrop-blur-sm border border-primary/20"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.6 + index * 0.1 }}
@@ -491,9 +491,9 @@ export function HeroSection() {
               ease: "easeInOut",
             }}
           >
-            <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 backdrop-blur-md flex items-center justify-center shadow-xl border border-primary/20 relative overflow-hidden">
+            <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 backdrop-blur-sm flex items-center justify-center shadow-xl border border-primary/30 relative overflow-hidden">
               <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-primary/30 to-transparent"
+                className="absolute inset-0 bg-gradient-to-r from-primary/40 to-transparent"
                 animate={showNonCriticalAnimations ? {
                   x: ["-100%", "100%"],
                 } : {}}
@@ -519,9 +519,9 @@ export function HeroSection() {
               ease: "easeInOut",
             }}
           >
-            <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 backdrop-blur-md flex items-center justify-center shadow-xl border border-primary/20 relative overflow-hidden">
+            <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 backdrop-blur-sm flex items-center justify-center shadow-xl border border-primary/30 relative overflow-hidden">
               <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-primary/30 to-transparent"
+                className="absolute inset-0 bg-gradient-to-r from-primary/40 to-transparent"
                 animate={showNonCriticalAnimations ? {
                   x: ["-100%", "100%"],
                 } : {}}

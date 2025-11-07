@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Clock, User, Wrench, Search, Phone, UserCircle, Info, Smartphone, Settings, Hammer } from "lucide-react"
 import { ticketsDb } from "@/lib/db/tickets"
+import { useRouter } from "next/navigation"
 
 export default function EnhancedTrackTicket() {
   const [customerName, setCustomerName] = useState('')
@@ -17,6 +18,7 @@ export default function EnhancedTrackTicket() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
+  const router = useRouter()
 
   // Initialize particles for background effect
   useEffect(() => {
@@ -79,10 +81,8 @@ export default function EnhancedTrackTicket() {
   }
 
   const handleContactSupport = () => {
-    toast({
-      title: "Contact Support",
-      description: "You can reach our support team at support@repairhub.com or call (555) 123-4567.",
-    });
+    // Redirect to contact page with customer details
+    router.push(`/contact?name=${encodeURIComponent(customerName)}&phone=${encodeURIComponent(phoneNumber)}`)
   }
 
   const getStatusColor = (status: string) => {
