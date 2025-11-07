@@ -33,11 +33,17 @@ export default function AdminLoginPage() {
     console.log('LoginPage: Auth state updated', { 
       userId: user?.id, 
       role, 
-      authLoading
+      authLoading,
+      hasRedirected: hasRedirected.current,
+      mounted: mountedRef.current
     })
     
     // If user is authenticated, redirect based on role - one way flow
     if (!authLoading && user && !hasRedirected.current && mountedRef.current) {
+      console.log('LoginPage: User is authenticated, preparing redirect', { 
+        role, 
+        userId: user.id 
+      })
       hasRedirected.current = true
       if (role === 'admin') {
         console.log('LoginPage: User authenticated as admin, redirecting to admin dashboard')
@@ -50,6 +56,15 @@ export default function AdminLoginPage() {
         console.log('LoginPage: Role not yet loaded, proceeding with admin assumption')
         router.push('/admin')
       }
+    } else if (!authLoading && user && hasRedirected.current) {
+      console.log('LoginPage: User is authenticated but already redirected', { 
+        role, 
+        userId: user.id 
+      })
+    } else if (authLoading) {
+      console.log('LoginPage: Still loading authentication state')
+    } else if (!user) {
+      console.log('LoginPage: No user authenticated')
     }
   }, [user, role, authLoading, router])
 

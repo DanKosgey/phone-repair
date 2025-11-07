@@ -85,11 +85,13 @@ export default function AdminRootLayout({
       userId: user?.id, 
       role, 
       isLoading,
-      isFetchingRole
+      isFetchingRole,
+      hasRedirected: hasRedirected.current
     })
 
     // Wait for initial loading to complete
     if (isLoading) {
+      console.log('AdminLayout: Still loading auth state')
       return
     }
 
@@ -131,6 +133,7 @@ export default function AdminRootLayout({
 
     // User exists but role is still loading - give it a moment then proceed
     if (role === null && user) {
+      console.log('AdminLayout: Role is null but user exists, setting timeout')
       // Small delay to allow role to load, then proceed anyway
       const timer = setTimeout(() => {
         if (!hasRedirected.current && mountedRef.current) {

@@ -121,7 +121,8 @@ export function getSupabaseBrowserClient() {
       // Add auth settings to prevent infinite refresh loops
       auth: {
         // Prevent automatic session refresh which can cause loops
-        autoRefreshToken: true,
+        // Match the middleware setting
+        autoRefreshToken: false,
         // Persist session in localStorage
         persistSession: true,
         // Detect auth changes via polling to avoid race conditions

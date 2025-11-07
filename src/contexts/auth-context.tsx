@@ -606,11 +606,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
       
+      // Check if session has expired
       if (currentSession.expires_at) {
         const now = Math.floor(Date.now() / 1000);
         if (currentSession.expires_at <= now) {
-          logger.log('AuthProvider: Session has expired, attempting recovery');
-          return await recoverSession();
+          logger.log('AuthProvider: Session has expired');
+          return false;
         }
       }
       
@@ -620,7 +621,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logger.error('AuthProvider: Error validating session:', error.message);
       return false;
     }
-  }, [supabase, recoverSession]);
+  }, [supabase]);
 
   // Cleanup on unmount
   useEffect(() => {
