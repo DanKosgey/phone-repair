@@ -1232,7 +1232,59 @@ export const dashboardDb = {
     };
   },
 
+  // Get ticket summary
+  async getTicketSummary() {
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('ticket_summary')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10)
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching ticket summary:', error)
+      throw error
+    }
+  },
 
+  // Get customer summary
+  async getCustomerSummary() {
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('customer_summary')
+        .select('*')
+        .order('last_activity', { ascending: false })
+        .limit(10)
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching customer summary:', error)
+      throw error
+    }
+  },
+
+  // Get product sales summary
+  async getProductSalesSummary() {
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from('product_sales_summary')
+        .select('*')
+        .order('total_revenue', { ascending: false })
+        .limit(10)
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching product sales summary:', error)
+      throw error
+    }
+  },
 
   // Enhanced correlation analysis with statistical significance testing and confidence intervals
   calculateEnhancedCorrelation(x: number[], y: number[]): { 

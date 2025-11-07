@@ -9,13 +9,13 @@ import { getBusinessConfig, type BusinessConfig } from '@/lib/config-service';
 import { useContactInfo } from '@/hooks/use-contact-info';
 
 export const Footer = () => {
-  const { user, role, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const [businessConfig, setBusinessConfig] = useState<BusinessConfig | null>(null);
   const contactInfo = useContactInfo();
 
   useEffect(() => {
-    console.log('Footer: Auth state updated:', { user, role, isLoading });
+    console.log('Footer: Auth state updated:', { user, isLoading });
     
     // Load business configuration
     const loadConfig = async () => {
@@ -28,17 +28,17 @@ export const Footer = () => {
     };
     
     loadConfig();
-  }, [user, role, isLoading]);
+  }, [user, isLoading]);
 
   const handleAdminAccess = () => {
-    console.log('Footer: Admin access button clicked', { user, role, isLoading });
+    console.log('Footer: Admin access button clicked', { user, isLoading });
     
     // Show loading state while checking auth
     if (isLoading) {
       return;
     }
     
-    if (user && role === 'admin') {
+    if (user) {
       console.log('Footer: Redirecting to admin dashboard');
       router.push('/admin');
     } else {
@@ -92,7 +92,7 @@ export const Footer = () => {
                   disabled={isLoading}
                   className="text-left hover:text-primary w-full text-sm bg-transparent border-none cursor-pointer disabled:opacity-50"
                 >
-                  {isLoading ? 'Loading...' : (user && role === 'admin' ? 'Admin Dashboard' : 'Admin Login')}
+                  {isLoading ? 'Loading...' : (user ? 'Admin Dashboard' : 'Admin Login')}
                 </button>
               </li>
             </ul>

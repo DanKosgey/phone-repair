@@ -8,15 +8,15 @@ interface WithAdminRoleProps {
 }
 
 export function WithAdminRole({ children, fallback = null }: WithAdminRoleProps) {
-  const { role, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
 
   // Show nothing while loading
   if (isLoading) {
     return null;
   }
 
-  // Render children only if user has admin role
-  if (role === 'admin') {
+  // Render children only if user is authenticated
+  if (user) {
     return <>{children}</>;
   }
 

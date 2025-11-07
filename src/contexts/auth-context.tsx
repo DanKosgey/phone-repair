@@ -8,9 +8,7 @@ import { logger } from '@/lib/utils/logger';
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  role: string | null;
   isLoading: boolean;
-  isFetchingRole: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<Session | null>;
@@ -23,14 +21,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [role, setRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isFetchingRole, setIsFetchingRole] = useState(false);
   
   // Refs to prevent infinite loops and memory leaks
   const isMountedRef = useRef(true);
   const isInitializedRef = useRef(false);
-  const roleAbortControllerRef = useRef<AbortController | null>(null);
   const pendingTimeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set());
   const supabaseRef = useRef<ReturnType<typeof getSupabaseBrowserClient> | null>(null);
   
@@ -63,83 +58,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     pendingTimeoutsRef.current.add(timeout);
     return timeout;
   }, []);
-
-  // Fetch user role with proper cleanup and error handling
-  const fetchUserRole = useCallback(async (userId: string): Promise<void> => {
-    console.log('AuthProvider: Fetching role for user', userId);
-    
-    if (!userId || !isMountedRef.current) {
-      console.log('AuthProvider: Skipping role fetch - no userId or not mounted');
-      return;
-    }
-
-    // Cancel any pending role fetch
-    if (roleAbortControllerRef.current) {
-      console.log('AuthProvider: Aborting previous role fetch');
-      roleAbortControllerRef.current.abort();
-    }
-
-    roleAbortControllerRef.current = new AbortController();
-    const currentAbortController = roleAbortControllerRef.current;
-
-    if (isMountedRef.current) {
-      setIsFetchingRole(true);
-    }
-    
-    try {
-      if (!supabase) {
-        throw new Error('Supabase client not available');
-      }
-
-      console.log('AuthProvider: Making Supabase request for role');
-      // Use maybeSingle() instead of single() to handle cases where profile doesn't exist yet
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .abortSignal(currentAbortController.signal)
-        .maybeSingle(); // Changed from .single() to .maybeSingle()
-
-      // Check if this request was aborted
-      if (currentAbortController.signal.aborted || !isMountedRef.current) {
-        console.log('AuthProvider: Role fetch was aborted or component unmounted');
-        return;
-      }
-
-      console.log('AuthProvider: Role fetch response', { data, error });
-      
-      if (error) {
-        console.error('AuthProvider: Error fetching user role:', error.message);
-        // Even on error, we continue with null role to prevent blocking the flow
-        if (isMountedRef.current) {
-          setRole(null);
-        }
-      } else {
-        // data might be null if profile doesn't exist, which is handled gracefully
-        const userRole = data?.role || null; // Keep null if no role found
-        console.log('AuthProvider: Setting user role', userRole);
-        if (isMountedRef.current) {
-          setRole(userRole);
-          console.log('AuthProvider: Role set in state', userRole);
-        }
-      }
-    } catch (error: any) {
-      console.error('AuthProvider: Exception during role fetching:', error.message);
-      // Even on exception, we continue with null role to prevent blocking the flow
-      if (isMountedRef.current) {
-        setRole(null); // Keep null on error
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setIsFetchingRole(false);
-        console.log('AuthProvider: Finished fetching role, isFetchingRole set to false');
-      }
-      // Clean up abort controller
-      if (roleAbortControllerRef.current === currentAbortController) {
-        roleAbortControllerRef.current = null;
-      }
-    }
-  }, [supabase]);
 
   // Initialize authentication - ONLY RUNS ONCE
   useEffect(() => {
@@ -185,12 +103,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 console.log('AuthProvider: User signed in', currentSession.user.id);
                 setUser(currentSession.user);
                 setSession(currentSession);
-                
-                // Fetch role with improved handling during sign in
-                if (isMountedRef.current) {
-                  console.log('AuthProvider: Fetching role for signed in user');
-                  fetchUserRole(currentSession.user.id);
-                }
               }
               if (isMountedRef.current) {
                 console.log('AuthProvider: Setting loading to false after SIGNED_IN');
@@ -214,7 +126,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               console.log('AuthProvider: User signed out');
               setUser(null);
               setSession(null);
-              setRole(null);
               if (isMountedRef.current) {
                 console.log('AuthProvider: Setting loading to false after SIGNED_OUT');
                 setIsLoading(false);
@@ -242,12 +153,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 console.log('AuthProvider: Restoring session from INITIAL_SESSION', currentSession.user.id);
                 setUser(currentSession.user);
                 setSession(currentSession);
-                
-                // Fetch role with improved handling
-                if (isMountedRef.current) {
-                  console.log('AuthProvider: Fetching role for restored session');
-                  fetchUserRole(currentSession.user.id);
-                }
               } else {
                 logger.log('AuthProvider: No initial session found');
                 console.log('AuthProvider: No initial session found');
@@ -312,7 +217,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (error.message === 'Auth session missing!') {
             setUser(null);
             setSession(null);
-            setRole(null);
           }
         } else if (refreshedSession && isMountedRef.current) {
           logger.log('AuthProvider: Session refreshed successfully');
@@ -378,7 +282,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(data.user);
         setSession(data.session);
         
-        // Don't call fetchUserRole here since it's already being called in the SIGNED_IN event handler
         // Add a small delay to ensure state is properly set before any potential redirect
         console.log('AuthProvider: Waiting for state to settle');
         await new Promise(resolve => setTimeout(resolve, 1000)); // Increased from 300ms to 1000ms
@@ -404,7 +307,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // If supabase isn't available, just clear local state
       setUser(null);
       setSession(null);
-      setRole(null);
       return;
     }
     
@@ -419,14 +321,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Clear all pending operations
       clearAllTimeouts();
-      if (roleAbortControllerRef.current) {
-        roleAbortControllerRef.current.abort();
-      }
       
       // Clear state immediately
       setUser(null);
       setSession(null);
-      setRole(null);
       
       // Sign out from Supabase with global scope
       try {
@@ -495,7 +393,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Ensure state is cleared even on error
       setUser(null);
       setSession(null);
-      setRole(null);
     } finally {
       if (isMountedRef.current) {
         setIsLoading(false);
@@ -518,7 +415,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           logger.warn('AuthProvider: Auth session missing during refresh');
           setUser(null);
           setSession(null);
-          setRole(null);
           return null;
         }
         logger.error('AuthProvider: Error during session refresh:', error.message);
@@ -612,9 +508,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       isMountedRef.current = false;
       clearAllTimeouts();
-      if (roleAbortControllerRef.current) {
-        roleAbortControllerRef.current.abort();
-      }
       logger.log('AuthProvider: Cleaning up');
     };
   }, [clearAllTimeouts]);
@@ -624,9 +517,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user,
         session,
-        role,
         isLoading,
-        isFetchingRole,
         signIn,
         signOut,
         refreshSession,

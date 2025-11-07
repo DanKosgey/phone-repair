@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 
 export default function AuthStatusPage() {
-  const { user, role, session, isLoading, isFetchingRole } = useAuth();
+  const { user, session, isLoading } = useAuth();
   const router = useRouter();
 
   const handleGoToLogin = () => {
@@ -39,16 +39,15 @@ export default function AuthStatusPage() {
             </div>
             
             <div className="p-4 bg-green-50 rounded">
-              <h3 className="font-medium text-green-800">Role & Session</h3>
-              <p><strong>Role:</strong> {role || 'None'}</p>
+              <h3 className="font-medium text-green-800">Session</h3>
               <p><strong>Session Active:</strong> {session ? 'Yes' : 'No'}</p>
               <p><strong>Session Expires:</strong> {session?.expires_at ? new Date(session.expires_at * 1000).toLocaleString() : 'N/A'}</p>
+              <p><strong>✓ You are authenticated and can access admin features</strong></p>
             </div>
             
             <div className="p-4 bg-yellow-50 rounded">
               <h3 className="font-medium text-yellow-800">Loading States</h3>
               <p><strong>Auth Loading:</strong> {isLoading ? 'Yes' : 'No'}</p>
-              <p><strong>Fetching Role:</strong> {isFetchingRole ? 'Yes' : 'No'}</p>
             </div>
             
             <div className="p-4 bg-purple-50 rounded">
@@ -62,7 +61,7 @@ export default function AuthStatusPage() {
             <Button onClick={handleGoToLogin} variant="default">
               Go to Login
             </Button>
-            <Button onClick={handleGoToAdmin} variant="secondary" disabled={!user || role !== 'admin'}>
+            <Button onClick={handleGoToAdmin} variant="secondary" disabled={!user}>
               Go to Admin Dashboard
             </Button>
             <Button onClick={handleSignOut} variant="outline">

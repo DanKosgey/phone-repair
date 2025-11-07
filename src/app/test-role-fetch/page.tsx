@@ -6,7 +6,7 @@ import { getSupabaseBrowserClient } from '@/server/supabase/client'
 import { Button } from '@/components/ui/button'
 
 export default function TestRoleFetchPage() {
-  const { user, role, isLoading, isFetchingRole } = useAuth()
+  const { user, isLoading } = useAuth()
   const [testResult, setTestResult] = useState<any>(null)
   const [testError, setTestError] = useState<string | null>(null)
   const [manualFetchResult, setManualFetchResult] = useState<any>(null)
@@ -16,12 +16,11 @@ export default function TestRoleFetchPage() {
     setTestResult({
       userId: user?.id,
       userEmail: user?.email,
-      role,
+      status: user ? 'Authenticated' : 'Not authenticated',
       isLoading,
-      isFetchingRole,
       timestamp: new Date().toISOString()
     })
-  }, [user, role, isLoading, isFetchingRole])
+  }, [user, isLoading])
 
   const handleTestRoleViaAPI = async () => {
     setTestResult(null)
@@ -58,26 +57,23 @@ export default function TestRoleFetchPage() {
         throw new Error('Supabase client not available')
       }
 
-      // Exactly mimic what fetchUserRole does
+      // Fetch user profile data
       const { data, error } = await supabase
         .from('profiles')
-        .select('role')
+        .select('*')
         .eq('id', user.id)
         .maybeSingle();
 
       if (error) {
-        setManualFetchError(`Error fetching user role: ${error.message}`)
+        setManualFetchError(`Error fetching user profile: ${error.message}`)
         return
       }
 
       // data might be null if profile doesn't exist
-      const userRole = data?.role || null;
-      
       setManualFetchResult({
         userId: user.id,
-        role: userRole,
-        rawData: data,
-        message: 'Manual role fetch completed'
+        profile: data || null,
+        message: 'Manual profile fetch completed'
       })
     } catch (error: any) {
       setManualFetchError(error.message)
@@ -87,7 +83,7 @@ export default function TestRoleFetchPage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        <h1 className="text-3xl font-bold">Role Fetch Test Page</h1>
+        <h1 className="text-3xl font-bold">Auth Fetch Test Page</h1>
         
         <div className="bg-blue-50 p-6 rounded-lg">
           <h2 className="text-xl font-semibold mb-4">Auth Context State</h2>
@@ -97,9 +93,9 @@ export default function TestRoleFetchPage() {
         </div>
         
         <div className="bg-green-50 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4">Test Role Fetch via API</h2>
-          <Button onClick={handleTestRoleViaAPI} disabled={isLoading || isFetchingRole}>
-            Test Role via API
+          <h2 className="text-xl font-semibold mb-4">Test Auth via API</h2>
+          <Button onClick={handleTestRoleViaAPI} disabled={isLoading}>
+            Test Auth via API
           </Button>
           
           {testError && (
@@ -120,9 +116,9 @@ export default function TestRoleFetchPage() {
         </div>
         
         <div className="bg-yellow-50 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4">Manual Role Fetch</h2>
-          <Button onClick={handleManualRoleFetch} disabled={isLoading || isFetchingRole || !user?.id}>
-            Manual Role Fetch
+          <h2 className="text-xl font-semibold mb-4">Manual Profile Fetch</h2>
+          <Button onClick={handleManualRoleFetch} disabled={isLoading || !user?.id}>
+            Manual Profile Fetch
           </Button>
           
           {manualFetchError && (

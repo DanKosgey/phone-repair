@@ -15,6 +15,18 @@ const refreshDashboardViews = async () => {
   }
 }
 
+// Helper function to verify user is authenticated
+async function verifyAuthenticatedUser() {
+  const supabase = getSupabaseBrowserClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('You must be logged in to perform this action')
+  }
+  
+  return user
+}
+
 // Helper function to verify admin role
 async function verifyAdminRole() {
   const supabase = getSupabaseBrowserClient()
@@ -153,13 +165,13 @@ export const productsDb = {
     try {
       const supabase = getSupabaseBrowserClient()
       
-      // Verify admin role
-      const user = await verifyAdminRole()
+      // Verify user is authenticated
+      const user = await verifyAuthenticatedUser()
       
-      // Ensure the product has the correct user_id set to the admin user
+      // Ensure the product has the correct user_id set to the current user
       const productData = {
         ...product,
-        user_id: user.id // Explicitly set the user_id to the current admin user
+        user_id: user.id // Explicitly set the user_id to the current user
       }
       
       const { data, error } = await supabase
@@ -185,8 +197,8 @@ export const productsDb = {
     try {
       const supabase = getSupabaseBrowserClient()
       
-      // Verify admin role
-      await verifyAdminRole()
+      // Verify user is authenticated
+      await verifyAuthenticatedUser()
       
       const { data, error } = await supabase
         .from('products')
@@ -212,19 +224,22 @@ export const productsDb = {
     try {
       const supabase = getSupabaseBrowserClient()
       
-      // Verify admin role
-      await verifyAdminRole()
+      // Verify user is authenticated
+      await verifyAuthenticatedUser()
       
-      // Using type assertion to bypass TypeScript error for deleted_at field
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('products')
-        .update({ deleted_at: new Date().toISOString() } as any)
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id)
+        .select()
+        .single()
       
       if (error) throw new Error(`Failed to delete product: ${error.message}`)
       
       // Refresh materialized views to update dashboard metrics
       await refreshDashboardViews()
+      
+      return data
     } catch (error) {
       console.error('Error in productsDb.delete:', error)
       throw error

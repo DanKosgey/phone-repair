@@ -9,20 +9,16 @@ interface ProtectedRouteProps {
   requiredRole?: 'user' | 'admin';
 }
 
-export function ProtectedRoute({ children, requiredRole = 'admin' }: ProtectedRouteProps) {
-  const { user, role, isLoading } = useAuth();
+export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    // If not loading and user is not authenticated or doesn't have required role, redirect
-    if (!isLoading && (!user || (requiredRole && role !== requiredRole))) {
-      if (!user) {
-        router.push('/login');
-      } else {
-        router.push('/'); // Redirect to home if user doesn't have required role
-      }
+    // If not loading and user is not authenticated, redirect to login
+    if (!isLoading && !user) {
+      router.push('/login');
     }
-  }, [user, role, isLoading, requiredRole, router]);
+  }, [user, isLoading, router]);
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -33,11 +29,12 @@ export function ProtectedRoute({ children, requiredRole = 'admin' }: ProtectedRo
     );
   }
 
-  // If user is authenticated and has required role, render children
-  if (user && (!requiredRole || role === requiredRole)) {
+  // If user is authenticated, render children
+  // We're allowing all authenticated users to access admin pages
+  if (user) {
     return <>{children}</>;
   }
 
-  // If user is not authenticated or doesn't have required role, render nothing (redirect will happen)
+  // If user is not authenticated, render nothing (redirect will happen)
   return null;
 }

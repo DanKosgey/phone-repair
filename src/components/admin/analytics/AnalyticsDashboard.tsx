@@ -83,7 +83,7 @@ type ForecastData = {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 export default function AnalyticsDashboard() {
-  const { user, role, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -125,14 +125,14 @@ export default function AnalyticsDashboard() {
     charts: true,
   });
 
-  // Redirect to login if not authenticated or not admin
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading) {
-      if (!user || role !== 'admin') {
+      if (!user) {
         redirect('/login');
       }
     }
-  }, [user, role, authLoading]);
+  }, [user, authLoading]);
 
   // Fetch all analytics data
   useEffect(() => {

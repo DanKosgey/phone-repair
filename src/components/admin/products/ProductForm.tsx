@@ -18,7 +18,7 @@ import { generateCSRFToken, storeCSRFToken, validateCSRFToken } from '@/lib/util
 import { CameraCapture } from '@/components/ui/camera'
 
 export default function ProductForm({ initialProduct = null }: { initialProduct?: any }) {
-  const { user, role, isLoading: authLoading, refreshSession } = useAuth()
+  const { user, isLoading: authLoading, refreshSession } = useAuth()
   const [name, setName] = useState(initialProduct?.name || "")
   const [category, setCategory] = useState(initialProduct?.category || "")
   const [description, setDescription] = useState(initialProduct?.description || "")
@@ -40,14 +40,14 @@ export default function ProductForm({ initialProduct = null }: { initialProduct?
     setCsrfToken(token);
   }, []);
 
-  // Redirect to login if not authenticated or not admin
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading) {
-      if (!user || role !== 'admin') {
+      if (!user) {
         router.push('/login')
       }
     }
-  }, [user, role, authLoading, router])
+  }, [user, authLoading, router])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

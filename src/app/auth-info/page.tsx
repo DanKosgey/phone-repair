@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 
 export default function AuthInfoPage() {
-  const { user, role, isLoading, signOut } = useAuth();
+  const { user, isLoading, signOut } = useAuth();
   const router = useRouter();
 
   const handleSignOut = async () => {
@@ -36,11 +36,11 @@ export default function AuthInfoPage() {
               <h2 className="font-semibold text-green-800">Authenticated User</h2>
               <p className="text-sm text-green-700">User ID: {user.id}</p>
               <p className="text-sm text-green-700">Email: {user.email}</p>
-              <p className="text-sm text-green-700">Role: {role || 'No role assigned'}</p>
+              <p className="text-sm text-green-700">✓ You are authenticated and can access admin features</p>
             </div>
             
             <div className="flex flex-col gap-2">
-              <Button onClick={handleGoToAdmin} disabled={role !== 'admin'}>
+              <Button onClick={handleGoToAdmin}>
                 Go to Admin Dashboard
               </Button>
               <Button onClick={handleSignOut} variant="outline">

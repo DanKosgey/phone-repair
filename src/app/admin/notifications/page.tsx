@@ -30,7 +30,7 @@ type Notification = {
 }
 
 export default function AdminNotificationsPage() {
-  const { user, role, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
   
@@ -38,14 +38,14 @@ export default function AdminNotificationsPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'unread' | 'archived'>('all')
 
-  // Redirect to login if not authenticated or not admin
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading) {
-      if (!user || role !== 'admin') {
+      if (!user) {
         redirect('/login')
       }
     }
-  }, [user, role, authLoading])
+  }, [user, authLoading])
 
   // Fetch notifications
   useEffect(() => {

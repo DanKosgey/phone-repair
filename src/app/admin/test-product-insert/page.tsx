@@ -6,13 +6,13 @@ import { getSupabaseBrowserClient } from '@/server/supabase/client'
 import { Button } from '@/components/ui/button'
 
 export default function TestProductInsertPage() {
-  const { user, role } = useAuth()
+  const { user } = useAuth()
   const [result, setResult] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   const testInsert = async () => {
-    if (!user || role !== 'admin') {
-      setResult('You must be an admin to perform this test')
+    if (!user) {
+      setResult('You must be logged in to perform this test')
       return
     }
 
@@ -73,11 +73,11 @@ export default function TestProductInsertPage() {
       {user ? (
         <div className="space-y-4">
           <p>User ID: {user.id}</p>
-          <p>Role: {role || 'null'}</p>
+          <p className="text-green-600">✓ You are authenticated and can access admin features</p>
           
           <Button 
             onClick={testInsert} 
-            disabled={isLoading || role !== 'admin'}
+            disabled={isLoading}
           >
             {isLoading ? 'Testing...' : 'Test Product Insert'}
           </Button>

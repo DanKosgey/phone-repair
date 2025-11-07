@@ -6,21 +6,21 @@ import { useEffect } from 'react'
 import Dashboard from "@/components/admin/Dashboard"
 
 export default function DebugAdminPage() {
-  const { user, role, isLoading } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    console.log('DebugAdminPage: Checking authentication', { user: !!user, role, isLoading })
-  }, [user, role, isLoading])
+    console.log('DebugAdminPage: Checking authentication', { user: !!user, isLoading })
+  }, [user, isLoading])
 
   if (isLoading) {
     console.log('DebugAdminPage: Showing loading state')
     return <div className="p-6">Loading...</div>
   }
 
-  if (!user || role !== 'admin') {
+  if (!user) {
     console.log('DebugAdminPage: Unauthorized access')
-    return <div className="p-6">Unauthorized access. You must be an admin to view this page.</div>
+    return <div className="p-6">Unauthorized access. You must be logged in to view this page.</div>
   }
 
   console.log('DebugAdminPage: Rendering dashboard component')

@@ -13,7 +13,7 @@ export default function AdminRootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { user, role, signOut, isLoading, isFetchingRole } = useAuth()
+  const { user, signOut, isLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
   
@@ -80,16 +80,14 @@ export default function AdminRootLayout({
     }
   }, [signOut, toast])
 
-  // Simplified authentication check - one way flow
+  // Simplified authentication check - allow all authenticated users
   useEffect(() => {
     // Don't run if already redirected or component is unmounted
     if (hasRedirected.current || !mountedRef.current) return
 
     console.log('AdminLayout: Auth state check', { 
       userId: user?.id, 
-      role, 
       isLoading,
-      isFetchingRole,
       hasRedirected: hasRedirected.current,
       isCheckingAuth
     })
@@ -115,46 +113,15 @@ export default function AdminRootLayout({
       return
     }
 
-    // User exists and role is explicitly admin - proceed to dashboard
-    if (role === 'admin') {
-      console.log('AdminLayout: User authorized as admin')
+    // User exists - proceed to dashboard (no role check)
+    if (user) {
+      console.log('AdminLayout: User authenticated, allowing access')
       if (mountedRef.current) {
         setIsCheckingAuth(false)
       }
       return
     }
-
-    // User exists but role is explicitly not admin
-    if (role !== null && role !== 'admin') {
-      console.log('AdminLayout: User not admin, redirecting to home. Role:', role)
-      hasRedirected.current = true
-      
-      if (mountedRef.current) {
-        toast({
-          title: "Access Denied",
-          description: "You don't have permission to access the admin dashboard.",
-          variant: "destructive",
-        })
-        
-        router.push('/')
-      }
-      return
-    }
-
-    // User exists but role is still loading - give it a moment then proceed
-    if (role === null && user) {
-      console.log('AdminLayout: Role is null but user exists, setting timeout')
-      // Small delay to allow role to load, then proceed anyway for admin route
-      checkTimeoutRef.current = setTimeout(() => {
-        if (!hasRedirected.current && mountedRef.current) {
-          console.log('AdminLayout: Proceeding with access (assuming admin on admin route)')
-          setIsCheckingAuth(false)
-        }
-      }, 1000) // 1 second delay
-      
-      return
-    }
-  }, [user, role, isLoading, isFetchingRole, router, toast])
+  }, [user, isLoading, router])
 
   // Show loading state while checking authentication
   if (isLoading || isCheckingAuth) {
@@ -163,10 +130,7 @@ export default function AdminRootLayout({
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p className="text-muted-foreground">Verifying permissions...</p>
-          {isFetchingRole && (
-            <p className="text-sm text-muted-foreground">Loading user role...</p>
-          )}
+          <p className="text-muted-foreground">Verifying authentication...</p>
         </div>
       </div>
     )
@@ -177,12 +141,7 @@ export default function AdminRootLayout({
     return null
   }
 
-  // Double-check: if role is explicitly not admin, don't render (redirect should have happened)
-  if (role !== null && role !== 'admin') {
-    return null
-  }
-
-  // User is authenticated and authorized as admin
+  // User is authenticated - allow access
   console.log('AdminLayout: Rendering admin layout')
   return (
     <div className="min-h-screen flex w-full bg-background">

@@ -40,30 +40,10 @@ export async function getCurrentUserId(): Promise<string | null> {
 }
 
 /**
- * Check if the current user has admin role
+ * Check if the user is authenticated
  * @returns Promise<boolean>
  */
-export async function isAdmin(): Promise<boolean> {
-  const supabase = getSupabaseBrowserClient();
+export async function isAuthenticated(): Promise<boolean> {
   const userId = await getCurrentUserId();
-  
-  if (!userId) return false;
-  
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single();
-    
-    if (error) {
-      console.error('Error checking admin role:', error);
-      return false;
-    }
-    
-    return data?.role === 'admin';
-  } catch (error) {
-    console.error('Error checking admin role:', error);
-    return false;
-  }
+  return !!userId;
 }

@@ -5,12 +5,12 @@ import Dashboard from "@/components/admin/Dashboard"
 import { useAuth } from '@/contexts/auth-context'
 
 export default function DebugDashboardPage() {
-  const { user, role, isLoading } = useAuth()
+  const { user, isLoading } = useAuth()
   const [showDashboard, setShowDashboard] = useState(false)
 
   useEffect(() => {
-    console.log('DebugDashboardPage: Auth state', { user: !!user, role, isLoading })
-  }, [user, role, isLoading])
+    console.log('DebugDashboardPage: Auth state', { user: !!user, isLoading })
+  }, [user, isLoading])
 
   if (isLoading) {
     return <div className="p-6">Loading authentication...</div>
@@ -20,10 +20,6 @@ export default function DebugDashboardPage() {
     return <div className="p-6">You must be logged in to view this page.</div>
   }
 
-  if (role !== 'admin') {
-    return <div className="p-6">You must be an admin to view this page. Your role is: {role}</div>
-  }
-
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Dashboard Component Test</h1>
@@ -31,7 +27,7 @@ export default function DebugDashboardPage() {
         <p className="mb-2"><strong>Auth Status:</strong></p>
         <p>User ID: {user.id}</p>
         <p>Email: {user.email}</p>
-        <p>Role: {role}</p>
+        <p className="text-green-600">✓ You are authenticated and can access admin features</p>
       </div>
       
       <button 

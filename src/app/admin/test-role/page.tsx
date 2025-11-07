@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { getSupabaseBrowserClient } from '@/server/supabase/client'
 
 export default function TestRolePage() {
-  const { user, role, isLoading } = useAuth()
+  const { user, isLoading } = useAuth()
   const [dbRole, setDbRole] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isClient, setIsClient] = useState(false)
@@ -51,14 +51,14 @@ export default function TestRolePage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Role Test</h1>
+      <h1 className="text-2xl font-bold mb-4">Auth Test</h1>
       
       {user ? (
         <div className="space-y-4">
           <div>
             <h2 className="text-xl font-semibold">Auth Context</h2>
             <p>User ID: {user.id}</p>
-            <p>Role from context: {role || 'null'}</p>
+            <p>Status: Authenticated</p>
           </div>
           
           <div>
@@ -73,12 +73,8 @@ export default function TestRolePage() {
           )}
           
           <div>
-            <h2 className="text-xl font-semibold">Comparison</h2>
-            {role === dbRole ? (
-              <p className="text-green-600">✓ Roles match</p>
-            ) : (
-              <p className="text-red-600">✗ Roles do not match</p>
-            )}
+            <h2 className="text-xl font-semibold">Note</h2>
+            <p className="text-blue-600">Role-based access control has been removed. All authenticated users can access admin pages.</p>
           </div>
         </div>
       ) : (

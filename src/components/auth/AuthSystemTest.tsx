@@ -86,7 +86,7 @@ export function AuthSystemTest() {
       </div>
       <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
         User: {auth.user?.email || 'Not logged in'}<br />
-        Role: {auth.role || 'None'}<br />
+        Status: {auth.user ? 'Authenticated' : 'Not authenticated'}<br />
         Loading: {auth.isLoading ? 'Yes' : 'No'}
       </div>
     </div>

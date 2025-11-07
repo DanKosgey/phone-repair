@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function DebugAuthPage() {
-  const { user, session, role, isLoading, isFetchingRole, refreshSession, isSessionValid, recoverSession } = useAuth()
+  const { user, session, isLoading, refreshSession, isSessionValid, recoverSession } = useAuth()
   const [debugInfo, setDebugInfo] = useState<any>({})
   const [logs, setLogs] = useState<string[]>([])
 
@@ -28,11 +28,9 @@ export default function DebugAuthPage() {
         expires_in: session.expires_in,
         refresh_token: session.refresh_token ? '***' : null
       } : null,
-      role,
-      isLoading,
-      isFetchingRole
+      isLoading
     })
-  }, [user, session, role, isLoading, isFetchingRole])
+  }, [user, session, isLoading])
 
   const handleRefreshSession = async () => {
     try {

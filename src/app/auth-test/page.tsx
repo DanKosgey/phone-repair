@@ -6,19 +6,15 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
 export default function AuthTestPage() {
-  const { user, role, isLoading } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    // If user is already logged in, redirect to appropriate page
+    // If user is already logged in, redirect to admin page
     if (!isLoading && user) {
-      if (role === 'admin') {
-        router.push('/admin')
-      } else {
-        router.push('/')
-      }
+      router.push('/admin')
     }
-  }, [user, role, isLoading, router])
+  }, [user, isLoading, router])
 
   if (isLoading) {
     return (
@@ -44,10 +40,6 @@ export default function AuthTestPage() {
             <div className="flex justify-between">
               <span>User:</span>
               <span className="font-mono">{user ? user.email : 'Not logged in'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Role:</span>
-              <span className="font-mono">{role || 'None'}</span>
             </div>
             <div className="flex justify-between">
               <span>Loading:</span>

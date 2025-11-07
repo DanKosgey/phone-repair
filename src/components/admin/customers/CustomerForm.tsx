@@ -18,7 +18,7 @@ import { useCustomerSearch } from '@/hooks/use-customers'
 import { debounce } from '@/lib/utils/debounce'
 
 export default function CustomerForm({ initialCustomer = null }: { initialCustomer?: any }) {
-  const { user, role, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const [name, setName] = useState(initialCustomer?.name || "")
   const [email, setEmail] = useState(initialCustomer?.email || "")
   const [phone, setPhone] = useState(initialCustomer?.phone || "")
@@ -37,14 +37,14 @@ export default function CustomerForm({ initialCustomer = null }: { initialCustom
     setCsrfToken(token);
   }, []);
 
-  // Redirect to login if not authenticated or not admin
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading) {
-      if (!user || role !== 'admin') {
+      if (!user) {
         router.push('/login')
       }
     }
-  }, [user, role, authLoading, router])
+  }, [user, authLoading, router])
 
   // Debounced search function
   const debouncedSearch = debounce(async (term: string) => {
@@ -306,3 +306,4 @@ export default function CustomerForm({ initialCustomer = null }: { initialCustom
     </div>
   )
 }
+

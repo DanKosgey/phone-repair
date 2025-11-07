@@ -71,7 +71,7 @@ type Notification = {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82ca9d']
 
 export default function AdminDashboard() {
-  const { user, role, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
   
@@ -106,17 +106,17 @@ export default function AdminDashboard() {
     notifications: true
   })
 
-  // Redirect to login if not authenticated or not admin
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading) {
-      if (!user || role !== 'admin') {
+      if (!user) {
         // Only redirect on client side
         if (typeof window !== 'undefined') {
           router.push('/login')
         }
       }
     }
-  }, [user, role, authLoading, router])
+  }, [user, authLoading, router])
 
   // Add timeout to prevent infinite loading
   useEffect(() => {

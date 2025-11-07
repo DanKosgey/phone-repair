@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 export default function AdminTestFixPage() {
-  const { user, role, isLoading, isFetchingRole, signIn, signOut } = useAuth();
+  const { user, isLoading, signIn, signOut } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('admin@g.com');
   const [password, setPassword] = useState('Dan@2020');
@@ -44,19 +44,13 @@ export default function AdminTestFixPage() {
 
   // Log auth state changes for debugging
   useEffect(() => {
-    console.log('AdminTestFixPage: Auth state changed', { user, role, isLoading, isFetchingRole });
-    if (!isLoading && !isFetchingRole && user) {
-      if (role === 'admin') {
-        setTestStatus('User authenticated as admin');
-      } else if (role === null) {
-        setTestStatus('User authenticated, role not yet determined');
-      } else {
-        setTestStatus(`User authenticated with role: ${role}`);
-      }
+    console.log('AdminTestFixPage: Auth state changed', { user, isLoading });
+    if (!isLoading && user) {
+      setTestStatus('User authenticated');
     } else if (!isLoading && !user) {
       setTestStatus('No user authenticated');
     }
-  }, [user, role, isLoading, isFetchingRole]);
+  }, [user, isLoading]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-100">
@@ -66,9 +60,7 @@ export default function AdminTestFixPage() {
         <div className="p-4 bg-blue-50 rounded-lg">
           <h2 className="font-semibold text-blue-800">Current Auth State</h2>
           <p className="text-sm text-blue-700">Loading: {isLoading ? 'true' : 'false'}</p>
-          <p className="text-sm text-blue-700">Fetching Role: {isFetchingRole ? 'true' : 'false'}</p>
           <p className="text-sm text-blue-700">User: {user ? user.email : 'null'}</p>
-          <p className="text-sm text-blue-700">Role: {role || 'null'}</p>
           <p className="text-sm text-blue-700">Test Status: {testStatus}</p>
         </div>
         
@@ -98,16 +90,16 @@ export default function AdminTestFixPage() {
         </div>
         
         <div className="grid grid-cols-2 gap-3">
-          <Button onClick={handleLogin} disabled={isLoading || isFetchingRole}>
+          <Button onClick={handleLogin} disabled={isLoading}>
             Login
           </Button>
-          <Button onClick={handleLogout} variant="outline" disabled={isLoading || isFetchingRole}>
+          <Button onClick={handleLogout} variant="outline" disabled={isLoading}>
             Logout
           </Button>
           <Button onClick={handleGoToLogin} variant="secondary">
             Go to Login Page
           </Button>
-          <Button onClick={handleGoToAdmin} variant="secondary" disabled={!user || role !== 'admin'}>
+          <Button onClick={handleGoToAdmin} variant="secondary" disabled={!user}>
             Go to Admin
           </Button>
         </div>

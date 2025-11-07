@@ -70,7 +70,7 @@ type CustomerSummary = {
 }
 
 export default function AdminCustomers() {
-  const { user, role, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const { getAllCustomers, deleteCustomer, restoreCustomer } = useCustomers()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([])
@@ -82,14 +82,14 @@ export default function AdminCustomers() {
   const { toast } = useToast()
   const router = useRouter()
 
-  // Redirect to login if not authenticated or not admin
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading) {
-      if (!user || role !== 'admin') {
+      if (!user) {
         redirect('/login')
       }
     }
-  }, [user, role, authLoading])
+  }, [user, authLoading])
 
   // Add timeout to prevent infinite loading
   useEffect(() => {
@@ -498,4 +498,3 @@ export default function AdminCustomers() {
     </div>
   )
 }
-

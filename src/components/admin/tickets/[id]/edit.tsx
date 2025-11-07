@@ -19,7 +19,7 @@ type Ticket = Database['public']['Tables']['tickets']['Row']
 type TicketUpdate = Database['public']['Tables']['tickets']['Update']
 
 export default function EditTicket() {
-  const { user, role, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [ticketId, setTicketId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -56,14 +56,14 @@ export default function EditTicket() {
     unwrapParams()
   }, [params])
 
-  // Redirect to login if not authenticated or not admin
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading) {
-      if (!user || role !== 'admin') {
+      if (!user) {
         router.push('/login')
       }
     }
-  }, [user, role, authLoading, router])
+  }, [user, authLoading, router])
 
   useEffect(() => {
     if (ticketId) {

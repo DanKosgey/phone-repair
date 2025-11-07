@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 
 export default function DebugRolePage() {
-  const { user, role, isLoading, isFetchingRole, signIn, signOut } = useAuth()
+  const { user, isLoading, signIn, signOut } = useAuth()
   const [debugInfo, setDebugInfo] = useState<any>({})
   const [apiResult, setApiResult] = useState<any>(null)
   const [apiError, setApiError] = useState<string | null>(null)
@@ -14,12 +14,11 @@ export default function DebugRolePage() {
     setDebugInfo({
       userId: user?.id,
       userEmail: user?.email,
-      role,
+      status: user ? 'Authenticated' : 'Not authenticated',
       isLoading,
-      isFetchingRole,
       timestamp: new Date().toISOString()
     })
-  }, [user, role, isLoading, isFetchingRole])
+  }, [user, isLoading])
 
   const handleCheckRoleViaAPI = async () => {
     setApiResult(null)
@@ -43,7 +42,7 @@ export default function DebugRolePage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        <h1 className="text-3xl font-bold">Role Debugging Page</h1>
+        <h1 className="text-3xl font-bold">Auth Debugging Page</h1>
         
         <div className="bg-blue-50 p-6 rounded-lg">
           <h2 className="text-xl font-semibold mb-4">Auth Context State</h2>
@@ -53,9 +52,9 @@ export default function DebugRolePage() {
         </div>
         
         <div className="bg-green-50 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4">API Role Check</h2>
-          <Button onClick={handleCheckRoleViaAPI} disabled={isLoading || isFetchingRole}>
-            Check Role via API
+          <h2 className="text-xl font-semibold mb-4">API Auth Check</h2>
+          <Button onClick={handleCheckRoleViaAPI} disabled={isLoading}>
+            Check Auth via API
           </Button>
           
           {apiError && (

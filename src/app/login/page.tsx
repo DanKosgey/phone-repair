@@ -17,66 +17,24 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
-  const { signIn, user, role, isLoading: authLoading, isFetchingRole } = useAuth()
+  const { signIn, user, isLoading: authLoading } = useAuth()
   const hasRedirected = useRef(false)
-  const mountedRef = useRef(true)
-  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Clear timeout on unmount
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-      if (redirectTimeoutRef.current) {
-        clearTimeout(redirectTimeoutRef.current)
-      }
-    }
-  }, [])
-
+  // Handle initial redirect if already authenticated
   useEffect(() => {
     console.log('LoginPage: Auth state updated', { 
       userId: user?.id, 
-      role, 
       authLoading,
-      isFetchingRole,
-      hasRedirected: hasRedirected.current,
-      mounted: mountedRef.current
+      hasRedirected: hasRedirected.current
     })
     
-    // If user is authenticated, redirect based on role - one way flow
-    if (!authLoading && user && !hasRedirected.current && mountedRef.current) {
-      console.log('LoginPage: User is authenticated, preparing redirect', { 
-        role, 
-        userId: user.id 
-      })
-      
-      // Only redirect if we're not already redirecting
-      if (!hasRedirected.current) {
-        hasRedirected.current = true
-        // Clear any existing timeout
-        if (redirectTimeoutRef.current) {
-          clearTimeout(redirectTimeoutRef.current)
-        }
-        
-        // Set a small delay before redirecting to ensure state is settled
-        redirectTimeoutRef.current = setTimeout(() => {
-          if (mountedRef.current) {
-            console.log('LoginPage: Redirecting to admin dashboard')
-            router.push('/admin')
-          }
-        }, 300) // Small delay to ensure state is settled
-      }
-    } else if (!authLoading && user && hasRedirected.current) {
-      console.log('LoginPage: User is authenticated but already redirected', { 
-        role, 
-        userId: user.id 
-      })
-    } else if (authLoading) {
-      console.log('LoginPage: Still loading authentication state')
-    } else if (!user) {
-      console.log('LoginPage: No user authenticated')
+    // Only redirect ONCE
+    if (user && !authLoading && !hasRedirected.current) {
+      console.log('LoginPage: User already authenticated, redirecting')
+      hasRedirected.current = true
+      router.replace('/admin') // Use replace instead of push
     }
-  }, [user, role, authLoading, isFetchingRole, router])
+  }, [user, authLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,33 +56,41 @@ export default function AdminLoginPage() {
       
       console.log('LoginPage: Calling signIn function');
       await signIn(email, password);
-      console.log('LoginPage: Sign in function completed');
-      // Redirect will be handled by the useEffect above
+      
+      // Mark that we're redirecting
+      hasRedirected.current = true;
+      
+      // Redirect after successful sign in
+      router.replace('/admin');
     } catch (error: any) {
       console.error('LoginPage: Sign in failed:', error);
       setError(error.message || 'An unexpected error occurred');
       // Reset redirect flag on error so user can try again
       hasRedirected.current = false;
-    } finally {
-      // Only set isSubmitting to false if we haven't redirected
-      if (!hasRedirected.current) {
-        console.log('LoginPage: Setting isSubmitting to false');
-        setIsSubmitting(false);
-      }
+      setIsSubmitting(false);
     }
   }
 
+  // Don't render the form if we're already authenticated and redirecting
+  if (user && !authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="text-muted-foreground">Redirecting...</p>
+        </div>
+      </div>
+    )
+  }
+
   // If user is already logged in, show loading state
-  if (authLoading || (user && !hasRedirected.current)) {
+  if (authLoading) {
     console.log('LoginPage: Showing loading state')
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <p className="text-muted-foreground">Authenticating...</p>
-          {authLoading && (
-            <p className="text-sm text-muted-foreground">Please wait...</p>
-          )}
         </div>
       </div>
     )

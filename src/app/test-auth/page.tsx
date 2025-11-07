@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useRouter } from 'next/navigation'
 
 export default function TestAuthPage() {
-  const { user, role, isLoading, isFetchingRole, signIn, signOut } = useAuth()
+  const { user, isLoading, signIn, signOut } = useAuth()
   const router = useRouter()
   const [testEmail, setTestEmail] = useState('')
   const [testPassword, setTestPassword] = useState('')
@@ -16,11 +16,9 @@ export default function TestAuthPage() {
   useEffect(() => {
     console.log('TestAuth: Auth state updated', { 
       userId: user?.id, 
-      role, 
-      isLoading,
-      isFetchingRole
+      isLoading
     })
-  }, [user, role, isLoading, isFetchingRole])
+  }, [user, isLoading])
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -83,16 +81,12 @@ export default function TestAuthPage() {
               <p className="text-sm">{user?.email || 'None'}</p>
             </div>
             <div>
-              <p className="font-medium">Role:</p>
-              <p className="text-sm">{role || 'None'}</p>
+              <p className="font-medium">Status:</p>
+              <p className="text-sm">{user ? 'Authenticated' : 'Not authenticated'}</p>
             </div>
             <div>
               <p className="font-medium">Loading:</p>
               <p className="text-sm">{isLoading ? 'Yes' : 'No'}</p>
-            </div>
-            <div>
-              <p className="font-medium">Fetching Role:</p>
-              <p className="text-sm">{isFetchingRole ? 'Yes' : 'No'}</p>
             </div>
           </div>
         </div>

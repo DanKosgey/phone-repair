@@ -7,14 +7,14 @@ import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
 
 export default function TestAdminProductPage() {
-  const { user, role, isLoading } = useAuth()
+  const { user, isLoading } = useAuth()
   const [result, setResult] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const router = useRouter()
 
   const testCreateProduct = async () => {
-    if (!user || role !== 'admin') {
-      setResult('You must be an admin to create products')
+    if (!user) {
+      setResult('You must be logged in to create products')
       return
     }
 
@@ -66,9 +66,8 @@ export default function TestAdminProductPage() {
           <div className="bg-gray-100 p-4 rounded-lg">
             <h2 className="text-lg font-semibold mb-2">User Information</h2>
             <p>User ID: {user.id}</p>
-            <p>Role: {role || 'null'}</p>
-            <p className={role === 'admin' ? 'text-green-600' : 'text-red-600'}>
-              {role === 'admin' ? '✓ You have admin privileges' : '✗ You do not have admin privileges'}
+            <p className="text-green-600">
+              ✓ You are authenticated and can access admin features
             </p>
           </div>
           
@@ -78,7 +77,7 @@ export default function TestAdminProductPage() {
             
             <Button 
               onClick={testCreateProduct} 
-              disabled={isCreating || role !== 'admin'}
+              disabled={isCreating}
               className="mt-4"
             >
               {isCreating ? 'Creating Product...' : 'Test Create Product'}
@@ -93,7 +92,7 @@ export default function TestAdminProductPage() {
         </div>
       ) : (
         <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
-          <p>You must be logged in as an admin to perform this test.</p>
+          <p>You must be logged in to perform this test.</p>
         </div>
       )}
     </div>

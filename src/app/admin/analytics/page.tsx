@@ -6,21 +6,17 @@ import { useEffect, useState } from 'react';
 import AnalyticsDashboard from "@/components/admin/analytics/AnalyticsDashboard";
 
 export default function AnalyticsPage() {
-  const { user, role, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const [renderDashboard, setRenderDashboard] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.push('/login');
-    } else if (!isLoading && user && role !== 'admin') {
-      if (role !== null) {
-        router.push('/');
-      }
-    } else if (!isLoading && user && role === 'admin') {
+    } else if (!isLoading && user) {
       setRenderDashboard(true);
     }
-  }, [user, role, isLoading, router]);
+  }, [user, isLoading, router]);
 
   // Add a timeout to prevent infinite loading
   useEffect(() => {
@@ -44,7 +40,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  if (!user || (role !== null && role !== 'admin')) {
+  if (!user) {
     return null;
   }
 

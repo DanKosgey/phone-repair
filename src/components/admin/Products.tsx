@@ -57,7 +57,7 @@ import {
 type Product = Database['public']['Tables']['products']['Row']
 
 export default function AdminProducts() {
-  const { user, role, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -68,14 +68,14 @@ export default function AdminProducts() {
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
-  // Redirect to login if not authenticated or not admin
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading) {
-      if (!user || role !== 'admin') {
+      if (!user) {
         redirect('/login')
       }
     }
-  }, [user, role, authLoading])
+  }, [user, authLoading])
 
   // Add timeout to prevent infinite loading
   useEffect(() => {

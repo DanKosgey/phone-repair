@@ -22,7 +22,7 @@ import { CustomerModal } from './CustomerModal'
 import { Customer } from '@/hooks/use-customers'
 
 export default function TicketForm() {
-  const { user, role, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [customerName, setCustomerName] = useState("")
   const [customerEmail, setCustomerEmail] = useState("")
@@ -53,14 +53,14 @@ export default function TicketForm() {
     };
   }, []);
 
-  // Redirect to login if not authenticated or not admin
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading) {
-      if (!user || role !== 'admin') {
+      if (!user) {
         router.push('/login')
       }
     }
-  }, [user, role, authLoading, router])
+  }, [user, authLoading, router])
 
   // Update customer fields when customer is selected
   useEffect(() => {

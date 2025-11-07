@@ -6,7 +6,7 @@ import { useEffect, useState, useRef } from 'react';
 import Dashboard from "@/components/admin/Dashboard";
 
 export default function AdminDashboardPage() {
-  const { user, role, isLoading, isFetchingRole } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const [renderDashboard, setRenderDashboard] = useState(false);
   const hasCheckedAuth = useRef(false);
@@ -14,9 +14,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     console.log('AdminDashboardPage: Checking authentication', { 
       user: !!user, 
-      role, 
       isLoading, 
-      isFetchingRole,
       hasCheckedAuth: hasCheckedAuth.current,
       renderDashboard
     });
@@ -42,10 +40,10 @@ export default function AdminDashboardPage() {
       return;
     }
     
-    // If user exists, render dashboard (we'll check role in the layout)
+    // If user exists, render dashboard
     console.log('AdminDashboardPage: User authenticated, setting render flag');
     setRenderDashboard(true);
-  }, [user, role, isLoading, isFetchingRole, router, renderDashboard]);
+  }, [user, isLoading, router, renderDashboard]);
 
   // If still loading initial auth state, show loading
   if (isLoading) {

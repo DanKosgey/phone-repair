@@ -28,7 +28,7 @@ import { useAuth } from '@/contexts/auth-context'
 type Ticket = Database['public']['Tables']['tickets']['Row']
 
 export default function ViewTicket() {
-  const { user, role, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [ticketId, setTicketId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -49,15 +49,15 @@ export default function ViewTicket() {
     unwrapParams()
   }, [params])
 
-  // Redirect to login if not authenticated or not admin
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !hasRedirected.current) {
-      if (!user || role !== 'admin') {
+      if (!user) {
         hasRedirected.current = true
         router.push('/login')
       }
     }
-  }, [user, role, authLoading, router])
+  }, [user, authLoading, router])
 
   useEffect(() => {
     if (ticketId) {

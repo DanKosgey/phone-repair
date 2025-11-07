@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function DebugAuthSessionPage() {
-  const { user, session, role, isLoading, isFetchingRole, refreshSession, isSessionValid } = useAuth()
+  const { user, session, isLoading, refreshSession, isSessionValid } = useAuth()
   const [debugInfo, setDebugInfo] = useState<any>({})
   const [sessionInfo, setSessionInfo] = useState<any>(null)
 
@@ -22,8 +22,7 @@ export default function DebugAuthSessionPage() {
       user: user ? { 
         id: user.id, 
         email: user.email,
-        aud: user.aud,
-        role: user.role
+        aud: user.aud
       } : null,
       session: session ? { 
         expires_at: session.expires_at, 
@@ -31,11 +30,9 @@ export default function DebugAuthSessionPage() {
         refresh_token: session.refresh_token ? '***' : null,
         token_type: session.token_type
       } : null,
-      role,
-      isLoading,
-      isFetchingRole
+      isLoading
     })
-  }, [user, session, role, isLoading, isFetchingRole])
+  }, [user, session, isLoading])
 
   const handleRefreshSession = async () => {
     try {

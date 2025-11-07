@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 export default function DebugAuthRolePage() {
-  const { user, role, isLoading, isFetchingRole, signIn, signOut, refreshSession } = useAuth();
+  const { user, isLoading, signIn, signOut, refreshSession } = useAuth();
   const router = useRouter();
   const [debugInfo, setDebugInfo] = useState<any>({});
   const [forceRefresh, setForceRefresh] = useState(0);
@@ -15,12 +15,10 @@ export default function DebugAuthRolePage() {
     setDebugInfo({
       userId: user?.id,
       userEmail: user?.email,
-      role,
       isLoading,
-      isFetchingRole,
       timestamp: new Date().toISOString()
     });
-  }, [user, role, isLoading, isFetchingRole]);
+  }, [user, isLoading]);
 
   const handleLogin = async () => {
     try {
@@ -69,10 +67,10 @@ export default function DebugAuthRolePage() {
         </div>
         
         <div className="grid grid-cols-2 gap-3">
-          <Button onClick={handleLogin} disabled={isLoading || isFetchingRole}>
+          <Button onClick={handleLogin} disabled={isLoading}>
             Login as Admin
           </Button>
-          <Button onClick={handleLogout} variant="outline" disabled={isLoading || isFetchingRole}>
+          <Button onClick={handleLogout} variant="outline" disabled={isLoading}>
             Logout
           </Button>
           <Button onClick={handleRefresh} variant="secondary">
@@ -81,7 +79,7 @@ export default function DebugAuthRolePage() {
           <Button onClick={handleGoToLogin} variant="secondary">
             Go to Login
           </Button>
-          <Button onClick={handleGoToAdmin} disabled={!user || (role !== null && role !== 'admin')}>
+          <Button onClick={handleGoToAdmin} disabled={!user}>
             Go to Admin Dashboard
           </Button>
         </div>

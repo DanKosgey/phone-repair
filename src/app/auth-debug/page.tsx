@@ -11,7 +11,7 @@ export default function AuthDebugPage() {
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
   
-  const { signIn, signOut, user, role, isLoading, isFetchingRole } = useAuth()
+  const { signIn, signOut, user, isLoading } = useAuth()
   const router = useRouter()
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -66,16 +66,12 @@ export default function AuthDebugPage() {
               <p>{user ? user.email : 'Not authenticated'}</p>
             </div>
             <div>
-              <p className="font-medium">Role:</p>
-              <p>{role || 'None'}</p>
+              <p className="font-medium">Status:</p>
+              <p>{user ? 'Authenticated' : 'Not authenticated'}</p>
             </div>
             <div>
               <p className="font-medium">Loading:</p>
               <p>{isLoading ? 'Yes' : 'No'}</p>
-            </div>
-            <div>
-              <p className="font-medium">Fetching Role:</p>
-              <p>{isFetchingRole ? 'Yes' : 'No'}</p>
             </div>
           </div>
         </div>
