@@ -281,10 +281,10 @@ export function HeroSection() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full sm:w-auto border border-green-500/40 text-lg px-8 py-6 relative overflow-hidden group bg-background/90 backdrop-blur-sm theme-glow-animation"
+                  className="w-full sm:w-auto border border-green-500/40 text-lg px-8 py-6 relative overflow-hidden group bg-background/90 backdrop-blur-sm theme-glow-animation text-foreground font-bold"
                 >
-                  <span className="relative z-10 font-semibold flex items-center gap-2">
-                    Marketplace
+                  <span className="relative z-10 flex items-center gap-2">
+                    <span className="tracking-wide">MARKETPLACE</span>
                     <motion.span
                       animate={{ 
                         x: [0, 5],
@@ -351,10 +351,10 @@ export function HeroSection() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full sm:w-auto border border-primary/40 text-lg px-8 py-6 relative overflow-hidden group bg-background/90 backdrop-blur-sm theme-glow-animation"
+                  className="w-full sm:w-auto border border-primary/40 text-lg px-8 py-6 relative overflow-hidden group bg-background/90 backdrop-blur-sm theme-glow-animation text-foreground font-bold"
                 >
-                  <span className="relative z-10 font-semibold flex items-center gap-2">
-                    Buy New Products
+                  <span className="relative z-10 flex items-center gap-2">
+                    <span className="tracking-wide">NEW PRODUCTS</span>
                     <motion.span
                       animate={{ 
                         x: [0, 5],
@@ -407,10 +407,10 @@ export function HeroSection() {
               >
                 <Button
                   size="lg"
-                  className="w-full sm:w-auto text-lg px-8 py-6 relative overflow-hidden group bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white shadow-lg hover:shadow-xl theme-glow-animation"
+                  className="w-full sm:w-auto text-lg px-8 py-6 relative overflow-hidden group bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white shadow-lg hover:shadow-xl theme-glow-animation font-extrabold tracking-wider"
                 >
                   <span className="relative z-10 flex items-center gap-2">
-                    Track Your Repair
+                    <span className="tracking-wider">TRACK REPAIR</span>
                     <motion.span
                       animate={showNonCriticalAnimations ? { x: [0, 5] } : {}}
                       transition={{
@@ -472,6 +472,57 @@ export function HeroSection() {
                 <span className="font-medium text-sm">{item.text}</span>
               </motion.div>
             ))}
+          </motion.div>
+          
+          {/* Cool white design text */}
+          <motion.div 
+            className="flex flex-wrap justify-center gap-4 md:gap-8 mt-12 text-white"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.7 }}
+          >
+            <motion.span 
+              className="text-xl md:text-2xl lg:text-3xl font-bold tracking-wider bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent cool-white-text"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              MARKETPLACE
+            </motion.span>
+            <motion.span 
+              className="text-2xl md:text-3xl lg:text-4xl font-extrabold cool-white-text"
+              animate={{ opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              →
+            </motion.span>
+            <motion.span 
+              className="text-xl md:text-2xl lg:text-3xl font-bold tracking-wider bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent cool-white-text"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              NEW PRODUCTS
+            </motion.span>
+            <motion.span 
+              className="text-2xl md:text-3xl lg:text-4xl font-extrabold cool-white-text"
+              animate={{ opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              →
+            </motion.span>
+            <motion.span 
+              className="text-xl md:text-2xl lg:text-3xl font-bold tracking-wider bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent cool-white-text"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              TRACK REPAIR
+            </motion.span>
+            <motion.span 
+              className="text-2xl md:text-3xl lg:text-4xl font-extrabold cool-white-text"
+              animate={{ opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              →
+            </motion.span>
           </motion.div>
         </div>
       </div>

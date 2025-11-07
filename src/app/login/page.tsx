@@ -16,6 +16,7 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showMaintenance, setShowMaintenance] = useState(true) // Set to true to show maintenance message
   const router = useRouter()
   const { signIn, user, isLoading: authLoading } = useAuth()
   const hasRedirected = useRef(false)
@@ -41,6 +42,14 @@ export default function AdminLoginPage() {
     console.log('LoginPage: Submitting login form for email:', email);
     setIsSubmitting(true);
     setError('');
+
+    // Check if maintenance mode is active
+    if (showMaintenance) {
+      console.log('LoginPage: Maintenance mode active, blocking login');
+      setError('Authentication system is currently under maintenance. Please try again later.');
+      setIsSubmitting(false);
+      return;
+    }
 
     if (!email || !password) {
       console.log('LoginPage: Missing email or password');
@@ -97,6 +106,55 @@ export default function AdminLoginPage() {
   }
 
   console.log('LoginPage: Rendering login form')
+  
+  // Show maintenance message instead of login form
+  if (showMaintenance) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <div className="flex justify-center mb-4">
+              <div className="bg-destructive p-3 rounded-full">
+                <AlertCircle className="h-6 w-6 text-destructive-foreground" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold text-center text-destructive">System Maintenance</CardTitle>
+            <CardDescription className="text-center">
+              Authentication system is currently under maintenance
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-2">
+                  <p className="font-medium">Authentication Upgrade in Progress</p>
+                  <p>We're upgrading our authentication system to provide you with better security and performance.</p>
+                  <p className="text-sm text-muted-foreground">Please try again later.</p>
+                </div>
+              </AlertDescription>
+            </Alert>
+            <div className="pt-4">
+              <p className="text-center text-sm text-muted-foreground">
+                For urgent matters, please contact system administrator
+              </p>
+            </div>
+          </CardContent>
+          <CardFooter className="flex flex-col space-y-4">
+            <Button className="w-full" variant="outline" onClick={() => setShowMaintenance(false)} disabled={isSubmitting || authLoading}>
+              Try to Login (Not Recommended)
+            </Button>
+            <div className="text-center text-sm text-muted-foreground">
+              <Link href="/" className="text-primary hover:underline">
+                Back to main site
+              </Link>
+            </div>
+          </CardFooter>
+        </Card>
+      </div>
+    )
+  }
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
       <Card className="w-full max-w-md">

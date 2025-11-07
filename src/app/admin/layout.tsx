@@ -113,6 +113,24 @@ export default function AdminRootLayout({
       return
     }
 
+    // Check if maintenance mode is active (for demonstration purposes)
+    // In a real implementation, this would check an API or config
+    const isMaintenanceMode = true; // Set to true to simulate maintenance
+    
+    if (isMaintenanceMode) {
+      console.log('AdminLayout: Maintenance mode active, redirecting to login with message')
+      toast({
+        title: "System Maintenance",
+        description: "Authentication system is currently under maintenance. Please try again later.",
+        variant: "destructive"
+      })
+      hasRedirected.current = true
+      if (mountedRef.current) {
+        router.push('/login')
+      }
+      return
+    }
+
     // User exists - proceed to dashboard (no role check)
     if (user) {
       console.log('AdminLayout: User authenticated, allowing access')
@@ -121,7 +139,7 @@ export default function AdminRootLayout({
       }
       return
     }
-  }, [user, isLoading, router])
+  }, [user, isLoading, router, toast])
 
   // Show loading state while checking authentication
   if (isLoading || isCheckingAuth) {

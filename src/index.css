@@ -97,29 +97,46 @@
 /* Subtle theme-consistent glowing animation for buttons */
 @keyframes themeGlow {
   0% {
-    box-shadow: 0 0 2px hsl(var(--custom-primary)), 0 0 3px hsl(var(--custom-primary));
+    box-shadow: 0 0 3px hsl(var(--custom-primary)), 0 0 5px hsl(var(--custom-primary));
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 3px hsl(var(--custom-primary)), 0 0 5px hsl(var(--custom-primary)), 0 0 7px hsl(var(--custom-primary));
-    transform: scale(1.005);
+    box-shadow: 0 0 5px hsl(var(--custom-primary)), 0 0 8px hsl(var(--custom-primary)), 0 0 10px hsl(var(--custom-primary));
+    transform: scale(1.01);
   }
   100% {
-    box-shadow: 0 0 2px hsl(var(--custom-primary)), 0 0 3px hsl(var(--custom-primary));
+    box-shadow: 0 0 3px hsl(var(--custom-primary)), 0 0 5px hsl(var(--custom-primary));
     transform: scale(1);
   }
 }
 
 @keyframes themeTextGlow {
   0% {
-    text-shadow: 0 0 1px hsl(var(--custom-primary)), 0 0 2px hsl(var(--custom-primary));
-  }
-  50% {
     text-shadow: 0 0 2px hsl(var(--custom-primary)), 0 0 3px hsl(var(--custom-primary));
   }
-  100% {
-    text-shadow: 0 0 1px hsl(var(--custom-primary)), 0 0 2px hsl(var(--custom-primary));
+  50% {
+    text-shadow: 0 0 3px hsl(var(--custom-primary)), 0 0 5px hsl(var(--custom-primary));
   }
+  100% {
+    text-shadow: 0 0 2px hsl(var(--custom-primary)), 0 0 3px hsl(var(--custom-primary));
+  }
+}
+
+/* Cool white text design */
+@keyframes coolWhiteGlow {
+  0% {
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5), 0 0 10px rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3);
+  }
+  100% {
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5), 0 0 10px rgba(255, 255, 255, 0.3);
+  }
+}
+
+.cool-white-text {
+  animation: coolWhiteGlow 3s ease-in-out infinite;
 }
 
 @keyframes themeBackground {
@@ -135,24 +152,26 @@
 }
 
 .theme-glow-animation {
-  animation: themeGlow 2.2s ease-in-out infinite;
+  animation: themeGlow 2s ease-in-out infinite;
   border-color: hsl(var(--custom-primary)) !important;
   color: hsl(var(--custom-primary)) !important;
-  font-weight: bold;
+  font-weight: 800;
   transition: all 0.3s ease;
-  background: linear-gradient(45deg, hsla(var(--custom-primary), 0.03), hsla(var(--custom-primary), 0.08), hsla(var(--custom-primary), 0.03)) !important;
+  background: linear-gradient(45deg, hsla(var(--custom-primary), 0.05), hsla(var(--custom-primary), 0.12), hsla(var(--custom-primary), 0.05)) !important;
   background-size: 200% 200% !important;
+  letter-spacing: 0.5px;
 }
 
 .theme-glow-animation .relative.z-10 {
-  animation: themeTextGlow 2s ease-in-out infinite;
+  animation: themeTextGlow 1.8s ease-in-out infinite;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
 }
 
 .theme-bg-animation {
-  background: linear-gradient(45deg, hsla(var(--custom-primary), 0.08), hsla(var(--custom-primary), 0.12), hsla(var(--custom-primary), 0.08)) !important;
+  background: linear-gradient(45deg, hsla(var(--custom-primary), 0.1), hsla(var(--custom-primary), 0.15), hsla(var(--custom-primary), 0.1)) !important;
   background-size: 200% 200% !important;
   animation: themeBackground 4s ease-in-out infinite !important;
-  opacity: 0.15 !important;
+  opacity: 0.2 !important;
 }
 
 .theme-glow-animation:hover {
@@ -160,6 +179,8 @@
   color: white !important;
   border-color: hsl(var(--custom-primary)) !important;
   animation: none;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* Shimmer animation for featured products */
