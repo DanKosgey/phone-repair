@@ -87,12 +87,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Supabase client not available');
       }
 
+      // Use maybeSingle() instead of single() to handle cases where profile doesn't exist yet
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
         .abortSignal(currentAbortController.signal)
-        .single();
+        .maybeSingle(); // Changed from .single() to .maybeSingle()
 
       // Check if this request was aborted
       if (currentAbortController.signal.aborted || !isMountedRef.current) {
@@ -106,6 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setRole(null);
         }
       } else {
+        // data might be null if profile doesn't exist, which is handled gracefully
         const userRole = data?.role || null;
         if (isMountedRef.current) {
           setRole(userRole);
