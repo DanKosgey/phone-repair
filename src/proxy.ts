@@ -90,10 +90,10 @@ export default async function proxy(request: NextRequest) {
           response.cookies.set({ name, value: '', ...cookieOptions })
         },
       },
-      // Add auth settings to prevent infinite refresh loops
+      // Add auth settings to improve session management
       auth: {
-        // Prevent automatic session refresh which can cause loops
-        autoRefreshToken: false,
+        // Enable automatic session refresh for better persistence
+        autoRefreshToken: true,
         // Persist session in cookies
         persistSession: true,
         // Detect auth changes via polling to avoid race conditions

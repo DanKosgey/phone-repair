@@ -118,11 +118,10 @@ export function getSupabaseBrowserClient() {
           }
         },
       },
-      // Add auth settings to prevent infinite refresh loops
+      // Add auth settings to improve session management
       auth: {
-        // Prevent automatic session refresh which can cause loops
-        // Match the middleware setting
-        autoRefreshToken: false,
+        // Enable automatic session refresh for better persistence
+        autoRefreshToken: true,
         // Persist session in localStorage
         persistSession: true,
         // Detect auth changes via polling to avoid race conditions

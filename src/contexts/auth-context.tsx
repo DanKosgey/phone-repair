@@ -389,11 +389,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error: any) {
       logger.error('AuthProvider: Sign in error:', error.message);
       console.error('AuthProvider: Sign in error:', error);
-      // Ensure loading state is reset on error
+      throw error;
+    } finally {
+      // Ensure loading state is reset in all cases
       if (isMountedRef.current) {
         setIsLoading(false);
       }
-      throw error;
     }
   };
 
