@@ -20,13 +20,16 @@ export default function AdminRootLayout({
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const hasRedirected = useRef(false)
   const mountedRef = useRef(true)
-  const [roleCheckAttempts, setRoleCheckAttempts] = useState(0)
+  const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Clear timeout on unmount
   useEffect(() => {
     mountedRef.current = true
     return () => {
       mountedRef.current = false
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -88,13 +91,18 @@ export default function AdminRootLayout({
       isLoading,
       isFetchingRole,
       hasRedirected: hasRedirected.current,
-      roleCheckAttempts
+      isCheckingAuth
     })
 
     // Wait for initial loading to complete
     if (isLoading) {
       console.log('AdminLayout: Still loading auth state')
       return
+    }
+
+    // Clear any existing timeout
+    if (checkTimeoutRef.current) {
+      clearTimeout(checkTimeoutRef.current)
     }
 
     // No user - redirect to login
@@ -135,48 +143,21 @@ export default function AdminRootLayout({
 
     // User exists but role is still loading - give it a moment then proceed
     if (role === null && user) {
-      console.log('AdminLayout: Role is null but user exists, checking attempts:', roleCheckAttempts)
-      
-      // If we've tried enough times, assume admin access
-      if (roleCheckAttempts >= 3) {
-        console.log('AdminLayout: Max attempts reached, proceeding with admin access')
-        if (mountedRef.current) {
+      console.log('AdminLayout: Role is null but user exists, setting timeout')
+      // Small delay to allow role to load, then proceed anyway for admin route
+      checkTimeoutRef.current = setTimeout(() => {
+        if (!hasRedirected.current && mountedRef.current) {
+          console.log('AdminLayout: Proceeding with access (assuming admin on admin route)')
           setIsCheckingAuth(false)
         }
-        return
-      }
+      }, 1000) // 1 second delay
       
-      // Increment attempts and wait a bit more
-      setRoleCheckAttempts(prev => prev + 1)
       return
     }
-  }, [user, role, isLoading, isFetchingRole, router, toast, roleCheckAttempts])
-
-  // Timeout to prevent infinite waiting
-  useEffect(() => {
-    let timer: NodeJS.Timeout | null = null
-    
-    if (isLoading || (isCheckingAuth && !hasRedirected.current && user && role === null)) {
-      timer = setTimeout(() => {
-        if (!hasRedirected.current && mountedRef.current) {
-          console.log('AdminLayout: Auth check timeout, proceeding anyway')
-          if (mountedRef.current) {
-            setIsCheckingAuth(false)
-            setRoleCheckAttempts(3) // Set to max to bypass further checks
-          }
-        }
-      }, 3000) // 3 second timeout
-    }
-    
-    return () => {
-      if (timer) {
-        clearTimeout(timer)
-      }
-    }
-  }, [isLoading, isCheckingAuth, user, role, hasRedirected])
+  }, [user, role, isLoading, isFetchingRole, router, toast])
 
   // Show loading state while checking authentication
-  if (isLoading || (isCheckingAuth && !hasRedirected.current)) {
+  if (isLoading || isCheckingAuth) {
     console.log('AdminLayout: Showing loading state')
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

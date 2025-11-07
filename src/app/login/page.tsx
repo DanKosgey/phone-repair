@@ -20,12 +20,16 @@ export default function AdminLoginPage() {
   const { signIn, user, role, isLoading: authLoading, isFetchingRole } = useAuth()
   const hasRedirected = useRef(false)
   const mountedRef = useRef(true)
+  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Clear timeout on unmount
   useEffect(() => {
     mountedRef.current = true
     return () => {
       mountedRef.current = false
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -39,9 +43,9 @@ export default function AdminLoginPage() {
       mounted: mountedRef.current
     })
     
-    // If user is authenticated and role is loaded, redirect based on role - one way flow
-    if (!authLoading && user && !isFetchingRole && !hasRedirected.current && mountedRef.current) {
-      console.log('LoginPage: User is authenticated and role is loaded, preparing redirect', { 
+    // If user is authenticated, redirect based on role - one way flow
+    if (!authLoading && user && !hasRedirected.current && mountedRef.current) {
+      console.log('LoginPage: User is authenticated, preparing redirect', { 
         role, 
         userId: user.id 
       })
@@ -49,17 +53,18 @@ export default function AdminLoginPage() {
       // Only redirect if we're not already redirecting
       if (!hasRedirected.current) {
         hasRedirected.current = true
-        if (role === 'admin') {
-          console.log('LoginPage: User authenticated as admin, redirecting to admin dashboard')
-          router.push('/admin')
-        } else if (role !== null) {
-          console.log('LoginPage: User authenticated but not admin, redirecting to homepage')
-          router.push('/')
-        } else {
-          // If role is null but user exists, redirect to admin (assume admin)
-          console.log('LoginPage: Role not yet loaded, redirecting to admin dashboard')
-          router.push('/admin')
+        // Clear any existing timeout
+        if (redirectTimeoutRef.current) {
+          clearTimeout(redirectTimeoutRef.current)
         }
+        
+        // Set a small delay before redirecting to ensure state is settled
+        redirectTimeoutRef.current = setTimeout(() => {
+          if (mountedRef.current) {
+            console.log('LoginPage: Redirecting to admin dashboard')
+            router.push('/admin')
+          }
+        }, 300) // Small delay to ensure state is settled
       }
     } else if (!authLoading && user && hasRedirected.current) {
       console.log('LoginPage: User is authenticated but already redirected', { 
@@ -70,52 +75,8 @@ export default function AdminLoginPage() {
       console.log('LoginPage: Still loading authentication state')
     } else if (!user) {
       console.log('LoginPage: No user authenticated')
-    } else if (!authLoading && user && isFetchingRole) {
-      console.log('LoginPage: User authenticated but still fetching role', { 
-        userId: user.id 
-      })
     }
   }, [user, role, authLoading, isFetchingRole, router])
-
-  // Effect to monitor role changes specifically
-  useEffect(() => {
-    console.log('LoginPage: Role updated', role)
-    if (role === 'admin' && !authLoading && user && !hasRedirected.current && mountedRef.current) {
-      console.log('LoginPage: Admin role confirmed, redirecting to admin dashboard')
-      hasRedirected.current = true
-      router.push('/admin')
-    } else if (role !== null && role !== 'admin' && !authLoading && user && !hasRedirected.current && mountedRef.current) {
-      console.log('LoginPage: Non-admin role confirmed, redirecting to homepage')
-      hasRedirected.current = true
-      router.push('/')
-    } else if (role === null && !authLoading && user && !hasRedirected.current && mountedRef.current) {
-      console.log('LoginPage: Role is null but user is authenticated, redirecting to admin dashboard')
-      hasRedirected.current = true
-      router.push('/admin')
-    }
-  }, [role, user, authLoading, router])
-  
-  // Separate effect for handling timeout when role doesn't load
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null
-    
-    if (!authLoading && user && !hasRedirected.current && mountedRef.current) {
-      console.log('LoginPage: Setting timeout for role loading')
-      timeoutId = setTimeout(() => {
-        if (!hasRedirected.current && mountedRef.current) {
-          console.log('LoginPage: Timeout waiting for role, redirecting anyway')
-          hasRedirected.current = true
-          router.push('/admin')
-        }
-      }, 5000) // 5 second timeout
-    }
-    
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
-    }
-  }, [user, authLoading, router, role])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
