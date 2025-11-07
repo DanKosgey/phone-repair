@@ -1,8 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-
-// Load environment variables
-import dotenv from 'dotenv';
-dotenv.config();
+import { config } from 'dotenv';
+config({ path: '.env.local' });
 
 // Supabase configuration - using the remote development URLs from .env
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://sefirznxgiymfkegdtgh.supabase.co';
