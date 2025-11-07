@@ -34,7 +34,7 @@ This document summarizes all the files created and modified to implement the adm
 2. `src/app/admin/layout.tsx` - Added authentication checks to admin layout
 
 ### Configuration
-3. `src/proxy.ts` - Added proxy to protect admin routes
+3. `src/middleware.ts` - Added middleware to protect admin routes
 4. `README.md` - Updated documentation to include authentication system information
 
 ## Key Features Implemented

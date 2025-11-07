@@ -3,6 +3,9 @@ import withBundleAnalyzer from '@next/bundle-analyzer'
 
 const nextConfig: NextConfig = {
   /* config options here */
+  // Enable standalone build for Docker
+  output: 'standalone',
+  
   // Disable strict mode in development to prevent double rendering
   reactStrictMode: process.env.NODE_ENV === 'production',
   

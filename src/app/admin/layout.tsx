@@ -24,10 +24,13 @@ export default function AdminRootLayout({
 
   // Clear timeout on unmount
   useEffect(() => {
+    console.log('AdminLayout: Component mounted')
     mountedRef.current = true
     return () => {
+      console.log('AdminLayout: Component unmounting')
       mountedRef.current = false
       if (checkTimeoutRef.current) {
+        console.log('AdminLayout: Clearing timeout')
         clearTimeout(checkTimeoutRef.current)
       }
     }
@@ -38,7 +41,6 @@ export default function AdminRootLayout({
     console.log('AdminLayout: Signing out user')
     
     try {
-      // Sign out
       await signOut()
       
       console.log('AdminLayout: Sign out completed')
@@ -49,7 +51,8 @@ export default function AdminRootLayout({
           description: "You have been successfully signed out.",
         })
         
-        // Force hard navigation (not soft navigation)
+        // Force hard navigation
+        console.log('AdminLayout: Redirecting to login via window.location')
         window.location.href = '/login'
       }
     } catch (error: any) {
@@ -73,17 +76,23 @@ export default function AdminRootLayout({
         }
       }
       
-      // Force hard navigation even on error
       if (mountedRef.current) {
+        console.log('AdminLayout: Redirecting to login via window.location after error')
         window.location.href = '/login'
       }
     }
   }, [signOut, toast])
 
-  // Simplified authentication check - allow all authenticated users
+  // Simplified authentication check
   useEffect(() => {
     // Don't run if already redirected or component is unmounted
-    if (hasRedirected.current || !mountedRef.current) return
+    if (hasRedirected.current || !mountedRef.current) {
+      console.log('AdminLayout: Skipping auth check - already redirected or unmounted', {
+        hasRedirected: hasRedirected.current,
+        mounted: mountedRef.current
+      })
+      return
+    }
 
     console.log('AdminLayout: Auth state check', { 
       userId: user?.id, 
@@ -100,6 +109,7 @@ export default function AdminRootLayout({
 
     // Clear any existing timeout
     if (checkTimeoutRef.current) {
+      console.log('AdminLayout: Clearing existing timeout')
       clearTimeout(checkTimeoutRef.current)
     }
 
@@ -108,32 +118,19 @@ export default function AdminRootLayout({
       console.log('AdminLayout: No user authenticated, redirecting to login')
       hasRedirected.current = true
       if (mountedRef.current) {
+        console.log('AdminLayout: Executing router.push to /login')
         router.push('/login')
+        console.log('AdminLayout: router.push command sent')
       }
       return
     }
 
-    // Check if maintenance mode is active (for demonstration purposes)
-    // In a real implementation, this would check an API or config
-    const isMaintenanceMode = true; // Set to true to simulate maintenance
-    
-    if (isMaintenanceMode) {
-      console.log('AdminLayout: Maintenance mode active, redirecting to login with message')
-      toast({
-        title: "System Maintenance",
-        description: "Authentication system is currently under maintenance. Please try again later.",
-        variant: "destructive"
-      })
-      hasRedirected.current = true
-      if (mountedRef.current) {
-        router.push('/login')
-      }
-      return
-    }
-
-    // User exists - proceed to dashboard (no role check)
+    // User exists - proceed to dashboard
     if (user) {
-      console.log('AdminLayout: User authenticated, allowing access')
+      console.log('AdminLayout: User authenticated, allowing access', {
+        userId: user.id,
+        email: user.email
+      })
       if (mountedRef.current) {
         setIsCheckingAuth(false)
       }
@@ -143,7 +140,7 @@ export default function AdminRootLayout({
 
   // Show loading state while checking authentication
   if (isLoading || isCheckingAuth) {
-    console.log('AdminLayout: Showing loading state')
+    console.log('AdminLayout: Showing loading state', { isLoading, isCheckingAuth })
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -154,13 +151,17 @@ export default function AdminRootLayout({
     )
   }
 
-  // Double-check: if no user, don't render (redirect should have happened)
+  // Double-check: if no user, don't render
   if (!user) {
+    console.log('AdminLayout: No user, returning null')
     return null
   }
 
   // User is authenticated - allow access
-  console.log('AdminLayout: Rendering admin layout')
+  console.log('AdminLayout: Rendering admin layout', {
+    userId: user.id,
+    email: user.email
+  })
   return (
     <div className="min-h-screen flex w-full bg-background">
       <AdminSidebar />

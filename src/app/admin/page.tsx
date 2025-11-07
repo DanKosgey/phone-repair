@@ -14,6 +14,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     console.log('AdminDashboardPage: Checking authentication', { 
       user: !!user, 
+      userId: user?.id,
       isLoading, 
       hasCheckedAuth: hasCheckedAuth.current,
       renderDashboard
@@ -21,17 +22,19 @@ export default function AdminDashboardPage() {
     
     // Prevent multiple checks
     if (hasCheckedAuth.current) {
+      console.log('AdminDashboardPage: Already checked auth, skipping');
       return;
     }
     
     // If we're still loading initial auth state, wait
     if (isLoading) {
-      console.log('AdminDashboardPage: Still loading initial auth state');
+      console.log('AdminDashboardPage: Still loading initial auth state, waiting');
       return;
     }
     
     // Mark that we've checked auth
     hasCheckedAuth.current = true;
+    console.log('AdminDashboardPage: Marked auth as checked');
     
     // If no user and not loading, redirect to login
     if (!user) {
@@ -47,7 +50,7 @@ export default function AdminDashboardPage() {
 
   // If still loading initial auth state, show loading
   if (isLoading) {
-    console.log('AdminDashboardPage: Showing initial loading state');
+    console.log('AdminDashboardPage: Showing initial loading state - auth loading');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -60,14 +63,14 @@ export default function AdminDashboardPage() {
 
   // If no user, redirect to login (this should have already happened above)
   if (!user) {
-    console.log('AdminDashboardPage: No user, redirecting to login');
+    console.log('AdminDashboardPage: No user, redirecting to login (fallback)');
     router.push('/login');
     return null;
   }
 
   // Only render the dashboard when we're sure the user is authenticated
   if (!renderDashboard) {
-    console.log('AdminDashboardPage: Preparing dashboard');
+    console.log('AdminDashboardPage: Preparing dashboard, renderDashboard is false');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">

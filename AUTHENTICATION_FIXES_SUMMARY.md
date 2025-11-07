@@ -31,7 +31,7 @@ This document summarizes the fixes implemented to resolve authentication state p
 - **Clearer One-Way Flow**: Made the authentication process more straightforward
 - **Better State Management**: Improved handling of loading and redirect states
 
-### 4. Middleware Optimization (proxy.ts)
+### 4. Middleware Optimization (middleware.ts)
 
 - **Disabled Auto-Refresh Token**: Set `autoRefreshToken: false` to prevent session refresh loops
 - **Maintained Session Persistence**: Kept `persistSession: true` for proper session handling

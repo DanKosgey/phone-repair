@@ -41,7 +41,7 @@ const storedSession = localStorage.getItem('sb-session');
 - Maintained `persistSession: true` for localStorage persistence
 - Kept `detectSessionInUrl: true` for URL-based session detection
 
-### 3. Server Client Configuration (src/proxy.ts)
+### 3. Server Client Configuration (src/middleware.ts)
 
 **Key Changes:**
 - Enabled `autoRefreshToken: true` to match browser client settings

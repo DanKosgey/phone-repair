@@ -12,16 +12,33 @@ import { useRouter, useParams } from 'next/navigation'
 export default function AdminViewProductPage() {
   const [product, setProduct] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [productId, setProductId] = useState<string | null>(null)
   const { toast } = useToast()
   const router = useRouter()
-  const { id } = useParams()
+  const params = useParams()
+
+  // Extract the id from params Promise
+  useEffect(() => {
+    const extractParams = async () => {
+      if (params && typeof params === 'object' && 'id' in params) {
+        if (params.id instanceof Promise) {
+          const resolvedId = await params.id
+          setProductId(resolvedId as string)
+        } else {
+          setProductId(params.id as string)
+        }
+      }
+    }
+    
+    extractParams()
+  }, [params])
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         // Check if id is available and is a string
-        if (id && typeof id === 'string') {
-          const data = await productsDb.getById(id)
+        if (productId) {
+          const data = await productsDb.getById(productId)
           setProduct(data)
         }
       } catch (error: any) {
@@ -36,13 +53,15 @@ export default function AdminViewProductPage() {
       }
     }
 
-    fetchProduct()
-  }, [id, toast, router])
+    if (productId) {
+      fetchProduct()
+    }
+  }, [productId, toast, router])
 
   const handleDeleteProduct = async () => {
     try {
-      if (id && typeof id === 'string') {
-        await productsDb.delete(id)
+      if (productId) {
+        await productsDb.delete(productId)
         toast({
           title: "Success",
           description: "Product deleted successfully",
@@ -67,7 +86,7 @@ export default function AdminViewProductPage() {
   }
 
   // If we don't have a valid id or product, show an error
-  if (!id || typeof id !== 'string') {
+  if (!productId) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <h2 className="text-xl font-semibold mb-2">Invalid Product ID</h2>
@@ -117,7 +136,7 @@ export default function AdminViewProductPage() {
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              <Link href={`/admin/products/${id}/edit`}>
+              <Link href={`/admin/products/${productId}/edit`}>
                 <Button variant="outline" size="icon">
                   <Edit className="h-4 w-4" />
                 </Button>

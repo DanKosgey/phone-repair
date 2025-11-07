@@ -1,12 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 
-export const getSupabaseServerClient = () => {
+export const getSupabaseAdminClient = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('Missing Supabase environment variables')
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    console.error('Missing Supabase admin environment variables')
     return null as any
   }
 
@@ -17,11 +17,15 @@ export const getSupabaseServerClient = () => {
     return null as any
   }
 
-  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  // FIX: Admin client should bypass RLS
+  return createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false
+    },
+    db: {
+      schema: 'public'
     }
   })
 }

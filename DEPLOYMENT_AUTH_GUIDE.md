@@ -2,6 +2,10 @@
 
 This guide explains how to properly configure authentication for deployment to avoid session reset issues.
 
+## 🚨 CRITICAL UPDATE
+
+**A comprehensive set of critical authentication fixes has been implemented. Please refer to [CRITICAL_AUTH_FIXES_SUMMARY.md](./CRITICAL_AUTH_FIXES_SUMMARY.md) and [DEPLOYMENT_PRODUCTION_READY_GUIDE.md](./DEPLOYMENT_PRODUCTION_READY_GUIDE.md) for detailed information about fixes for production deployment issues.**
+
 ## Common Issues and Solutions
 
 ### 1. Environment Variables
@@ -11,6 +15,7 @@ Ensure these environment variables are set in your deployment environment:
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
 ### 2. Cookie Domain Configuration
@@ -33,7 +38,7 @@ For Vercel deployments:
 
 1. Add environment variables in the Vercel dashboard:
    - Settings → Environment Variables
-   - Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`
 
 2. Ensure your Supabase project allows your Vercel domain:
    - In Supabase Dashboard → Project Settings → API
@@ -59,7 +64,7 @@ Visit `/debug-auth` to check authentication status and debug issues.
 
 3. **Authentication Loops**:
    - Check middleware configuration
-   - Verify autoRefreshToken is disabled in middleware
+   - Verify autoRefreshToken is properly configured (now enabled with fixes)
    - Review redirect logic in authentication components
 
 ## Testing Deployment
@@ -70,8 +75,11 @@ Before deploying to production:
 2. Verify authentication flow works after browser refresh
 3. Test sign out and sign in flow
 4. Check that sessions persist across different pages
+5. Verify authentication works in both localhost and production environments
 
 ## Additional Resources
 
 - [Supabase Auth Documentation](https://supabase.com/docs/guides/auth)
 - [Next.js Middleware Documentation](https://nextjs.org/docs/app/building-your-application/routing/middleware)
+- [CRITICAL_AUTH_FIXES_SUMMARY.md](./CRITICAL_AUTH_FIXES_SUMMARY.md)
+- [DEPLOYMENT_PRODUCTION_READY_GUIDE.md](./DEPLOYMENT_PRODUCTION_READY_GUIDE.md)

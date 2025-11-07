@@ -24,6 +24,35 @@ npm run migrate:local
 
 3. Access the application at `http://localhost:9003`
 
+## Docker Deployment
+
+This application can be easily deployed using Docker. Follow these steps:
+
+1. Create a `.env.local` file with your environment variables:
+```bash
+cp .env.example .env.local
+# Edit .env.local with your actual values
+```
+
+2. Build and run with Docker Compose:
+```bash
+docker-compose up --build
+```
+
+3. Access the application at `http://localhost:3000`
+
+### Docker Configuration
+
+- **Dockerfile**: Multi-stage build for optimized production deployment
+- **docker-compose.yml**: Service configuration including the app and database
+- **.dockerignore**: Excludes unnecessary files from Docker build context
+
+### Environment Variables
+
+The application requires the following environment variables:
+- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+
 ## Authentication System
 
 The application implements a secure authentication system with the following features:

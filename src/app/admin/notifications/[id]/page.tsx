@@ -28,13 +28,28 @@ type Notification = {
   updated_at: string
 }
 
-export default function NotificationDetailPage({ params }: { params: { id: string } }) {
+export default function NotificationDetailPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
   
   const [notification, setNotification] = useState<Notification | null>(null)
   const [loading, setLoading] = useState(true)
+  const [notificationId, setNotificationId] = useState<string | null>(null)
+
+  // Extract the id from params Promise
+  useEffect(() => {
+    const extractParams = async () => {
+      if (params instanceof Promise) {
+        const resolvedParams = await params
+        setNotificationId(resolvedParams.id)
+      } else {
+        setNotificationId(params.id)
+      }
+    }
+    
+    extractParams()
+  }, [params])
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -47,18 +62,22 @@ export default function NotificationDetailPage({ params }: { params: { id: strin
 
   // Fetch notification
   useEffect(() => {
-    fetchNotification()
-  }, [params.id])
+    if (notificationId) {
+      fetchNotification()
+    }
+  }, [notificationId])
 
   const fetchNotification = async () => {
+    if (!notificationId) return
+    
     try {
       setLoading(true)
-      const data = await notificationsDb.getById(params.id)
+      const data = await notificationsDb.getById(notificationId)
       setNotification(data)
       
       // Mark as read if not already read
       if (data && !data.is_read) {
-        await notificationsDb.markAsRead(params.id)
+        await notificationsDb.markAsRead(notificationId)
       }
     } catch (error) {
       console.error('Error fetching notification:', error)
@@ -73,8 +92,10 @@ export default function NotificationDetailPage({ params }: { params: { id: strin
   }
 
   const archiveNotification = async () => {
+    if (!notificationId) return
+    
     try {
-      await notificationsDb.archive(params.id)
+      await notificationsDb.archive(notificationId)
       toast({
         title: "Success",
         description: "Notification archived",

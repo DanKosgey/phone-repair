@@ -130,9 +130,9 @@ const handleSignOut = useCallback(async () => {
 // ============================================
 // FIX 3: Update middleware to handle sign out
 // ============================================
-// Update your middleware.ts proxy function
+// Update your middleware.ts function
 
-export default async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -177,8 +177,6 @@ export default async function proxy(request: NextRequest) {
     }
   }
 
-  response.headers.set('Access-Control-Allow-Credentials', 'true')
-  
   const cookies = request.cookies.getAll()
   cookies.forEach(cookie => {
     if (cookie.name.startsWith('__cf_')) {

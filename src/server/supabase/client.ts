@@ -1,131 +1,127 @@
-import { createBrowserClient, type CookieOptions } from '@supabase/ssr'
+import { createBrowserClient } from '@supabase/ssr'
+import type { Database } from '@/types/database.types'
 
-let browserClient: ReturnType<typeof createBrowserClient> | null = null
+let browserClient: ReturnType<typeof createBrowserClient<Database>> | null = null
 
 export function getSupabaseBrowserClient() {
-  // Return existing client if already created (singleton pattern)
+  // Return existing client (singleton)
   if (browserClient) {
     return browserClient
   }
 
-  // Verify environment variables exist
+  // Only create in browser environment
+  if (typeof window === 'undefined') {
+    console.warn('Cannot create browser client during SSR')
+    return null as any
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  // Check if we're in a browser environment during runtime (not build time)
-  if (typeof window === 'undefined') {
-    // During server-side rendering/build, we can't access env vars the same way
-    console.warn('Supabase client initialized during SSR/build - env vars may not be available yet')
-    // Return a minimal client that will be replaced during hydration
-    return null as any
-  }
-
-  // If we don't have the required environment variables, return null
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn('Missing Supabase environment variables. Returning null client.')
+    console.error('Missing Supabase environment variables')
     return null as any
   }
 
-  // Validate URL format
+  // Validate URL
   try {
     new URL(supabaseUrl)
   } catch (e) {
-    console.warn(`Invalid Supabase URL format: ${supabaseUrl}. Returning null client.`)
+    console.error('Invalid Supabase URL:', supabaseUrl)
     return null as any
   }
 
-  // Determine if we're in a browser environment and if it's HTTPS
-  const isBrowser = typeof window !== 'undefined'
-  const isHttps = isBrowser && window.location.protocol === 'https:'
-
-  browserClient = createBrowserClient(
+  browserClient = createBrowserClient<Database>(
     supabaseUrl,
     supabaseAnonKey,
     {
       cookies: {
         get(name: string) {
-          // Handle cookie retrieval safely
           if (typeof document === 'undefined') return undefined
           
-          const value = document.cookie
+          // Log all cookies for debugging
+          console.log('BrowserClient: All document cookies', document.cookie);
+          
+          // Try to get the cookie with the exact name first
+          let value = document.cookie
             .split('; ')
             .find(row => row.startsWith(`${name}=`))
             ?.split('=')[1]
           
+          console.log('BrowserClient: Reading cookie', { 
+            requestedName: name, 
+            value,
+            hostname: window.location.hostname, 
+            isLocalhost: window.location.hostname.includes('localhost') 
+          });
           return value ? decodeURIComponent(value) : undefined
         },
-        set(name: string, value: string, options: CookieOptions) {
-          // Handle cookie setting safely
+        set(name: string, value: string, options) {
           if (typeof document === 'undefined') return
           
           try {
-            // Ensure proper encoding
-            const encodedValue = encodeURIComponent(value)
-            let cookie = `${name}=${encodedValue}`
+            let cookie = `${name}=${encodeURIComponent(value)}`
             
-            // Set proper cookie attributes
             if (options?.maxAge) {
               cookie += `; max-age=${options.maxAge}`
             }
-            // Always set path to root
+            
             cookie += '; path=/'
             
-            if (options?.domain) {
-              cookie += `; domain=${options.domain}`
-            } else {
-              // For production, explicitly set domain to avoid issues
-              const hostname = isBrowser ? window.location.hostname : ''
-              if (hostname && !hostname.includes('localhost')) {
-                cookie += `; domain=.${hostname.split('.').slice(-2).join('.')}`
+            // Set domain only for production
+            const hostname = window.location.hostname
+            if (!hostname.includes('localhost')) {
+              const domainParts = hostname.split('.')
+              if (domainParts.length >= 2) {
+                cookie += `; domain=.${domainParts.slice(-2).join('.')}`
               }
             }
-            // Set SameSite attribute properly
-            if (options?.sameSite) {
-              cookie += `; samesite=${options.sameSite}`
-            } else {
-              // Default to lax for better security and compatibility
-              cookie += '; samesite=lax'
-            }
-            // Set Secure attribute properly
-            if (options?.secure !== undefined) {
-              cookie += options.secure ? '; secure' : ''
-            } else {
-              // Default to secure in production (HTTPS)
-              cookie += isHttps ? '; secure' : ''
+            
+            // Always use lax for better compatibility
+            cookie += '; samesite=lax'
+            
+            if (window.location.protocol === 'https:') {
+              cookie += '; secure'
             }
             
+            console.log('BrowserClient: Setting cookie', { name, value, cookie });
             document.cookie = cookie
           } catch (error) {
-            console.warn('Failed to set cookie:', error)
+            console.error('BrowserClient: Failed to set cookie:', error)
           }
         },
-        remove(name: string, options: CookieOptions) {
-          // Handle cookie removal safely
+        remove(name: string, options) {
           if (typeof document === 'undefined') return
           
           try {
-            // Always use root path for removal
             const path = '; path=/'
-            const domain = options?.domain || (isBrowser ? window.location.hostname : '')
-            // Remove cookie with proper domain handling
-            document.cookie = `${name}=;${path}; max-age=0`
-            if (domain) {
-              document.cookie = `${name}=;${path}; domain=${domain}; max-age=0`
-              document.cookie = `${name}=;${path}; domain=.${domain}; max-age=0`
+            let cookie = `${name}=;${path}; max-age=0`
+            console.log('BrowserClient: Removing cookie', { name, cookie });
+            document.cookie = cookie
+            
+            // Remove with domain for production
+            const hostname = window.location.hostname
+            if (!hostname.includes('localhost')) {
+              const domainParts = hostname.split('.')
+              if (domainParts.length >= 2) {
+                const domain = `.${domainParts.slice(-2).join('.')}`
+                cookie = `${name}=;${path}; domain=${domain}; max-age=0`
+                console.log('BrowserClient: Removing cookie with domain', { name, cookie });
+                document.cookie = cookie
+              }
             }
           } catch (error) {
-            console.warn('Failed to remove cookie:', error)
+            console.error('BrowserClient: Failed to remove cookie:', error)
           }
         },
       },
-      // Add auth settings to improve session management
       auth: {
-        // Enable automatic session refresh for better persistence
         autoRefreshToken: true,
-        // Persist session in localStorage
         persistSession: true,
-        // Detect auth changes via polling to avoid race conditions
         detectSessionInUrl: true,
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        storageKey: 'sb-auth-token',
+        flowType: 'pkce',
       }
     }
   )
