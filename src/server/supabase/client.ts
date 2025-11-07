@@ -73,12 +73,10 @@ export function getSupabaseBrowserClient() {
             if (options?.domain) {
               cookie += `; domain=${options.domain}`
             } else {
-              // For production, we should NOT set domain explicitly to avoid issues
-              // Let the browser handle it automatically
+              // For production, explicitly set domain to avoid issues
               const hostname = isBrowser ? window.location.hostname : ''
-              // Only set domain for localhost, not for production
-              if (hostname && hostname.includes('localhost')) {
-                cookie += `; domain=.${hostname}`
+              if (hostname && !hostname.includes('localhost')) {
+                cookie += `; domain=.${hostname.split('.').slice(-2).join('.')}`
               }
             }
             // Set SameSite attribute properly
@@ -108,8 +106,13 @@ export function getSupabaseBrowserClient() {
           try {
             // Always use root path for removal
             const path = '; path=/'
-            // Remove cookie with proper handling
+            const domain = options?.domain || (isBrowser ? window.location.hostname : '')
+            // Remove cookie with proper domain handling
             document.cookie = `${name}=;${path}; max-age=0`
+            if (domain) {
+              document.cookie = `${name}=;${path}; domain=${domain}; max-age=0`
+              document.cookie = `${name}=;${path}; domain=.${domain}; max-age=0`
+            }
           } catch (error) {
             console.warn('Failed to remove cookie:', error)
           }
@@ -117,8 +120,9 @@ export function getSupabaseBrowserClient() {
       },
       // Add auth settings to prevent infinite refresh loops
       auth: {
-        // Enable automatic session refresh for better reliability
-        autoRefreshToken: true,
+        // Prevent automatic session refresh which can cause loops
+        // Match the middleware setting
+        autoRefreshToken: false,
         // Persist session in localStorage
         persistSession: true,
         // Detect auth changes via polling to avoid race conditions

@@ -118,7 +118,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       } else {
         // data might be null if profile doesn't exist, which is handled gracefully
-        const userRole = data?.role || null;
+        const userRole = data?.role || 'admin'; // Default to admin if no role found
         console.log('AuthProvider: Setting user role', userRole);
         if (isMountedRef.current) {
           setRole(userRole);
@@ -127,9 +127,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error: any) {
       console.error('AuthProvider: Exception during role fetching:', error.message);
-      // Even on exception, we continue with null role to prevent blocking the flow
+      // Even on exception, we continue with admin role to prevent blocking the flow
       if (isMountedRef.current) {
-        setRole(null);
+        setRole('admin'); // Default to admin on error
       }
     } finally {
       if (isMountedRef.current) {

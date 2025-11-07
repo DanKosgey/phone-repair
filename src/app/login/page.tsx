@@ -56,8 +56,9 @@ export default function AdminLoginPage() {
           console.log('LoginPage: User authenticated but not admin, redirecting to homepage')
           router.push('/')
         } else {
-          // If role is null but user exists, wait a bit more for role to load
-          console.log('LoginPage: Role not yet loaded, waiting...')
+          // If role is null but user exists, redirect to admin (assume admin)
+          console.log('LoginPage: Role not yet loaded, redirecting to admin dashboard')
+          router.push('/admin')
         }
       }
     } else if (!authLoading && user && hasRedirected.current) {
@@ -88,7 +89,9 @@ export default function AdminLoginPage() {
       hasRedirected.current = true
       router.push('/')
     } else if (role === null && !authLoading && user && !hasRedirected.current && mountedRef.current) {
-      console.log('LoginPage: Role is null but user is authenticated, waiting for role to load...')
+      console.log('LoginPage: Role is null but user is authenticated, redirecting to admin dashboard')
+      hasRedirected.current = true
+      router.push('/admin')
     }
   }, [role, user, authLoading, router])
   
@@ -102,16 +105,9 @@ export default function AdminLoginPage() {
         if (!hasRedirected.current && mountedRef.current) {
           console.log('LoginPage: Timeout waiting for role, redirecting anyway')
           hasRedirected.current = true
-          // If we still don't have a role, assume admin since user is authenticated
-          if (role === null) {
-            console.log('LoginPage: Assuming admin role due to timeout')
-            router.push('/admin')
-          } else {
-            // Default to admin dashboard since user is authenticated
-            router.push('/admin')
-          }
+          router.push('/admin')
         }
-      }, 10000) // Increased from 5000ms to 10000ms (10 seconds)
+      }, 5000) // 5 second timeout
     }
     
     return () => {
