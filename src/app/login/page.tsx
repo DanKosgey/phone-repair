@@ -75,30 +75,7 @@ export default function AdminLoginPage() {
       })
     }
   }, [user, role, authLoading, isFetchingRole, router])
-  
-  // Separate effect for handling timeout when role doesn't load
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null
-    
-    if (!authLoading && user && !hasRedirected.current && mountedRef.current) {
-      console.log('LoginPage: Setting timeout for role loading')
-      timeoutId = setTimeout(() => {
-        if (!hasRedirected.current && mountedRef.current) {
-          console.log('LoginPage: Timeout waiting for role, redirecting anyway')
-          hasRedirected.current = true
-          // Default to admin dashboard since user is authenticated
-          router.push('/admin')
-        }
-      }, 10000) // Increased from 5000ms to 10000ms (10 seconds)
-    }
-    
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
-    }
-  }, [user, authLoading, router])
-  
+
   // Effect to monitor role changes specifically
   useEffect(() => {
     console.log('LoginPage: Role updated', role)
@@ -114,6 +91,35 @@ export default function AdminLoginPage() {
       console.log('LoginPage: Role is null but user is authenticated, waiting for role to load...')
     }
   }, [role, user, authLoading, router])
+  
+  // Separate effect for handling timeout when role doesn't load
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null
+    
+    if (!authLoading && user && !hasRedirected.current && mountedRef.current) {
+      console.log('LoginPage: Setting timeout for role loading')
+      timeoutId = setTimeout(() => {
+        if (!hasRedirected.current && mountedRef.current) {
+          console.log('LoginPage: Timeout waiting for role, redirecting anyway')
+          hasRedirected.current = true
+          // If we still don't have a role, assume admin since user is authenticated
+          if (role === null) {
+            console.log('LoginPage: Assuming admin role due to timeout')
+            router.push('/admin')
+          } else {
+            // Default to admin dashboard since user is authenticated
+            router.push('/admin')
+          }
+        }
+      }, 10000) // Increased from 5000ms to 10000ms (10 seconds)
+    }
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    }
+  }, [user, authLoading, router, role])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

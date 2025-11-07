@@ -380,11 +380,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(data.user);
         setSession(data.session);
         
-        // Fetch role with improved handling
-        console.log('AuthProvider: Fetching role for signed in user');
-        fetchUserRole(data.user.id);
-        
-        // Add a longer delay to ensure state is properly set before any potential redirect
+        // Don't call fetchUserRole here since it's already being called in the SIGNED_IN event handler
+        // Add a small delay to ensure state is properly set before any potential redirect
         console.log('AuthProvider: Waiting for state to settle');
         await new Promise(resolve => setTimeout(resolve, 1000)); // Increased from 300ms to 1000ms
         console.log('AuthProvider: State settled, sign in complete');
