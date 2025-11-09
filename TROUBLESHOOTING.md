@@ -71,7 +71,7 @@
 
 **Solutions**:
 1. Verify Supabase credentials in `.env.docker`
-2. Check that the Supabase service is running:
+2. Check that the Supabase service is accessible:
    ```bash
    docker-compose ps
    ```
@@ -80,7 +80,6 @@
    docker exec -it jays-shop-app sh
    curl -v https://your-project.supabase.co
    ```
-4. For local Supabase, ensure ports are correctly mapped
 
 ### 4. Build Failures
 
@@ -147,9 +146,6 @@ docker-compose logs -f app
 
 # Stop all containers
 docker-compose down
-
-# Stop containers and remove volumes
-docker-compose down -v
 
 # Rebuild containers
 docker-compose --env-file .env.docker up --build
@@ -249,19 +245,6 @@ docker network inspect jays-shop-network
   docker scan jays-shop-app
   ```
 
-## Data Persistence Issues
-
-### Lost Data
-**Prevention**:
-- Use named volumes for databases
-- Regular backups
-- External database for production
-
-### Volume Permissions
-**Solution**:
-- Ensure consistent user IDs between host and container
-- Use volume drivers for complex scenarios
-
 ## Advanced Debugging
 
 ### Enable Debug Logging
@@ -288,13 +271,10 @@ Implement application monitoring with tools like:
 ### Complete Reset
 ```bash
 # Stop and remove containers
-docker-compose down -v
+docker-compose down
 
 # Remove images
 docker rmi jays-shop-app
-
-# Remove unused volumes
-docker volume prune
 
 # Rebuild from scratch
 docker-compose --env-file .env.docker up --build

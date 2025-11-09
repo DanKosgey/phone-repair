@@ -80,7 +80,6 @@ The following scripts are available in `package.json`:
 
 Once running, access the application at:
 - **Application**: http://localhost:3000
-- **Supabase Studio**: http://localhost:54324 (when using local Supabase)
 
 ## Docker Architecture
 
@@ -92,18 +91,9 @@ Once running, access the application at:
    - Includes health checks
    - Uses non-root user for security
 
-2. **supabase**: Local Supabase instance
-   - PostgreSQL database on port 5432
-   - Supabase services on port 54321
-   - Persistent data volume
-
 ### Networks
 
 - **jays-shop-network**: Bridge network for service communication
-
-### Volumes
-
-- **supabase-data**: Persistent storage for database
 
 ## Development Workflow
 
@@ -127,8 +117,7 @@ docker-compose logs -f app
 ## Production Deployment
 
 ### Environment Differences
-- Remove development volume mounts
-- Use production Supabase instance instead of local
+- Remove development volume mounts for production
 - Set proper domain names and SSL certificates
 - Configure proper resource limits
 
@@ -153,7 +142,6 @@ docker-compose logs -f app
 3. **Database connection issues**
    - Check Supabase credentials
    - Verify network connectivity
-   - Ensure Supabase service is running
 
 4. **Permission errors**
    - Check file ownership in containers

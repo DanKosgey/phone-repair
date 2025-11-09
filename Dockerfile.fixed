@@ -1,0 +1,41 @@
+# Use Node.js 20 alpine as base image
+FROM node:20-alpine
+
+# Install dependencies
+RUN apk add --no-cache libc6-compat curl
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install production dependencies only
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN npm run build
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Change ownership of app files
+RUN chown -R nextjs:nodejs /app/.next
+RUN chown -R nextjs:nodejs /app/public
+
+# Switch to non-root user
+USER nextjs
+
+# Expose port
+EXPOSE 3000
+
+# Set environment variables
+ENV PORT=3000
+ENV NODE_ENV=production
+
+# Start the application
+CMD ["npx", "next", "start"]

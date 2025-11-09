@@ -1,5 +1,5 @@
-# Use Node.js 18 alpine as base image
-FROM node:18-alpine AS deps
+# Use Node.js 20 alpine as base image
+FROM node:20-alpine AS deps
 # Install dependencies only when needed
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
@@ -9,7 +9,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci --only=production && npm cache clean --force
 
 # Rebuild the source code only when needed
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -19,11 +19,14 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED 1
 
+# Install TypeScript for building with next.config.ts
+RUN npm install typescript @types/node --no-save
+
 # Build the application
 RUN npm run build
 
 # Production image, copy all the files and run next
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV production

@@ -1,0 +1,30 @@
+# Use Node.js 20 alpine as base image
+FROM node:20-alpine
+
+# Install dependencies
+RUN apk add --no-cache libc6-compat
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install production dependencies only
+RUN npm ci --only=production
+
+# Copy the built application
+COPY .next/ .next/
+COPY public/ public/
+COPY next.config.ts next.config.ts
+COPY tsconfig.json tsconfig.json
+
+# Expose port
+EXPOSE 3000
+
+# Set environment variables
+ENV PORT=3000
+ENV NODE_ENV=production
+
+# Start the application
+CMD ["npx", "next", "start"]

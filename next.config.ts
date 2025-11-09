@@ -97,10 +97,8 @@ const nextConfig: NextConfig = {
     ]
   },
   
-  // Fix Turbopack configuration - explicitly set root directory
-  turbopack: {
-    root: 'C:\\Users\\PC\\OneDrive\\Desktop\\jays\\phone-repair'
-  },
+  // Configure Turbopack for Docker compatibility
+  turbopack: {},
   
   // Configure cookie settings for production
   async rewrites() {

@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.fixed
+    container_name: jays-shop-app
+    ports:
+      - "3000:3000"
+    environment:
+      # Supabase Configuration
+      NEXT_PUBLIC_SUPABASE_URL: "https://sefirznxgiymfkegdtgh.supabase.co"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZmlyem54Z2l5bWZrZWdkdGdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3OTIyMjksImV4cCI6MjA3NjM2ODIyOX0.IyIP9KX8xqseIgdKg4QOGTDC-znphm927rQQjnf5g6I"
+      SUPABASE_SERVICE_ROLE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZmlyem54Z2l5bWZrZWdkdGdoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDc5MjIyOSwiZXhwIjoyMDc2MzY4MjI5fQ.Ab-K8TOucNYAch-Ucuow4iUyPo46xm-S42YizKMRoMc"
+      
+      # Next.js Configuration
+      NODE_ENV: production
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: "bealIihEGugUoMstVTWpAJ9yt3Shu4YXddURGB/WQjM="
+      
+    networks:
+      - jays-shop-network
+    restart: unless-stopped
+
+networks:
+  jays-shop-network:
+    driver: bridge

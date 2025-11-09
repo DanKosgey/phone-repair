@@ -1,5 +1,9 @@
 # Docker Setup Summary
 
+## Success! 🎉
+
+Great news! We've successfully built and run your Next.js application in Docker. The setup is now working properly with the simplified Docker configuration.
+
 ## Files Created/Updated
 
 ### 1. ANALYSIS-REPORT.md
@@ -13,48 +17,57 @@
 - Included wait-for-it.sh script
 - Proper user permissions and security practices
 
-### 3. docker-compose.yml (updated)
+### 3. Dockerfile.simple (new)
+- Simplified single-stage Dockerfile that works reliably on Windows
+- Uses standalone server for Next.js applications
+- Faster build times and easier troubleshooting
+
+### 4. docker-compose.yml (updated)
 - App service with proper environment configuration
-- Supabase service with persistent storage
 - Health checks and restart policies
 - Network configuration
+- Removed local Supabase service (use your existing Supabase project instead)
 - Added SUPABASE_SERVICE_ROLE_KEY environment variable
 
-### 4. docker-compose.dev.yml (updated)
+### 5. docker-compose.simple.yml (new)
+- Simplified docker-compose file that works with Dockerfile.simple
+- Easier to understand and troubleshoot
+
+### 6. docker-compose.dev.yml (updated)
 - Development override for hot reloading
 - Volume mounts for development workflow
 - Added SUPABASE_SERVICE_ROLE_KEY environment variable
 
-### 5. .dockerignore (updated)
+### 7. .dockerignore (updated)
 - Optimized exclusion patterns for faster builds
 - Security improvements
 
-### 6. .env.docker (updated)
+### 8. .env.docker (updated)
 - Comprehensive environment variable template
 - Detailed documentation for each variable
 - Setup instructions
 - Pre-generated NEXTAUTH_SECRET
 
-### 7. SETUP-GUIDE.md (updated)
+### 9. SETUP-GUIDE.md (updated)
 - Step-by-step setup instructions
 - Development and production workflows
 - Available scripts and commands
 - Instructions for obtaining Supabase keys
 
-### 8. TROUBLESHOOTING.md (new)
+### 10. TROUBLESHOOTING.md (new)
 - Common issues and solutions
 - Debugging commands and techniques
 - Performance and security considerations
 
-### 9. package.json (updated)
+### 11. package.json (updated)
 - Added docker:clean script for complete reset
 - Verified all Docker-related scripts
 
-### 10. wait-for-it.sh (new)
+### 12. wait-for-it.sh (new)
 - Script to ensure service dependencies
 - Network connectivity verification
 
-### 11. src/app/api/health/route.ts (new)
+### 13. src/app/api/health/route.ts (new)
 - Health check endpoint for Docker health checks
 
 ## Key Improvements
@@ -82,10 +95,10 @@
 
 ## Usage Instructions
 
-### Quick Start
+### Quick Start with Simple Setup (Recommended)
 ```bash
-# Build and run with environment file
-docker-compose --env-file .env.docker up --build
+# Build and run with the simple setup
+docker-compose -f docker-compose.simple.yml up --build
 ```
 
 ### Development Mode
@@ -96,7 +109,6 @@ docker-compose --env-file .env.docker -f docker-compose.yml -f docker-compose.de
 
 ### Production Deployment
 - Remove development volume mounts
-- Use production Supabase instance
 - Set proper domain names and SSL certificates
 - Configure resource limits
 
@@ -106,7 +118,6 @@ docker-compose --env-file .env.docker -f docker-compose.yml -f docker-compose.de
 2. `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
 3. `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
 4. `NEXTAUTH_SECRET` - NextAuth secret (pre-generated in the file)
-5. `POSTGRES_PASSWORD` - PostgreSQL password for local instance
 
 To find your Supabase keys:
 1. Go to https://app.supabase.com/
@@ -117,12 +128,18 @@ To find your Supabase keys:
 ## Services
 
 - **App**: Next.js application on port 3000
-- **Supabase**: Local Supabase instance on ports 5432/54321
 - **Network**: Bridge network for service communication
-- **Volumes**: Persistent storage for database data
 
 ## Next Steps
 
 1. Configure your Supabase credentials in `.env.docker`
-2. Run `docker-compose --env-file .env.docker up --build`
+2. Run `docker-compose -f docker-compose.simple.yml up --build`
 3. Access the application at http://localhost:3000
+
+## Troubleshooting Tips
+
+If you encounter issues with the original Dockerfile:
+1. Use the Dockerfile.simple instead
+2. Make sure all environment variables are properly set in .env.docker
+3. Check that your Supabase credentials are correct
+4. Ensure Docker Desktop is properly configured on Windows
