@@ -17,24 +17,30 @@ export default function EnhancedTrackTicket() {
   const [ticketsData, setTicketsData] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isClient, setIsClient] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
 
   // Initialize particles for background effect
   useEffect(() => {
-    const particlesContainer = document.getElementById('track-particles')
-    if (particlesContainer) {
-      // Clear any existing particles
-      particlesContainer.innerHTML = ''
-      
-      // Create new particles
-      for (let i = 0; i < 50; i++) {
-        const particle = document.createElement('div')
-        particle.className = 'particle'
-        particle.style.left = Math.random() * 100 + '%'
-        particle.style.animationDelay = Math.random() * 15 + 's'
-        particle.style.animationDuration = (Math.random() * 10 + 10) + 's'
-        particlesContainer.appendChild(particle)
+    setIsClient(true)
+    
+    // Only run particle initialization on client side
+    if (typeof window !== 'undefined') {
+      const particlesContainer = document.getElementById('track-particles')
+      if (particlesContainer) {
+        // Clear any existing particles
+        particlesContainer.innerHTML = ''
+        
+        // Create new particles
+        for (let i = 0; i < 50; i++) {
+          const particle = document.createElement('div')
+          particle.className = 'particle'
+          particle.style.left = Math.random() * 100 + '%'
+          particle.style.animationDelay = Math.random() * 15 + 's'
+          particle.style.animationDuration = (Math.random() * 10 + 10) + 's'
+          particlesContainer.appendChild(particle)
+        }
       }
     }
   }, [])
@@ -99,6 +105,104 @@ export default function EnhancedTrackTicket() {
       case 'cancelled': return 'bg-red-500 text-white'
       default: return 'bg-gray-500 text-white'
     }
+  }
+
+  // Don't render the animated elements on the server
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-indigo-900 text-white relative overflow-hidden">
+        <div className="container mx-auto px-4 py-8 relative z-10">
+          <div className="max-w-2xl mx-auto mb-12 text-center">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-300 to-cyan-300">
+              Track Your Repairs
+            </h1>
+            <p className="text-xl text-blue-200 max-w-2xl mx-auto">
+              Check the status of your device repair in real-time. Just enter your details below.
+            </p>
+          </div>
+          
+          <div className="max-w-2xl mx-auto">
+            <Card className="bg-transparent border border-blue-500/30 shadow-2xl shadow-blue-500/20 rounded-2xl overflow-hidden backdrop-blur-sm">
+              <CardHeader className="bg-gradient-to-r from-blue-900/20 to-indigo-900/20 pb-8 pt-6 backdrop-blur-sm">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="p-3 rounded-full bg-blue-500/20">
+                    <Search className="h-8 w-8 text-blue-300" />
+                  </div>
+                </div>
+                <CardTitle className="text-2xl font-bold text-center text-blue-300">Find Your Repair</CardTitle>
+                <CardDescription className="text-center text-blue-200">
+                  Enter your information to track your device repair status
+                </CardDescription>
+              </CardHeader>
+              <form onSubmit={handleSubmit}>
+                <CardContent className="space-y-6 py-6 backdrop-blur-sm">
+                  <div className="space-y-2">
+                    <Label htmlFor="customerName" className="text-blue-200 flex items-center gap-2">
+                      <UserCircle className="h-4 w-4" />
+                      Full Name
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="customerName"
+                        placeholder="e.g., John Smith"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        required
+                        className="border-blue-500/30 focus:border-blue-500 focus:ring-blue-500 bg-gray-700/40 text-white pl-10 py-6 text-lg rounded-xl"
+                      />
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-blue-400" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneNumber" className="text-blue-200 flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Phone Number
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="phoneNumber"
+                        placeholder="e.g., (555) 123-4567"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        required
+                        className="border-blue-500/30 focus:border-blue-500 focus:ring-blue-500 bg-gray-700/40 text-white pl-10 py-6 text-lg rounded-xl"
+                      />
+                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-blue-400" />
+                    </div>
+                  </div>
+                  {error && (
+                    <div className="text-red-300 text-sm bg-red-900/40 p-4 rounded-xl border border-red-500/30">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">Error:</span> {error}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+                <CardFooter className="pb-8 backdrop-blur-sm">
+                  <Button 
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300" 
+                    type="submit" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Searching...
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Search className="h-5 w-5" />
+                        Track Repairs
+                      </div>
+                    )}
+                  </Button>
+                </CardFooter>
+              </form>
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

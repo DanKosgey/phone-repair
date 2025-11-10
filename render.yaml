@@ -14,9 +14,7 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-      - key: NEXTAUTH_URL
-        value: https://jays-phone-repair.onrender.com
-      - key: NEXTAUTH_SECRET
-        generateValue: true
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://phone-repair-4.onrender.com
       - key: PORT
         value: 3000
