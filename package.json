@@ -6,16 +6,9 @@
   "scripts": {
     "dev": "next dev --turbopack -p 9003",
     "build": "next build",
-    "start": "node server.js",
+    "start": "next start",
     "lint": "next lint",
     "analyze": "cross-env ANALYZE=true next build --webpack",
-    "docker:build": "docker build -t jays-shop-app .",
-    "docker:up": "docker-compose up",
-    "docker:up:build": "docker-compose up --build",
-    "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f app",
-    "docker:shell": "docker exec -it jays-shop-app sh",
-    "docker:clean": "docker-compose down -v && docker rmi jays-shop-app",
     "postinstall": "node -e \"if (process.env.NODE_ENV === 'production' && process.platform !== 'win32') { console.log('Production build on non-Windows platform'); }\""
   },
   "dependencies": {

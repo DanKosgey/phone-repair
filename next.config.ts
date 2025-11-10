@@ -3,13 +3,13 @@ import withBundleAnalyzer from '@next/bundle-analyzer'
 
 const nextConfig: NextConfig = {
   /* config options here */
-  // Enable standalone build for Docker
+  // Enable standalone build for deployment
   output: 'standalone',
   
-  // Explicitly set distDir to avoid path issues in different environments
+  // Explicitly set distDir to avoid path issues
   distDir: '.next',
   
-  // Disable Turbopack in production to avoid path issues
+  // Configure features
   experimental: {
     serverActions: {
       bodySizeLimit: '2mb',
@@ -20,6 +20,9 @@ const nextConfig: NextConfig = {
       '@heroicons/react/*'
     ]
   },
+  
+  // Explicitly configure Turbopack to avoid conflicts with webpack config
+  turbopack: {},
   
   // Disable strict mode in development to prevent double rendering
   reactStrictMode: process.env.NODE_ENV === 'production',
