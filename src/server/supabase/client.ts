@@ -72,7 +72,14 @@ export function getSupabaseBrowserClient() {
             const hostname = window.location.hostname
             if (!hostname.includes('localhost')) {
               const domainParts = hostname.split('.')
-              if (domainParts.length >= 2) {
+              // For onrender.com, vercel.app, netlify.app: use full domain
+              if (hostname.includes('.onrender.com') || 
+                  hostname.includes('.vercel.app') || 
+                  hostname.includes('.netlify.app')) {
+                cookie += `; domain=.${hostname}`
+              }
+              // For custom domains: use root domain
+              else if (domainParts.length >= 2) {
                 cookie += `; domain=.${domainParts.slice(-2).join('.')}`
               }
             }
@@ -103,8 +110,21 @@ export function getSupabaseBrowserClient() {
             const hostname = window.location.hostname
             if (!hostname.includes('localhost')) {
               const domainParts = hostname.split('.')
-              if (domainParts.length >= 2) {
-                const domain = `.${domainParts.slice(-2).join('.')}`
+              let domainToRemove: string | undefined
+              
+              // For onrender.com, vercel.app, netlify.app: use full domain
+              if (hostname.includes('.onrender.com') || 
+                  hostname.includes('.vercel.app') || 
+                  hostname.includes('.netlify.app')) {
+                domainToRemove = `.${hostname}`
+              }
+              // For custom domains: use root domain
+              else if (domainParts.length >= 2) {
+                domainToRemove = `.${domainParts.slice(-2).join('.')}`
+              }
+              
+              if (domainToRemove) {
+                const domain = domainToRemove
                 cookie = `${name}=;${path}; domain=${domain}; max-age=0`
                 console.log('BrowserClient: Removing cookie with domain', { name, cookie });
                 document.cookie = cookie

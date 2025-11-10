@@ -72,11 +72,14 @@ export async function middleware(request: NextRequest) {
   let cookieDomain: string | undefined = undefined
   
   if (!isLocalhost) {
-    const domainParts = hostname.split(':')[0].split('.')
+    const hostnameWithoutPort = hostname.split(':')[0]
+    const domainParts = hostnameWithoutPort.split('.')
     
-    // For vercel.app or similar: use full domain
-    if (hostname.includes('.vercel.app') || hostname.includes('.netlify.app')) {
-      cookieDomain = hostname.split(':')[0]
+    // For vercel.app, netlify.app, or render.com: use full domain
+    if (hostname.includes('.vercel.app') || 
+        hostname.includes('.netlify.app') || 
+        hostname.includes('.onrender.com')) {
+      cookieDomain = hostnameWithoutPort
     } 
     // For custom domains: use root domain
     else if (domainParts.length >= 2) {
