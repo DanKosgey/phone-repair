@@ -5,8 +5,16 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* ./
-RUN npm ci --only=production && npm cache clean --force
+COPY package.json bun.lockb* ./
+# Use bun for faster installs if available, otherwise fallback to npm
+RUN if [ -f "bun.lockb" ]; then \
+      echo "Using bun for installation" && \
+      npm install -g bun && \
+      bun install --frozen-lockfile; \
+    else \
+      echo "Using npm for installation" && \
+      npm ci --only=production && npm cache clean --force; \
+    fi
 
 # Rebuild the source code only when needed
 FROM node:20-alpine AS builder
@@ -22,8 +30,10 @@ ENV NEXT_TELEMETRY_DISABLED 1
 # Install TypeScript for building with next.config.ts
 RUN npm install typescript @types/node --no-save
 
-# Build the application
-RUN npm run build
+# Use our custom build script to handle lockfile issues
+COPY render-build.sh ./render-build.sh
+RUN chmod +x ./render-build.sh
+RUN ./render-build.sh
 
 # Production image, copy all the files and run next
 FROM node:20-alpine AS runner

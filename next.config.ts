@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   // Enable standalone build for Docker
   output: 'standalone',
   
+  // Explicitly set distDir to avoid path issues in different environments
+  distDir: '.next',
+  
   // Disable strict mode in development to prevent double rendering
   reactStrictMode: process.env.NODE_ENV === 'production',
   

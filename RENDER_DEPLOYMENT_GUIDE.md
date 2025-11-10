@@ -1,95 +1,67 @@
 # Render Deployment Guide
 
-This guide will help you deploy your Jay's Phone Repair application to Render.
+This guide explains how to deploy the Jay's Phone Repair application to Render.
 
 ## Prerequisites
 
 1. A Render account (https://render.com)
-2. Your Supabase project URL and keys
+2. Supabase account for database and authentication
+3. Environment variables configured in Render dashboard
 
 ## Deployment Steps
 
-### 1. Push Your Code to a Git Repository
+1. Fork this repository to your GitHub account
+2. Log in to Render dashboard
+3. Click "New Web Service"
+4. Connect your GitHub account and select your forked repository
+5. Configure the following settings:
+   - Name: jays-phone-repair
+   - Runtime: Docker
+   - Region: Choose your preferred region
+   - Branch: main
+   - Dockerfile path: Dockerfile.render
+   - Root directory: Leave empty (.)
 
-First, make sure your code is pushed to a Git repository (GitHub, GitLab, or Bitbucket).
+## Environment Variables
 
-```bash
-git add .
-git commit -m "Prepare for Render deployment"
-git push origin main
-```
+Set the following environment variables in your Render service:
 
-### 2. Create a New Web Service on Render
-
-1. Go to https://dashboard.render.com
-2. Click "New" → "Web Service"
-3. Connect your Git repository
-4. Configure the service:
-
-   **Settings:**
-   - Name: `jays-phone-repair`
-   - Environment: `Docker`
-   - Dockerfile path: `Dockerfile.render`
-   - Root directory: `.` (default)
-
-### 3. Configure Environment Variables
-
-In the "Environment Variables" section, add the following variables:
-
-| Key | Value | Note |
-|-----|-------|------|
-| `NODE_ENV` | `production` | Environment mode |
-| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase URL | From your Supabase project settings |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key | From your Supabase project settings |
-| `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service role key | From your Supabase project settings |
-| `NEXTAUTH_URL` | `https://YOUR_APP_NAME.onrender.com` | Replace with your actual Render URL |
-| `NEXTAUTH_SECRET` | A random string | Generate a secure secret |
-| `PORT` | `3000` | Must be 3000 for Render |
-
-### 4. Advanced Settings
-
-In the "Advanced" section:
-- Health Check Path: `/api/health`
-- Port: `3000`
-
-### 5. Deploy
-
-Click "Create Web Service" to start the deployment.
+| Variable | Description | Example Value |
+|----------|-------------|---------------|
+| NEXT_PUBLIC_SUPABASE_URL | Your Supabase project URL | https://your-project.supabase.co |
+| NEXT_PUBLIC_SUPABASE_ANON_KEY | Your Supabase anon key | eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... |
+| SUPABASE_SERVICE_ROLE_KEY | Your Supabase service role key | eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... |
+| NEXTAUTH_URL | Your Render app URL | https://your-app-name.onrender.com |
+| NEXTAUTH_SECRET | Random string for encryption | generate a random secret |
+| PORT | Port for the application | 3000 |
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Build Failures**: If you encounter TypeScript errors, ensure all dependencies are properly installed.
+1. **Build failures**: If you encounter build failures, check the build logs in Render dashboard for specific error messages.
 
-2. **Runtime Issues**: Check the logs in the Render dashboard for any errors.
+2. **Lockfile issues**: The build script automatically handles incompatible lockfiles by removing them and forcing a fresh install.
 
-3. **Environment Variables**: Make sure all required environment variables are set correctly.
+3. **Turbopack path errors**: The next.config.ts has been configured with explicit distDir to avoid path issues.
 
 ### Health Check
 
-The application includes a health check endpoint at `/api/health` which Render will use to monitor your application's status.
+The application includes a health check endpoint at `/api/health` which is used by the Docker configuration to verify the application is running correctly.
 
-## Updating Your Application
+## Updating the Application
 
 To update your deployed application:
 
-1. Push your changes to your Git repository
+1. Push changes to your GitHub repository
 2. Render will automatically detect the changes and start a new deployment
-3. Or manually trigger a deployment from the Render dashboard
+3. Monitor the build logs in Render dashboard for any issues
 
 ## Scaling
 
-Render's free tier includes:
+The free tier of Render provides:
 - 512 MB RAM
-- 10 GB disk space
+- 100 GB bandwidth per month
 - Sleeps after 15 minutes of inactivity
 
-For production use, consider upgrading to a paid plan for better performance and no sleep behavior.
-
-## Support
-
-If you encounter issues:
-1. Check the build logs in the Render dashboard
-2. Verify all environment variables are set correctly
-3. Ensure your Supabase project is properly configured
+For production usage, consider upgrading to a paid plan for better performance and reliability.

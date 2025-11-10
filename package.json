@@ -15,7 +15,8 @@
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f app",
     "docker:shell": "docker exec -it jays-shop-app sh",
-    "docker:clean": "docker-compose down -v && docker rmi jays-shop-app"
+    "docker:clean": "docker-compose down -v && docker rmi jays-shop-app",
+    "prebuild": "node -e \"if (process.env.NODE_ENV === 'production') { console.log('Production build environment'); }\""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
