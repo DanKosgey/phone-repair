@@ -10,11 +10,14 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install all dependencies including dev dependencies
+# Install all dependencies including dev dependencies (which include TypeScript)
 RUN npm ci && npm cache clean --force
 
 # Copy source code
 COPY . .
+
+# Explicitly install TypeScript to ensure it's available for next.config.ts
+RUN npm install typescript @types/node --no-save
 
 # Build the application
 RUN npm run build
@@ -23,7 +26,7 @@ RUN npm run build
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Change ownership of app directory
+# Change ownership of necessary directories
 RUN chown -R nextjs:nodejs /app/.next
 RUN chown -R nextjs:nodejs /app/public
 

@@ -1,4 +1,3 @@
-import { getSupabaseServerClient } from '@/server/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET() {

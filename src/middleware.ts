@@ -59,7 +59,7 @@ export async function middleware(request: NextRequest) {
   })
 
   // Get hostname and determine environment
-  const hostname = request.headers.get('host') || 'localhost'
+  const hostname = request.headers.get('host') || process.env.HOST || 'localhost:3000'
   const isLocalhost = hostname.includes('localhost') || hostname.includes('127.0.0.1')
   
   // Determine if we're on HTTPS
@@ -68,7 +68,7 @@ export async function middleware(request: NextRequest) {
 
   console.log('Middleware: Environment info', { hostname, isLocalhost, protocol, isHttps });
 
-  // FIX: Better cookie domain extraction
+  // FIX: Better cookie domain extraction for Docker environments
   let cookieDomain: string | undefined = undefined
   
   if (!isLocalhost) {
@@ -82,6 +82,9 @@ export async function middleware(request: NextRequest) {
     else if (domainParts.length >= 2) {
       cookieDomain = `.${domainParts.slice(-2).join('.')}`
     }
+  } else {
+    // For localhost environments (including Docker), don't set domain to allow cookies to work
+    cookieDomain = undefined
   }
 
   console.log('Middleware: Cookie domain configuration', { cookieDomain });
@@ -106,7 +109,7 @@ export async function middleware(request: NextRequest) {
           const cookieOptions: CookieOptions = {
             ...options,
             sameSite: 'lax', // FIX: Always use 'lax' for better compatibility
-            secure: isHttps,
+            secure: isHttps && !isLocalhost, // Only secure for non-local environments
             path: options.path || '/',
             domain: cookieDomain,
             httpOnly: options.httpOnly ?? true,
@@ -123,7 +126,7 @@ export async function middleware(request: NextRequest) {
           const cookieOptions: CookieOptions = {
             ...options,
             sameSite: 'lax',
-            secure: isHttps,
+            secure: isHttps && !isLocalhost,
             path: options.path || '/',
             domain: cookieDomain,
             maxAge: 0,
@@ -149,11 +152,20 @@ export async function middleware(request: NextRequest) {
   // FIX: Protected routes check
   const isAuthRoute = request.nextUrl.pathname.startsWith('/auth') || 
                       request.nextUrl.pathname === '/login' || 
-                      request.nextUrl.pathname === '/signup'
+                      request.nextUrl.pathname === '/signup' ||
+                      request.nextUrl.pathname === '/reset-password' ||
+                      request.nextUrl.pathname === '/update-password'
   
+  // Updated to include all public pages
   const isPublicRoute = request.nextUrl.pathname === '/' ||
+                        request.nextUrl.pathname === '/products' ||
+                        request.nextUrl.pathname === '/marketplace' ||
+                        request.nextUrl.pathname === '/track' ||
+                        request.nextUrl.pathname.startsWith('/about') ||
+                        request.nextUrl.pathname.startsWith('/contact') ||
                         request.nextUrl.pathname.startsWith('/_next') ||
-                        request.nextUrl.pathname.startsWith('/api/webhook')
+                        request.nextUrl.pathname.startsWith('/api/') ||
+                        request.nextUrl.pathname.startsWith('/robots.txt')
 
   console.log('Middleware: Route classification', {
     pathname: request.nextUrl.pathname,
@@ -197,14 +209,13 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (images, etc.)
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+  /*
+   * Match all request paths except:
+   * - _next/static (static files)
+   * - _next/image (image optimization files)
+   * - favicon.ico (favicon file)
+   * - public files (images, etc.)
+   */
+  '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 }

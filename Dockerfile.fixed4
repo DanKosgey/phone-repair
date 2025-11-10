@@ -15,8 +15,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Install TypeScript and related dependencies explicitly to ensure they're available for next.config.ts
-RUN npm install typescript @types/node --no-save
+# Ensure TypeScript and related dependencies are available for next.config.ts
+# Install dev dependencies explicitly to make sure TypeScript is available
+RUN npm install --also=dev
 
 # Build the application
 RUN npm run build
