@@ -10,6 +10,24 @@ This guide explains how to deploy the Jay's Phone Repair application to Render.
 
 ## Deployment Steps
 
+You can deploy this application to Render using either the Node.js runtime or Docker runtime:
+
+### Option 1: Node.js Runtime (Recommended)
+
+1. Fork this repository to your GitHub account
+2. Log in to Render dashboard
+3. Click "New Web Service"
+4. Connect your GitHub account and select your forked repository
+5. Configure the following settings:
+   - Name: jays-phone-repair
+   - Runtime: Node
+   - Region: Choose your preferred region
+   - Branch: main
+   - Build Command: node render-build.js
+   - Start Command: npm run start
+
+### Option 2: Docker Runtime
+
 1. Fork this repository to your GitHub account
 2. Log in to Render dashboard
 3. Click "New Web Service"
@@ -19,7 +37,7 @@ This guide explains how to deploy the Jay's Phone Repair application to Render.
    - Runtime: Docker
    - Region: Choose your preferred region
    - Branch: main
-   - Dockerfile path: Dockerfile.render
+   - Dockerfile path: Dockerfile.render (or Dockerfile)
    - Root directory: Leave empty (.)
 
 ## Environment Variables
@@ -41,13 +59,13 @@ Set the following environment variables in your Render service:
 
 1. **Build failures**: If you encounter build failures, check the build logs in Render dashboard for specific error messages.
 
-2. **Lockfile issues**: The build script automatically handles incompatible lockfiles by removing them and forcing a fresh install.
+2. **Lockfile issues**: The build process automatically handles incompatible lockfiles by removing them and forcing a fresh install.
 
-3. **Turbopack path errors**: The next.config.ts has been configured with explicit distDir to avoid path issues.
+3. **Turbopack path errors**: The next.config.ts has been configured to avoid Turbopack path issues in production.
 
 ### Health Check
 
-The application includes a health check endpoint at `/api/health` which is used by the Docker configuration to verify the application is running correctly.
+The application includes a health check endpoint at `/api/health` which can be used to verify the application is running correctly.
 
 ## Updating the Application
 

@@ -9,6 +9,18 @@ const nextConfig: NextConfig = {
   // Explicitly set distDir to avoid path issues in different environments
   distDir: '.next',
   
+  // Disable Turbopack in production to avoid path issues
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+    optimizePackageImports: [
+      'lucide-react',
+      '@radix-ui/react-*',
+      '@heroicons/react/*'
+    ]
+  },
+  
   // Disable strict mode in development to prevent double rendering
   reactStrictMode: process.env.NODE_ENV === 'production',
   
@@ -89,19 +101,6 @@ const nextConfig: NextConfig = {
     
     return config;
   },
-  
-  // Enable experimental features for better performance
-  experimental: {
-    optimizeCss: false, // Disable in development to avoid critters issues
-    optimizePackageImports: [
-      'lucide-react',
-      '@radix-ui/react-*',
-      '@heroicons/react/*'
-    ]
-  },
-  
-  // Configure Turbopack for Docker compatibility
-  turbopack: {},
   
   // Configure cookie settings for production
   async rewrites() {

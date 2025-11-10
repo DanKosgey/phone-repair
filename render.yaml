@@ -1,10 +1,10 @@
 services:
   - type: web
     name: jays-phone-repair
-    runtime: docker
+    runtime: node
     plan: free
-    dockerfilePath: Dockerfile.render
-    dockerContext: .
+    buildCommand: node render-build.js
+    startCommand: npm run start
     envVars:
       - key: NODE_ENV
         value: production
