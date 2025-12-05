@@ -35,6 +35,24 @@ const HeroSection = dynamic(() => import('@/components/homepage/HeroSection').th
   )
 })
 
+const DownloadAppSection = dynamic(() => import('@/components/homepage/DownloadAppSection').then(mod => mod.DownloadAppSection), {
+  loading: () => (
+    <section className="py-16 relative overflow-hidden">
+      <div className="container mx-auto px-4 relative z-10">
+        <div className="h-16 w-64 mx-auto bg-primary/20 rounded animate-pulse mb-8" />
+        <div className="grid lg:grid-cols-2 gap-12">
+          <div className="space-y-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-32 bg-primary/10 rounded-lg animate-pulse" />
+            ))}
+          </div>
+          <div className="h-96 bg-primary/10 rounded-lg animate-pulse" />
+        </div>
+      </div>
+    </section>
+  )
+})
+
 const FeaturedProductsSection = dynamic(() => import('@/components/homepage/FeaturedProductsSection').then(mod => mod.FeaturedProductsSection), {
   loading: () => (
     <section className="py-16 relative overflow-hidden">
@@ -49,7 +67,7 @@ const FeaturedProductsSection = dynamic(() => import('@/components/homepage/Feat
           </div>
           <div className="h-10 w-48 bg-primary/20 rounded animate-pulse" />
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, index) => (
             <div key={index} className="h-80 bg-primary/10 rounded-lg animate-pulse" />
@@ -74,7 +92,7 @@ const SecondHandProductsSection = dynamic(() => import('@/components/homepage/Se
           </div>
           <div className="h-10 w-48 bg-primary/20 rounded animate-pulse" />
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, index) => (
             <div key={index} className="h-80 bg-primary/10 rounded-lg animate-pulse" />
@@ -186,6 +204,23 @@ export default function ClientHomePage() {
             <Suspense fallback={
               <section className="py-16 relative overflow-hidden">
                 <div className="container mx-auto px-4 relative z-10">
+                  <div className="h-16 w-64 mx-auto bg-primary/20 rounded animate-pulse mb-8" />
+                  <div className="grid lg:grid-cols-2 gap-12">
+                    <div className="space-y-6">
+                      {[...Array(4)].map((_, i) => (
+                        <div key={i} className="h-32 bg-primary/10 rounded-lg animate-pulse" />
+                      ))}
+                    </div>
+                    <div className="h-96 bg-primary/10 rounded-lg animate-pulse" />
+                  </div>
+                </div>
+              </section>
+            }>
+              <DownloadAppSection />
+            </Suspense>
+            <Suspense fallback={
+              <section className="py-16 relative overflow-hidden">
+                <div className="container mx-auto px-4 relative z-10">
                   <div className="flex justify-between items-center mb-8">
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 bg-primary/20 rounded-full animate-pulse" />
@@ -196,7 +231,7 @@ export default function ClientHomePage() {
                     </div>
                     <div className="h-10 w-48 bg-primary/20 rounded animate-pulse" />
                   </div>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {[...Array(4)].map((_, index) => (
                       <div key={index} className="h-80 bg-primary/10 rounded-lg animate-pulse" />
@@ -220,7 +255,7 @@ export default function ClientHomePage() {
                     </div>
                     <div className="h-10 w-48 bg-primary/20 rounded animate-pulse" />
                   </div>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {[...Array(4)].map((_, index) => (
                       <div key={index} className="h-80 bg-primary/10 rounded-lg animate-pulse" />
