@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Smartphone, Bell, Camera, Zap, QrCode } from "lucide-react";
+import { Smartphone, Bell, Camera, Zap, QrCode, Download, Info, Copy, Check } from "lucide-react";
+import { useState } from "react";
 
 export function DownloadAppSection() {
     const features = [
@@ -26,6 +27,17 @@ export function DownloadAppSection() {
             description: "Access your repair history even offline",
         },
     ];
+
+    const [showAndroidInfo, setShowAndroidInfo] = useState(false);
+    const [showIOSInfo, setShowIOSInfo] = useState(false);
+    const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+
+    // Function to copy text to clipboard
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedUrl(text);
+        setTimeout(() => setCopiedUrl(null), 2000);
+    };
 
     return (
         <section className="relative py-20 overflow-hidden bg-gradient-to-br from-primary/5 via-background to-primary/10">
@@ -92,35 +104,108 @@ export function DownloadAppSection() {
                             className="flex flex-wrap gap-4 pt-6"
                         >
                             {/* Android - Direct APK Download */}
+                            <div className="relative">
+                                <a
+                                    href="/downloads/jays-phone-repair.apk"
+                                    download
+                                    className="group flex items-center gap-3 px-6 py-3 bg-black text-white rounded-xl hover:bg-black/90 transition-all duration-300 hover:scale-105"
+                                >
+                                    <Download className="w-8 h-8" />
+                                    <div className="text-left">
+                                        <div className="text-xs opacity-80">Download APK</div>
+                                        <div className="text-sm font-semibold">Android App</div>
+                                    </div>
+                                </a>
+                                <button
+                                    onClick={() => setShowAndroidInfo(!showAndroidInfo)}
+                                    className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-xs"
+                                >
+                                    <Info className="w-3 h-3" />
+                                </button>
+                                
+                                {showAndroidInfo && (
+                                    <div className="absolute bottom-full left-0 mb-2 w-80 bg-card border border-border rounded-lg p-4 shadow-lg z-20">
+                                        <p className="text-sm text-muted-foreground">
+                                            Download the APK file directly to your Android device. You may need to enable "Install from unknown sources" in your device settings.
+                                        </p>
+                                        <div className="mt-3 flex items-center gap-2">
+                                            <input 
+                                                type="text" 
+                                                readOnly 
+                                                value="https://yourdomain.com/downloads/jays-phone-repair.apk" 
+                                                className="flex-1 text-xs p-2 border rounded"
+                                            />
+                                            <button 
+                                                onClick={() => copyToClipboard("https://yourdomain.com/downloads/jays-phone-repair.apk")}
+                                                className="p-2 bg-primary text-white rounded hover:bg-primary/90"
+                                            >
+                                                {copiedUrl === "https://yourdomain.com/downloads/jays-phone-repair.apk" ? 
+                                                    <Check className="w-4 h-4" /> : 
+                                                    <Copy className="w-4 h-4" />
+                                                }
+                                            </button>
+                                        </div>
+                                        <button 
+                                            onClick={() => setShowAndroidInfo(false)}
+                                            className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* iOS - PWA Installation */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => {
+                                        alert('To install on iPhone:\n1. Open this website in Safari browser\n2. Tap the Share button (square with arrow)\n3. Scroll down and tap "Add to Home Screen"\n4. Tap "Add" - Done!\n\nThe app will appear on your home screen like any other app!');
+                                    }}
+                                    className="group flex items-center gap-3 px-6 py-3 bg-black text-white rounded-xl hover:bg-black/90 transition-all duration-300 hover:scale-105"
+                                >
+                                    <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 22C7.79 22.05 6.8 20.68 5.96 19.47C4.25 17 2.94 12.45 4.7 9.39C5.57 7.87 7.13 6.91 8.82 6.88C10.1 6.86 11.32 7.75 12.11 7.75C12.89 7.75 14.37 6.68 15.92 6.84C16.57 6.87 18.39 7.1 19.56 8.82C19.47 8.88 17.39 10.1 17.41 12.63C17.44 15.65 20.06 16.66 20.09 16.67C20.06 16.74 19.67 18.11 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2C16.07 3.17 15.6 4.35 14.9 5.19C14.21 6.04 13.07 6.7 11.95 6.61C11.8 5.46 12.36 4.26 13 3.5Z" />
+                                    </svg>
+                                    <div className="text-left">
+                                        <div className="text-xs opacity-80">Install on</div>
+                                        <div className="text-sm font-semibold">iPhone (PWA)</div>
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={() => setShowIOSInfo(!showIOSInfo)}
+                                    className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-xs"
+                                >
+                                    <Info className="w-3 h-3" />
+                                </button>
+                                
+                                {showIOSInfo && (
+                                    <div className="absolute bottom-full left-0 mb-2 w-80 bg-card border border-border rounded-lg p-4 shadow-lg z-20">
+                                        <p className="text-sm text-muted-foreground">
+                                            On iPhone, open this website in Safari browser, then tap the Share button and select "Add to Home Screen" to install the app.
+                                        </p>
+                                        <button 
+                                            onClick={() => setShowIOSInfo(false)}
+                                            className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Web Version */}
                             <a
-                                href="/downloads/jays-phone-repair.apk"
-                                download
-                                className="group flex items-center gap-3 px-6 py-3 bg-black text-white rounded-xl hover:bg-black/90 transition-all duration-300 hover:scale-105"
+                                href="/app"
+                                className="group flex items-center gap-3 px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all duration-300 hover:scale-105"
                             >
                                 <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.5,12.92 20.16,13.19L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z" />
+                                    <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2M21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.1 3.9 23 5 23H19C20.1 23 21 22.1 21 21V9M19 9H14V4H19V9Z" />
                                 </svg>
                                 <div className="text-left">
-                                    <div className="text-xs opacity-80">Download APK</div>
-                                    <div className="text-sm font-semibold">Android App</div>
+                                    <div className="text-xs opacity-80">Open in</div>
+                                    <div className="text-sm font-semibold">Web Browser</div>
                                 </div>
                             </a>
-
-                            {/* iOS - Add to Home Screen (PWA) */}
-                            <button
-                                onClick={() => {
-                                    alert('On iPhone:\n1. Tap the Share button (square with arrow)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" - Done!\n\nThe app will appear on your home screen like any other app!');
-                                }}
-                                className="group flex items-center gap-3 px-6 py-3 bg-black text-white rounded-xl hover:bg-black/90 transition-all duration-300 hover:scale-105"
-                            >
-                                <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 22C7.79 22.05 6.8 20.68 5.96 19.47C4.25 17 2.94 12.45 4.7 9.39C5.57 7.87 7.13 6.91 8.82 6.88C10.1 6.86 11.32 7.75 12.11 7.75C12.89 7.75 14.37 6.68 15.92 6.84C16.57 6.87 18.39 7.1 19.56 8.82C19.47 8.88 17.39 10.1 17.41 12.63C17.44 15.65 20.06 16.66 20.09 16.67C20.06 16.74 19.67 18.11 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2C16.07 3.17 15.6 4.35 14.9 5.19C14.21 6.04 13.07 6.7 11.95 6.61C11.8 5.46 12.36 4.26 13 3.5Z" />
-                                </svg>
-                                <div className="text-left">
-                                    <div className="text-xs opacity-80">Install on</div>
-                                    <div className="text-sm font-semibold">iPhone (PWA)</div>
-                                </div>
-                            </button>
                         </motion.div>
                     </motion.div>
 
@@ -195,6 +280,19 @@ export function DownloadAppSection() {
                         </div>
                     </motion.div>
                 </div>
+                
+                {/* Additional information */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.5 }}
+                    className="mt-16 text-center"
+                >
+                    <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
+                        Download and install the app directly on your device. No app store required!
+                    </p>
+                </motion.div>
             </div>
         </section>
     );
