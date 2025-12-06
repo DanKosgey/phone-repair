@@ -16,6 +16,8 @@ interface Ticket {
     id: string;
     ticket_number: string;
     device_type: string;
+    device_brand: string;
+    device_model: string;
     issue_description: string;
     status: string;
     created_at: string;
@@ -27,24 +29,56 @@ export default function CustomerDashboard({ navigation }: any) {
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [stats, setStats] = useState({
+        totalTickets: 0,
+        completedTickets: 0,
+        inProgressTickets: 0,
+    });
 
     useEffect(() => {
-        fetchTickets();
-    }, []);
+        if (user?.id) {
+            fetchDashboardData();
+        } else {
+            setLoading(false);
+        }
+    }, [user?.id]);
 
-    const fetchTickets = async () => {
+    const fetchDashboardData = async () => {
+        if (!user?.id) {
+            setLoading(false);
+            setRefreshing(false);
+            return;
+        }
+
         try {
-            const { data, error } = await supabase
+            // Fetch tickets
+            const { data: ticketsData, error: ticketsError } = await supabase
                 .from('tickets')
                 .select('*')
-                .eq('customer_id', user?.id)
-                .order('created_at', { ascending: false })
-                .limit(5);
+                .eq('customer_id', user.id)
+                .order('created_at', { ascending: false });
 
-            if (error) throw error;
-            setTickets(data || []);
+            if (ticketsError) throw ticketsError;
+
+            // Calculate stats
+            const totalTickets = ticketsData?.length || 0;
+            const completedTickets = ticketsData?.filter(t => t.status === 'completed').length || 0;
+            const inProgressTickets = ticketsData?.filter(t => 
+                t.status === 'in_progress' || 
+                t.status === 'repairing' || 
+                t.status === 'diagnosing'
+            ).length || 0;
+
+            setStats({
+                totalTickets,
+                completedTickets,
+                inProgressTickets,
+            });
+
+            // Set recent tickets (limit to 5)
+            setTickets(ticketsData?.slice(0, 5) || []);
         } catch (error) {
-            console.error('Error fetching tickets:', error);
+            console.error('Error fetching dashboard data:', error);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -53,17 +87,24 @@ export default function CustomerDashboard({ navigation }: any) {
 
     const onRefresh = () => {
         setRefreshing(true);
-        fetchTickets();
+        fetchDashboardData();
     };
 
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
             case 'pending':
+            case 'received':
                 return Colors.light.warning;
             case 'in_progress':
+            case 'repairing':
+            case 'diagnosing':
                 return Colors.light.info;
             case 'completed':
                 return Colors.light.success;
+            case 'cancelled':
+                return Colors.light.error;
+            case 'ready':
+                return '#8b5cf6'; // violet
             default:
                 return Colors.light.textSecondary;
         }
@@ -93,6 +134,22 @@ export default function CustomerDashboard({ navigation }: any) {
                 <Text style={styles.name}>{profile?.full_name || 'User'}!</Text>
             </View>
 
+            {/* Stats Cards */}
+            <View style={styles.statsSection}>
+                <View style={styles.statCard}>
+                    <Text style={styles.statValue}>{stats.totalTickets}</Text>
+                    <Text style={styles.statLabel}>Total Tickets</Text>
+                </View>
+                <View style={styles.statCard}>
+                    <Text style={styles.statValue}>{stats.inProgressTickets}</Text>
+                    <Text style={styles.statLabel}>In Progress</Text>
+                </View>
+                <View style={styles.statCard}>
+                    <Text style={styles.statValue}>{stats.completedTickets}</Text>
+                    <Text style={styles.statLabel}>Completed</Text>
+                </View>
+            </View>
+
             <View style={styles.quickActions}>
                 <Text style={styles.sectionTitle}>Quick Actions</Text>
                 <View style={styles.actionGrid}>
@@ -115,11 +172,39 @@ export default function CustomerDashboard({ navigation }: any) {
                         </View>
                         <Text style={styles.actionText}>Shop Products</Text>
                     </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                        style={styles.actionCard}
+                        onPress={() => navigation.navigate('Marketplace')}
+                    >
+                        <View style={[styles.actionIcon, { backgroundColor: Colors.light.info + '20' }]}>
+                            <Text style={styles.actionEmoji}>♻️</Text>
+                        </View>
+                        <Text style={styles.actionText}>Marketplace</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                        style={styles.actionCard}
+                        onPress={() => navigation.navigate('Profile')}
+                    >
+                        <View style={[styles.actionIcon, { backgroundColor: Colors.light.warning + '20' }]}>
+                            <Text style={styles.actionEmoji}>👤</Text>
+                        </View>
+                        <Text style={styles.actionText}>My Profile</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
 
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Recent Repairs</Text>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Recent Repairs</Text>
+                    {tickets.length > 0 && (
+                        <TouchableOpacity onPress={() => navigation.navigate('Track')}>
+                            <Text style={styles.viewAllText}>View All</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+                
                 {tickets.length === 0 ? (
                     <View style={styles.emptyState}>
                         <Text style={styles.emptyText}>No repair tickets yet</Text>
@@ -138,7 +223,9 @@ export default function CustomerDashboard({ navigation }: any) {
                                     </Text>
                                 </View>
                             </View>
-                            <Text style={styles.ticketDevice}>{ticket.device_type}</Text>
+                            <Text style={styles.ticketDevice}>
+                                {ticket.device_brand} {ticket.device_model}
+                            </Text>
                             <Text style={styles.ticketIssue} numberOfLines={2}>
                                 {ticket.issue_description}
                             </Text>
@@ -176,6 +263,30 @@ const styles = StyleSheet.create({
         ...Typography.h1,
         color: '#fff',
     },
+    statsSection: {
+        flexDirection: 'row',
+        padding: Spacing.lg,
+        gap: Spacing.sm,
+    },
+    statCard: {
+        flex: 1,
+        backgroundColor: Colors.light.surface,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.md,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: Colors.light.border,
+    },
+    statValue: {
+        ...Typography.h2,
+        color: Colors.light.primary,
+        fontWeight: '700',
+    },
+    statLabel: {
+        ...Typography.caption,
+        color: Colors.light.textSecondary,
+        textAlign: 'center',
+    },
     quickActions: {
         padding: Spacing.lg,
     },
@@ -186,10 +297,11 @@ const styles = StyleSheet.create({
     },
     actionGrid: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: Spacing.md,
     },
     actionCard: {
-        flex: 1,
+        width: '47%',
         backgroundColor: Colors.light.surface,
         borderRadius: BorderRadius.lg,
         padding: Spacing.lg,
@@ -216,6 +328,17 @@ const styles = StyleSheet.create({
     },
     section: {
         padding: Spacing.lg,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Spacing.md,
+    },
+    viewAllText: {
+        ...Typography.bodySmall,
+        color: Colors.light.primary,
+        fontWeight: '600',
     },
     emptyState: {
         backgroundColor: Colors.light.surface,
