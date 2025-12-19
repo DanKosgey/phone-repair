@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Smartphone, Wrench, Zap, ShoppingCart, Package } from "lucide-react";
+import { Smartphone, Wrench, Zap, ShoppingCart, Package, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -92,12 +92,12 @@ export function HeroSection() {
   };
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-primary/20 via-background to-background py-20 lg:py-32">
+    <section className="relative overflow-hidden bg-gradient-to-br from-primary/15 via-background to-primary/5 py-20 lg:py-32">
       {/* Enhanced animated background with better performance */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Large gradient orbs with optimized animation */}
         <motion.div
-          className="absolute -top-1/2 -left-1/4 w-[800px] h-[800px] rounded-full bg-gradient-to-r from-primary/30 to-primary/10 blur-2xl"
+          className="absolute -top-1/2 -left-1/4 w-[800px] h-[800px] rounded-full bg-gradient-to-r from-primary/30 to-primary/15 blur-3xl"
           animate={showNonCriticalAnimations ? {
             x: [0, 150, 0],
             y: [0, -150, 0],
@@ -110,7 +110,7 @@ export function HeroSection() {
           }}
         />
         <motion.div
-          className="absolute -bottom-1/2 -right-1/4 w-[800px] h-[800px] rounded-full bg-gradient-to-r from-primary/20 to-primary/30 blur-2xl"
+          className="absolute -bottom-1/2 -right-1/4 w-[800px] h-[800px] rounded-full bg-gradient-to-r from-primary/20 to-primary/30 blur-3xl"
           animate={showNonCriticalAnimations ? {
             x: [0, -150, 0],
             y: [0, 150, 0],
@@ -125,7 +125,7 @@ export function HeroSection() {
 
         {/* Medium accent blob */}
         <motion.div
-          className="absolute top-1/4 right-1/3 w-[400px] h-[400px] rounded-full bg-gradient-to-r from-primary/25 to-primary/10 blur-2xl"
+          className="absolute top-1/4 right-1/3 w-[400px] h-[400px] rounded-full bg-gradient-to-r from-primary/25 to-primary/10 blur-3xl"
           animate={showNonCriticalAnimations ? {
             x: [0, -100, 0],
             y: [0, 100, 0],
@@ -168,7 +168,7 @@ export function HeroSection() {
         </AnimatePresence>
 
         {/* Grid pattern overlay for depth - static for better performance */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(var(--primary-rgb,0,0,0),0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--primary-rgb,0,0,0),0.05)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black,transparent)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(var(--primary-rgb,0,0,0),0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--primary-rgb,0,0,0),0.02)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black,transparent)]" />
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
@@ -178,17 +178,17 @@ export function HeroSection() {
             {...fadeInUp}
             transition={{ duration: 0.6, delay: 0.1 }}
           >
-            <div className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-6 border border-primary/20">
-              <Zap className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">
+            <div className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary/15 rounded-full mb-6 border border-primary/30 backdrop-blur-sm">
+              <Zap className="h-5 w-5 text-primary" />
+              <span className="text-sm font-semibold text-primary">
                 Professional Repair Services
               </span>
             </div>
           </motion.div>
 
-          {/* Main heading with enhanced glow effect */}
+          {/* Main heading with enhanced effect */}
           <motion.h1
-            className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 relative"
+            className="text-4xl md:text-6xl lg:text-7xl font-extrabold mb-6"
             {...fadeInUp}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
@@ -196,46 +196,11 @@ export function HeroSection() {
               <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-foreground via-foreground to-foreground">
                 Professional Phone{" "}
               </span>
-              <motion.span
-                className="absolute inset-0 bg-gradient-to-r from-primary/30 to-primary/50 blur-xl"
-                animate={showNonCriticalAnimations ? {
-                  opacity: [0.4, 0.7, 0.4],
-                  scale: [1, 1.1, 1],
-                } : {}}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
             </span>
             <span className="relative inline-block">
-              <motion.span
-                className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary/80 to-primary"
-                animate={showNonCriticalAnimations ? {
-                  backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-                } : {}}
-                transition={{
-                  duration: 5,
-                  repeat: Infinity,
-                  ease: "linear",
-                }}
-                style={{ backgroundSize: "200% 200%" }}
-              >
+              <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary/90 to-primary">
                 Repair
-              </motion.span>
-              <motion.span
-                className="absolute inset-0 bg-gradient-to-r from-primary to-primary/70 blur-lg"
-                animate={showNonCriticalAnimations ? {
-                  opacity: [0.6, 0.9, 0.6],
-                  scale: [1, 1.2, 1],
-                } : {}}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
+              </span>
             </span>
             <span className="relative inline-block">
               <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-foreground via-foreground to-foreground">
@@ -247,81 +212,33 @@ export function HeroSection() {
 
           {/* Description */}
           <motion.p
-            className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto"
+            className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto font-medium"
             {...fadeInUp}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
             {config.businessDescription}
           </motion.p>
 
-          {/* CTA Buttons */}
+          {/* CTA Buttons - Brighter and without glowing effects */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/marketplace">
               <motion.div
                 whileHover={isMobile ? {} : {
                   scale: 1.05,
-                  boxShadow: "0 5px 15px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.15), 0 0 10px rgba(var(--primary-rgb, 0, 0, 0), 0.1)",
+                  boxShadow: "0 10px 20px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.15), 0 0 10px rgba(var(--primary-rgb, 0, 0, 0), 0.1)",
                 }}
                 whileTap={isMobile ? {} : { scale: 0.95 }}
-                className="relative"
               >
-                {/* Outer glow ring - increased intensity */}
-                <motion.div
-                  className="absolute inset-0 rounded-lg blur-sm bg-gradient-to-r from-green-500/20 via-emerald-500/20 to-green-500/20"
-                  animate={showNonCriticalAnimations ? {
-                    opacity: [0.25, 0.4, 0.25],
-                    scale: [1, 1.01, 1],
-                  } : {}}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full sm:w-auto border border-green-500/40 text-lg px-8 py-6 relative overflow-hidden group bg-background/90 backdrop-blur-sm theme-glow-animation text-foreground font-bold"
+                  className="w-full sm:w-auto border-2 border-green-500/60 text-lg px-8 py-6 relative overflow-hidden group bg-white backdrop-blur-sm text-foreground font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   <span className="relative z-10 flex items-center gap-2">
+                    <Package className="h-5 w-5" />
                     <span className="tracking-wide">MARKETPLACE</span>
-                    <motion.span
-                      animate={{ 
-                        x: [0, 5],
-                      }}
-                      transition={{ 
-                        duration: 1.5,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                    >
-                      →
-                    </motion.span>
+                    <ArrowRight className="h-4 w-4" />
                   </span>
-                  {/* Animated gradient sweep - increased intensity */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
-                    animate={showNonCriticalAnimations ? {
-                      x: ["-200%", "200%"],
-                    } : {}}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
-                  {/* Pulsing background glow - increased intensity */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-green-500/15 via-emerald-500/15 to-green-500/15"
-                    animate={showNonCriticalAnimations ? {
-                      opacity: [0.2, 0.3, 0.2],
-                    } : {}}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
                 </Button>
               </motion.div>
             </Link>
@@ -330,68 +247,20 @@ export function HeroSection() {
               <motion.div
                 whileHover={isMobile ? {} : {
                   scale: 1.05,
-                  boxShadow: "0 5px 15px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.15), 0 0 10px rgba(var(--primary-rgb, 0, 0, 0), 0.1)",
+                  boxShadow: "0 10px 20px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.15), 0 0 10px rgba(var(--primary-rgb, 0, 0, 0), 0.1)",
                 }}
                 whileTap={isMobile ? {} : { scale: 0.95 }}
-                className="relative"
               >
-                {/* Outer glow ring - increased intensity */}
-                <motion.div
-                  className="absolute inset-0 rounded-lg blur-sm bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20"
-                  animate={showNonCriticalAnimations ? {
-                    opacity: [0.25, 0.4, 0.25],
-                    scale: [1, 1.01, 1],
-                  } : {}}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full sm:w-auto border border-primary/40 text-lg px-8 py-6 relative overflow-hidden group bg-background/90 backdrop-blur-sm theme-glow-animation text-foreground font-bold"
+                  className="w-full sm:w-auto border-2 border-primary/60 text-lg px-8 py-6 relative overflow-hidden group bg-white backdrop-blur-sm text-foreground font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   <span className="relative z-10 flex items-center gap-2">
+                    <ShoppingCart className="h-5 w-5" />
                     <span className="tracking-wide">NEW PRODUCTS</span>
-                    <motion.span
-                      animate={{ 
-                        x: [0, 5],
-                      }}
-                      transition={{ 
-                        duration: 1.5,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                    >
-                      →
-                    </motion.span>
+                    <ArrowRight className="h-4 w-4" />
                   </span>
-                  {/* Animated gradient sweep - increased intensity */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
-                    animate={showNonCriticalAnimations ? {
-                      x: ["-200%", "200%"],
-                    } : {}}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
-                  {/* Pulsing background glow - increased intensity */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-primary/15 via-purple-500/15 to-primary/15"
-                    animate={showNonCriticalAnimations ? {
-                      opacity: [0.2, 0.3, 0.2],
-                    } : {}}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
                 </Button>
               </motion.div>
             </Link>
@@ -400,39 +269,19 @@ export function HeroSection() {
               <motion.div
                 whileHover={isMobile ? {} : {
                   scale: 1.05,
-                  boxShadow:
-                    "0 20px 25px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.3)",
+                  boxShadow: "0 10px 20px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.15), 0 0 10px rgba(var(--primary-rgb, 0, 0, 0), 0.1)",
                 }}
                 whileTap={isMobile ? {} : { scale: 0.95 }}
               >
                 <Button
                   size="lg"
-                  className="w-full sm:w-auto text-lg px-8 py-6 relative overflow-hidden group bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white shadow-lg hover:shadow-xl theme-glow-animation font-extrabold tracking-wider"
+                  className="w-full sm:w-auto text-lg px-8 py-6 relative overflow-hidden group bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white font-extrabold tracking-wider rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   <span className="relative z-10 flex items-center gap-2">
+                    <Wrench className="h-5 w-5" />
                     <span className="tracking-wider">TRACK REPAIR</span>
-                    <motion.span
-                      animate={showNonCriticalAnimations ? { x: [0, 5] } : {}}
-                      transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                    >
-                      →
-                    </motion.span>
+                    <ArrowRight className="h-4 w-4" />
                   </span>
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-primary/70 to-primary/50"
-                    animate={showNonCriticalAnimations ? {
-                      x: ["-100%", "100%"],
-                    } : {}}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                  />
                 </Button>
               </motion.div>
             </Link>
@@ -447,18 +296,19 @@ export function HeroSection() {
             {FEATURES.map((item, index) => (
               <motion.div
                 key={item.text}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/70 backdrop-blur-sm border border-primary/20"
+                className="flex items-center gap-3 px-5 py-3 rounded-xl bg-background/80 backdrop-blur-sm border border-primary/20 shadow-sm"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.6 + index * 0.1 }}
                 whileHover={isMobile ? {} : {
                   y: -5,
-                  boxShadow: "0 10px 20px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.2)",
+                  boxShadow: "0 10px 20px -5px rgba(var(--primary-rgb, 0, 0, 0), 0.25)",
+                  scale: 1.05
                 }}
               >
                 <motion.div
                   animate={showNonCriticalAnimations ? {
-                    rotate: [0, 10],
+                    rotate: [0, 15],
                   } : {}}
                   transition={{
                     duration: 3,
@@ -467,61 +317,50 @@ export function HeroSection() {
                     delay: index * 0.5,
                   }}
                 >
-                  <item.icon className="h-5 w-5 text-primary" />
+                  <item.icon className="h-6 w-6 text-primary" />
                 </motion.div>
-                <span className="font-medium text-sm">{item.text}</span>
+                <span className="font-semibold text-base">{item.text}</span>
               </motion.div>
             ))}
           </motion.div>
           
-          {/* Cool white design text */}
+          {/* Removed glowing text effects */}
           <motion.div 
-            className="flex flex-wrap justify-center gap-4 md:gap-8 mt-12 text-white"
+            className="flex flex-wrap justify-center gap-4 md:gap-8 mt-16"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.7 }}
           >
             <motion.span 
-              className="text-xl md:text-2xl lg:text-3xl font-bold tracking-wider bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent cool-white-text"
+              className="text-xl md:text-2xl lg:text-3xl font-extrabold tracking-wider text-foreground"
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
               MARKETPLACE
             </motion.span>
             <motion.span 
-              className="text-2xl md:text-3xl lg:text-4xl font-extrabold cool-white-text"
-              animate={{ opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 2, repeat: Infinity }}
+              className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-muted-foreground"
             >
               →
             </motion.span>
             <motion.span 
-              className="text-xl md:text-2xl lg:text-3xl font-bold tracking-wider bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent cool-white-text"
+              className="text-xl md:text-2xl lg:text-3xl font-extrabold tracking-wider text-foreground"
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
               NEW PRODUCTS
             </motion.span>
             <motion.span 
-              className="text-2xl md:text-3xl lg:text-4xl font-extrabold cool-white-text"
-              animate={{ opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 2, repeat: Infinity }}
+              className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-muted-foreground"
             >
               →
             </motion.span>
             <motion.span 
-              className="text-xl md:text-2xl lg:text-3xl font-bold tracking-wider bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent cool-white-text"
+              className="text-xl md:text-2xl lg:text-3xl font-extrabold tracking-wider text-foreground"
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
               TRACK REPAIR
-            </motion.span>
-            <motion.span 
-              className="text-2xl md:text-3xl lg:text-4xl font-extrabold cool-white-text"
-              animate={{ opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              →
             </motion.span>
           </motion.div>
         </div>
@@ -542,18 +381,7 @@ export function HeroSection() {
               ease: "easeInOut",
             }}
           >
-            <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 backdrop-blur-sm flex items-center justify-center shadow-xl border border-primary/30 relative overflow-hidden">
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-primary/40 to-transparent"
-                animate={showNonCriticalAnimations ? {
-                  x: ["-100%", "100%"],
-                } : {}}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "linear",
-                }}
-              />
+            <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/15 backdrop-blur-sm flex items-center justify-center shadow-xl border border-primary/30 relative overflow-hidden">
               <Smartphone className="h-8 w-8 md:h-12 md:w-12 text-primary relative z-10" />
             </div>
           </motion.div>
@@ -570,19 +398,7 @@ export function HeroSection() {
               ease: "easeInOut",
             }}
           >
-            <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 backdrop-blur-sm flex items-center justify-center shadow-xl border border-primary/30 relative overflow-hidden">
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-primary/40 to-transparent"
-                animate={showNonCriticalAnimations ? {
-                  x: ["-100%", "100%"],
-                } : {}}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "linear",
-                  delay: 1,
-                }}
-              />
+            <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/15 backdrop-blur-sm flex items-center justify-center shadow-xl border border-primary/30 relative overflow-hidden">
               <Wrench className="h-8 w-8 md:h-12 md:w-12 text-primary relative z-10" />
             </div>
           </motion.div>

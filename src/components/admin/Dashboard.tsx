@@ -354,6 +354,8 @@ export default function AdminDashboard() {
           percentage
         }
       })
+      // Sort descending by count for clearer display
+      transformed.sort((a: any, b: any) => b.count - a.count)
       console.log('Transformed ticket status data:', transformed)
       setTicketStatusData(transformed)
     } catch (error) {

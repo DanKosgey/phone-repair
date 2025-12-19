@@ -1,12 +1,13 @@
 "use client"
 
-import { Smartphone, Facebook, Twitter, Instagram } from "lucide-react";
+import { Smartphone, Facebook, Twitter, Instagram, Mail, Phone, Clock } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getBusinessConfig, type BusinessConfig } from '@/lib/config-service';
 import { useContactInfo } from '@/hooks/use-contact-info';
+import { Button } from "@/components/ui/button";
 
 export const Footer = () => {
   const { user, isLoading } = useAuth();
@@ -48,50 +49,86 @@ export const Footer = () => {
   };
 
   return (
-    <footer className="border-t border-border bg-background text-foreground">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+    <footer className="border-t border-border bg-background/80 backdrop-blur-sm text-foreground">
+      <div className="container mx-auto px-4 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Smartphone className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">{businessConfig?.businessName || "Jay's Shop"}</span>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 rounded-xl bg-primary/10">
+                <Smartphone className="h-8 w-8 text-primary" />
+              </div>
+              <span className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                {businessConfig?.businessName || "Jay's Shop"}
+              </span>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-muted-foreground mb-6 font-medium">
               {businessConfig?.businessDescription || "Professional phone repair services and quality products."}
             </p>
             <div className="flex gap-4">
-              <a href="#" className="text-muted-foreground hover:text-foreground">
+              <a href="#" className="p-3 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                 <Facebook className="h-5 w-5" />
               </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground">
+              <a href="#" className="p-3 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                 <Twitter className="h-5 w-5" />
               </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground">
+              <a href="#" className="p-3 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                 <Instagram className="h-5 w-5" />
               </a>
             </div>
           </div>
 
           <div>
-            <h3 className="font-semibold mb-3">Services</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/track" className="hover:text-primary">Track Repair</Link></li>
-              <li><Link href="/products" className="hover:text-primary">Shop Products</Link></li>
-              <li><Link href="/marketplace" className="hover:text-primary">Marketplace</Link></li>
+            <h3 className="font-bold text-lg mb-6 relative inline-block">
+              Services
+              <span className="absolute bottom-0 left-0 w-1/2 h-0.5 bg-primary rounded-full"></span>
+            </h3>
+            <ul className="space-y-3">
+              <li>
+                <Link href="/track" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors group">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors"></span>
+                  Track Repair
+                </Link>
+              </li>
+              <li>
+                <Link href="/products" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors group">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors"></span>
+                  Shop Products
+                </Link>
+              </li>
+              <li>
+                <Link href="/marketplace" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors group">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors"></span>
+                  Marketplace
+                </Link>
+              </li>
             </ul>
           </div>
 
           <div>
-            <h3 className="font-semibold mb-3">Company</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/about" className="hover:text-primary">About Us</Link></li>
-              <li><Link href="/contact" className="hover:text-primary">Contact</Link></li>
+            <h3 className="font-bold text-lg mb-6 relative inline-block">
+              Company
+              <span className="absolute bottom-0 left-0 w-1/2 h-0.5 bg-primary rounded-full"></span>
+            </h3>
+            <ul className="space-y-3">
+              <li>
+                <Link href="/about" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors group">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors"></span>
+                  About Us
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors group">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors"></span>
+                  Contact
+                </Link>
+              </li>
               <li>
                 <button 
                   onClick={handleAdminAccess}
                   disabled={isLoading}
-                  className="text-left hover:text-primary w-full text-sm bg-transparent border-none cursor-pointer disabled:opacity-50"
+                  className="flex items-center gap-2 text-left text-muted-foreground hover:text-primary transition-colors group w-full bg-transparent border-none cursor-pointer disabled:opacity-50"
                 >
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors"></span>
                   {isLoading ? 'Loading...' : (user ? 'Admin Dashboard' : 'Admin Login')}
                 </button>
               </li>
@@ -99,17 +136,39 @@ export const Footer = () => {
           </div>
 
           <div>
-            <h3 className="font-semibold mb-3">Contact</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>Phone: {contactInfo.phone}</li>
-              <li>Email: {contactInfo.email}</li>
-              <li>Hours: {contactInfo.hours}</li>
+            <h3 className="font-bold text-lg mb-6 relative inline-block">
+              Contact
+              <span className="absolute bottom-0 left-0 w-1/2 h-0.5 bg-primary rounded-full"></span>
+            </h3>
+            <ul className="space-y-4">
+              <li className="flex items-start gap-3">
+                <Phone className="h-5 w-5 text-primary mt-0.5" />
+                <span className="text-muted-foreground font-medium">{contactInfo.phone}</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <Mail className="h-5 w-5 text-primary mt-0.5" />
+                <span className="text-muted-foreground font-medium">{contactInfo.email}</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <Clock className="h-5 w-5 text-primary mt-0.5" />
+                <span className="text-muted-foreground font-medium">{contactInfo.hours}</span>
+              </li>
             </ul>
+            
+            <Button 
+              onClick={handleAdminAccess}
+              disabled={isLoading}
+              className="mt-6 w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white font-semibold py-6 rounded-xl transition-all duration-300"
+            >
+              {isLoading ? 'Loading...' : (user ? 'Go to Dashboard' : 'Admin Access')}
+            </Button>
           </div>
         </div>
 
-        <div className="border-t border-border mt-8 pt-8 text-center">
-          <p>&copy; {businessConfig?.copyrightText || "2024 Jay's Shop. All rights reserved."}</p>
+        <div className="border-t border-border/50 mt-12 pt-8 text-center">
+          <p className="text-muted-foreground font-medium">
+            &copy; {businessConfig?.copyrightText || "2024 Jay's Shop. All rights reserved."}
+          </p>
         </div>
       </div>
     </footer>

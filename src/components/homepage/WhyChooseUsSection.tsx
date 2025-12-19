@@ -49,16 +49,16 @@ export function WhyChooseUsSection() {
   }
 
   return (
-    <section className="py-20 relative overflow-hidden">
+    <section className="py-24 relative overflow-hidden bg-gradient-to-b from-primary/5 to-background">
       {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-primary/10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/3 to-primary/1" />
         
         {/* Animated geometric shapes */}
         {BACKGROUND_SHAPES.map((shape, i) => (
           <motion.div
             key={i}
-            className="absolute opacity-5"
+            className="absolute opacity-10"
             style={{
               top: shape.top,
               left: shape.left,
@@ -77,9 +77,9 @@ export function WhyChooseUsSection() {
             }}
           >
             {shape.type === "square" ? (
-              <div className="w-full h-full border border-primary rounded-lg" />
+              <div className="w-full h-full border-2 border-primary rounded-xl" />
             ) : (
-              <div className="w-full h-full border border-primary rounded-full" />
+              <div className="w-full h-full border-2 border-primary rounded-full" />
             )}
           </motion.div>
         ))}
@@ -87,23 +87,23 @@ export function WhyChooseUsSection() {
       
       <div className="container mx-auto px-4 relative z-10">
         <motion.div 
-          className="text-center mb-16"
+          className="text-center mb-20"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
           <motion.h2 
-            className="text-4xl font-bold mb-4"
+            className="text-4xl md:text-5xl font-extrabold mb-6"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            Why Choose Us
+            Why <span className="bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Choose Us</span>
           </motion.h2>
           <motion.p 
-            className="text-xl text-muted-foreground max-w-2xl mx-auto"
+            className="text-xl text-muted-foreground max-w-2xl mx-auto font-medium"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -132,7 +132,7 @@ export function WhyChooseUsSection() {
               }}
             >
               <motion.div
-                className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 mb-6 mx-auto border border-primary/10 group-hover:from-primary/20 group-hover:to-primary/10"
+                className="inline-flex items-center justify-center w-28 h-28 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 mb-8 mx-auto border-2 border-primary/20 group-hover:from-primary/25 group-hover:to-primary/10 shadow-lg"
                 whileHover={{ 
                   rotate: [0, 10],
                   scale: 1.1,
@@ -142,12 +142,12 @@ export function WhyChooseUsSection() {
                   scale: { duration: 0.3, type: "spring", stiffness: 300 }
                 }}
               >
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-primary/10 group-hover:bg-primary/20">
-                  <item.icon className="h-8 w-8 text-primary" />
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-xl bg-primary/20 group-hover:bg-primary/30 border border-primary/20">
+                  <item.icon className="h-10 w-10 text-primary" />
                 </div>
               </motion.div>
               <motion.h3 
-                className="font-semibold text-xl mb-3"
+                className="font-bold text-2xl mb-4"
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -156,7 +156,7 @@ export function WhyChooseUsSection() {
                 {item.title}
               </motion.h3>
               <motion.p 
-                className="text-muted-foreground"
+                className="text-muted-foreground font-medium text-lg"
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Wrench, ShoppingBag, Recycle, Smartphone, Tablet, Laptop } from "lucide-react";
+import { Wrench, ShoppingBag, Recycle, Smartphone, Tablet, Laptop, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useFeatureToggle } from "@/hooks/use-feature-toggle";
@@ -90,16 +90,16 @@ const ServicesSection = () => {
   }
 
   return (
-    <section className="py-20 relative overflow-hidden">
+    <section className="py-24 relative overflow-hidden bg-gradient-to-b from-background to-primary/5">
       {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-background to-primary/5" />
+        <div className="absolute inset-0 bg-gradient-to-br from-background to-primary/3" />
         
         {/* Floating elements */}
         {FLOATING_ELEMENTS.map((element, i) => (
           <motion.div
             key={i}
-            className="absolute rounded-full bg-primary/5"
+            className="absolute rounded-full bg-primary/15"
             style={{
               top: element.top,
               left: element.left,
@@ -122,23 +122,23 @@ const ServicesSection = () => {
       
       <div className="container mx-auto px-4 relative z-10">
         <motion.div 
-          className="text-center mb-16"
+          className="text-center mb-20"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
           <motion.h2 
-            className="text-4xl font-bold mb-4"
+            className="text-4xl md:text-5xl font-extrabold mb-6"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            Our Services
+            Our <span className="bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Services</span>
           </motion.h2>
           <motion.p 
-            className="text-xl text-muted-foreground max-w-2xl mx-auto"
+            className="text-xl text-muted-foreground max-w-2xl mx-auto font-medium"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -166,8 +166,8 @@ const ServicesSection = () => {
               }}
               className="h-full"
             >
-              <Card className="h-full border-0 shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-background to-primary/5 backdrop-blur-sm border border-primary/10">
-                <CardHeader className="text-center">
+              <Card className="h-full border-0 shadow-xl hover:shadow-2xl transition-all duration-500 bg-gradient-to-br from-background to-primary/5 backdrop-blur-sm border border-primary/15 rounded-2xl overflow-hidden">
+                <CardHeader className="text-center pb-4">
                   <motion.div 
                     className="mx-auto mb-6"
                     whileHover={{ 
@@ -180,33 +180,35 @@ const ServicesSection = () => {
                       duration: 0.5
                     }}
                   >
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10">
-                      <service.icon className="h-10 w-10 text-primary" />
+                    <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-primary/20 border-2 border-primary/25">
+                      <service.icon className="h-12 w-12 text-primary" />
                     </div>
                   </motion.div>
-                  <CardTitle className="text-2xl mb-3">{service.title}</CardTitle>
-                  <CardDescription className="text-base mt-2">
+                  <CardTitle className="text-2xl mb-3 font-bold">{service.title}</CardTitle>
+                  <CardDescription className="text-base mt-2 font-medium">
                     {service.description}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center">
-                  <div className="flex gap-3 mb-6">
+                <CardContent className="flex flex-col items-center pt-4">
+                  <div className="flex gap-4 mb-8">
                     {service.devices.map((DeviceIcon, idx) => (
                       <motion.div
                         key={idx}
                         whileHover={{ scale: 1.2, rotate: 10 }}
                         transition={{ type: "spring", stiffness: 400 }}
+                        className="p-3 rounded-xl bg-primary/15 border border-primary/20"
                       >
-                        <DeviceIcon className="h-6 w-6 text-primary/70" />
+                        <DeviceIcon className="h-7 w-7 text-primary/90" />
                       </motion.div>
                     ))}
                   </div>
                   <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    className="w-full"
                   >
-                    <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
-                      Learn More
+                    <Button variant="outline" className="w-full border-2 border-primary/40 text-primary hover:bg-primary/15 font-semibold py-6 group rounded-xl">
+                      Learn More <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </Button>
                   </motion.div>
                 </CardContent>

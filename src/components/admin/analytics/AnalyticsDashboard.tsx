@@ -281,7 +281,15 @@ export default function AnalyticsDashboard() {
         console.error('Error calculating direct status distribution:', calcError);
       }
       
-      setTicketStatusData(statusData);
+      // Normalize and sort ticket status data before setting state
+      const totalStatus = statusData.reduce((sum: any, it: any) => sum + (it.count || 0), 0) || 1
+      const normalized = statusData.map((item: any) => ({
+        status: item.status.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+        count: item.count,
+        percentage: typeof item.percentage === 'number' ? item.percentage : parseFloat(((item.count / totalStatus) * 100).toFixed(2))
+      }))
+      normalized.sort((a: any, b: any) => b.count - a.count)
+      setTicketStatusData(normalized);
       
       // Fetch top products
       const productsData = await dashboardDb.getTopProductsBySales();

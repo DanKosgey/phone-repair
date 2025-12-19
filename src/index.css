@@ -4,53 +4,53 @@
 
 @layer base {
   :root {
-    --background: 0 0% 98%; /* Brighter background */
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 99%; /* Brighter card background */
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 99%; /* Brighter popover background */
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 195 100% 60%; /* Brighter primary color */
+    --background: 0 0% 99%; /* Even brighter background */
+    --foreground: 222.2 84% 2%; /* Darker foreground for better contrast */
+    --card: 0 0% 100%; /* Pure white card background */
+    --card-foreground: 222.2 84% 2%;
+    --popover: 0 0% 100%; /* Pure white popover background */
+    --popover-foreground: 222.2 84% 2%;
+    --primary: 195 100% 45%; /* More vibrant primary color */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 95%; /* Brighter secondary color */
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 95%; /* Brighter muted background */
-    --muted-foreground: 215.4 16.3% 45%; /* Brighter muted text */
-    --accent: 210 40% 95%; /* Brighter accent background */
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 55%; /* Brighter destructive color */
-    --destructive-foreground: 0 0% 98%;
-    --border: 214.3 31.8% 90%; /* Brighter border */
-    --input: 214.3 31.8% 90%; /* Brighter input border */
-    --ring: 195 100% 60%; /* Brighter ring color */
-    --radius: 0.5rem;
+    --secondary: 210 40% 95%; /* Lighter secondary color */
+    --secondary-foreground: 222.2 47.4% 8%;
+    --muted: 210 40% 95%; /* Lighter muted background */
+    --muted-foreground: 215.4 16.3% 35%; /* Darker muted text for better readability */
+    --accent: 210 40% 95%; /* Lighter accent background */
+    --accent-foreground: 222.2 47.4% 8%;
+    --destructive: 0 84.2% 40%; /* More vibrant destructive color */
+    --destructive-foreground: 0 0% 100%;
+    --border: 214.3 31.8% 92%; /* Lighter border */
+    --input: 214.3 31.8% 92%; /* Lighter input border */
+    --ring: 195 100% 45%; /* More vibrant ring color */
+    --radius: 0.75rem; /* Slightly larger radius for softer corners */
     
-    /* Status Colors */
-    --status-received: 195 100% 55%; /* Darker light blue */
-    --status-diagnosing: 271 91% 55%; /* Darker diagnosing color */
-    --status-awaiting: 38 92% 45%; /* Darker awaiting color */
-    --status-repairing: 48 96% 48%; /* Darker repairing color */
-    --status-quality: 239 84% 60%; /* Darker quality color */
-    --status-ready: 142 76% 32%; /* Darker ready color */
-    --status-completed: 215 16% 42%; /* Darker completed color */
-    --status-cancelled: 0 84% 55%; /* Darker cancelled color */
+    /* Status Colors - more vibrant */
+    --status-received: 195 100% 40%; /* More vibrant light blue */
+    --status-diagnosing: 271 91% 45%; /* More vibrant diagnosing color */
+    --status-awaiting: 38 92% 35%; /* More vibrant awaiting color */
+    --status-repairing: 48 96% 38%; /* More vibrant repairing color */
+    --status-quality: 239 84% 50%; /* More vibrant quality color */
+    --status-ready: 142 76% 22%; /* More vibrant ready color */
+    --status-completed: 215 16% 32%; /* More vibrant completed color */
+    --status-cancelled: 0 84% 45%; /* More vibrant cancelled color */
     
-    /* Priority Colors */
-    --priority-low: 215 16% 42%; /* Darker low priority */
-    --priority-normal: 195 100% 55%; /* Darker normal priority */
-    --priority-high: 38 92% 45%; /* Darker high priority */
-    --priority-urgent: 0 84% 55%; /* Darker urgent priority */
+    /* Priority Colors - more vibrant */
+    --priority-low: 215 16% 32%; /* More vibrant low priority */
+    --priority-normal: 195 100% 40%; /* More vibrant normal priority */
+    --priority-high: 38 92% 35%; /* More vibrant high priority */
+    --priority-urgent: 0 84% 45%; /* More vibrant urgent priority */
     
-    /* Success/Warning/Error */
-    --success: 142 76% 32%; /* Darker success color */
+    /* Success/Warning/Error - more vibrant */
+    --success: 142 76% 22%; /* More vibrant success color */
     --success-foreground: 0 0% 100%;
-    --warning: 48 96% 48%; /* Darker warning color */
-    --warning-foreground: 222.2 84% 4.9%;
-    --error: 0 84% 55%; /* Darker error color */
+    --warning: 48 96% 38%; /* More vibrant warning color */
+    --warning-foreground: 222.2 84% 2%;
+    --error: 0 84% 45%; /* More vibrant error color */
     --error-foreground: 0 0% 100%;
     
     /* Custom color variables for appearance settings */
-    --custom-primary: 195 100% 55%;
+    --custom-primary: 195 100% 40%;
     --custom-secondary: 210 40% 90%;
     
     /* Font definitions */
@@ -91,146 +91,139 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
+    /* Smoother font rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Better line height for readability */
+    line-height: 1.6;
+  }
+  
+  /* Typography improvements */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold leading-tight;
+  }
+  
+  h1 {
+    @apply text-4xl md:text-5xl;
+  }
+  
+  h2 {
+    @apply text-3xl md:text-4xl;
+  }
+  
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+  
+  h4 {
+    @apply text-xl md:text-2xl;
+  }
+  
+  h5 {
+    @apply text-lg md:text-xl;
+  }
+  
+  h6 {
+    @apply text-base md:text-lg;
+  }
+  
+  p {
+    @apply mb-4 text-base;
+  }
+  
+  a {
+    @apply text-primary hover:text-primary/80 transition-colors;
+  }
+  
+  /* Improved spacing */
+  .container {
+    @apply mx-auto px-4;
+  }
+  
+  .section {
+    @apply py-16 md:py-24;
+  }
+  
+  .section-title {
+    @apply text-3xl md:text-4xl font-bold mb-6 relative;
+  }
+  
+  .section-subtitle {
+    @apply text-xl text-muted-foreground mb-12 max-w-2xl;
+  }
+  
+  /* Form elements */
+  input, textarea, select {
+    @apply border border-input rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary;
+  }
+  
+  /* Lists */
+  ul, ol {
+    @apply mb-4 pl-6;
+  }
+  
+  li {
+    @apply mb-2;
+  }
+  
+  /* Blockquotes */
+  blockquote {
+    @apply border-l-4 border-primary pl-6 italic text-muted-foreground;
   }
 }
 
-/* Subtle theme-consistent glowing animation for buttons */
-@keyframes themeGlow {
+/* Simplified theme animation for buttons - removed glowing effects */
+@keyframes themeHover {
   0% {
-    box-shadow: 0 0 3px hsl(var(--custom-primary)), 0 0 5px hsl(var(--custom-primary));
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 5px hsl(var(--custom-primary)), 0 0 8px hsl(var(--custom-primary)), 0 0 10px hsl(var(--custom-primary));
-    transform: scale(1.01);
+    transform: scale(1.02);
   }
   100% {
-    box-shadow: 0 0 3px hsl(var(--custom-primary)), 0 0 5px hsl(var(--custom-primary));
     transform: scale(1);
   }
 }
 
-@keyframes themeTextGlow {
-  0% {
-    text-shadow: 0 0 2px hsl(var(--custom-primary)), 0 0 3px hsl(var(--custom-primary));
-  }
-  50% {
-    text-shadow: 0 0 3px hsl(var(--custom-primary)), 0 0 5px hsl(var(--custom-primary));
-  }
-  100% {
-    text-shadow: 0 0 2px hsl(var(--custom-primary)), 0 0 3px hsl(var(--custom-primary));
-  }
+.theme-hover-animation {
+  transition: all 0.3s ease;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-width: 2px !important;
 }
 
-/* Cool white text design */
-@keyframes coolWhiteGlow {
-  0% {
-    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5), 0 0 10px rgba(255, 255, 255, 0.3);
-  }
-  50% {
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3);
-  }
-  100% {
-    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5), 0 0 10px rgba(255, 255, 255, 0.3);
-  }
+.theme-hover-animation:hover {
+  background: linear-gradient(45deg, hsl(var(--custom-primary)), hsl(var(--custom-secondary))) !important;
+  color: white !important;
+  border-color: hsl(var(--custom-primary)) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
 }
 
+/* Removed all glowing animations */
 .cool-white-text {
-  animation: coolWhiteGlow 3s ease-in-out infinite;
-}
-
-@keyframes themeBackground {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+  /* Removed animation */
 }
 
 .theme-glow-animation {
-  animation: themeGlow 2s ease-in-out infinite;
-  border-color: hsl(var(--custom-primary)) !important;
-  color: hsl(var(--custom-primary)) !important;
-  font-weight: 800;
+  /* Removed glowing effects */
   transition: all 0.3s ease;
-  background: linear-gradient(45deg, hsla(var(--custom-primary), 0.05), hsla(var(--custom-primary), 0.12), hsla(var(--custom-primary), 0.05)) !important;
-  background-size: 200% 200% !important;
+  font-weight: 600;
   letter-spacing: 0.5px;
-}
-
-.theme-glow-animation .relative.z-10 {
-  animation: themeTextGlow 1.8s ease-in-out infinite;
-  text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
-}
-
-.theme-bg-animation {
-  background: linear-gradient(45deg, hsla(var(--custom-primary), 0.1), hsla(var(--custom-primary), 0.15), hsla(var(--custom-primary), 0.1)) !important;
-  background-size: 200% 200% !important;
-  animation: themeBackground 4s ease-in-out infinite !important;
-  opacity: 0.2 !important;
+  border-width: 2px !important;
 }
 
 .theme-glow-animation:hover {
   background: linear-gradient(45deg, hsl(var(--custom-primary)), hsl(var(--custom-secondary))) !important;
   color: white !important;
   border-color: hsl(var(--custom-primary)) !important;
-  animation: none;
   transform: translateY(-2px);
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Shimmer animation for featured products */
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
-}
-
-.featured-product-shimmer {
-  background: linear-gradient(to right, rgba(195, 100%, 55%, 0.1) 0%, rgba(195, 100%, 55%, 0.2) 50%, rgba(195, 100%, 55%, 0.1) 100%);
-  background-size: 1000px 100%;
-  animation: shimmer 2s infinite linear;
-}
-
-/* Bounce animation for lively products */
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-.lively-bounce {
-  animation: bounce 2s ease-in-out infinite;
-}
-
-/* Pulse animation for hot deals */
-@keyframes pulseHot {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-  }
-  70% {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-  }
-}
-
-.hot-deal-pulse {
-  animation: pulseHot 2s infinite;
+.theme-bg-animation {
+  /* Removed animation */
+  opacity: 0.1 !important;
 }
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
@@ -239,51 +232,51 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 98%; /* Brighter background */
-    --foreground: 222.2 84% 4.9%;
+    --background: 0 0% 99%; /* Even brighter background */
+    --foreground: 222.2 84% 2%;
 
-    --card: 0 0% 99%; /* Brighter card background */
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%; /* Pure white card background */
+    --card-foreground: 222.2 84% 2%;
 
-    --popover: 0 0% 99%; /* Brighter popover background */
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%; /* Pure white popover background */
+    --popover-foreground: 222.2 84% 2%;
 
-    --primary: 195 100% 60%; /* Brighter primary color */
+    --primary: 195 100% 45%; /* More vibrant primary color */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 95%; /* Brighter secondary color */
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 210 40% 95%; /* Lighter secondary color */
+    --secondary-foreground: 222.2 47.4% 8%;
 
-    --muted: 210 40% 95%; /* Brighter muted background */
-    --muted-foreground: 215.4 16.3% 45%; /* Brighter muted text */
+    --muted: 210 40% 95%; /* Lighter muted background */
+    --muted-foreground: 215.4 16.3% 35%; /* Darker muted text for better readability */
 
-    --accent: 210 40% 95%; /* Brighter accent background */
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 210 40% 95%; /* Lighter accent background */
+    --accent-foreground: 222.2 47.4% 8%;
 
-    --destructive: 0 84.2% 55%; /* Brighter destructive color */
+    --destructive: 0 84.2% 40%; /* More vibrant destructive color */
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 90%; /* Brighter border */
-    --input: 214.3 31.8% 90%; /* Brighter input border */
-    --ring: 195 100% 60%; /* Brighter ring color */
+    --border: 214.3 31.8% 92%; /* Lighter border */
+    --input: 214.3 31.8% 92%; /* Lighter input border */
+    --ring: 195 100% 45%; /* More vibrant ring color */
 
-    --radius: 0.5rem;
+    --radius: 0.75rem; /* Slightly larger radius for softer corners */
 
-    --sidebar-background: 0 0% 98%; /* Brighter sidebar background */
+    --sidebar-background: 0 0% 99%; /* Brighter sidebar background */
 
-    --sidebar-foreground: 240 5.3% 25%; /* Brighter sidebar text */
+    --sidebar-foreground: 240 5.3% 20%; /* Darker sidebar text */
 
-    --sidebar-primary: 240 5.9% 20%; /* Brighter sidebar primary */
+    --sidebar-primary: 240 5.9% 15%; /* Darker sidebar primary */
 
     --sidebar-primary-foreground: 0 0% 98%;
 
-    --sidebar-accent: 240 4.8% 95%; /* Brighter sidebar accent */
+    --sidebar-accent: 240 4.8% 95%; /* Lighter sidebar accent */
 
-    --sidebar-accent-foreground: 240 5.9% 20%;
+    --sidebar-accent-foreground: 240 5.9% 15%;
 
-    --sidebar-border: 220 13% 90%; /* Brighter sidebar border */
+    --sidebar-border: 220 13% 92%; /* Lighter sidebar border */
 
-    --sidebar-ring: 195 100% 60%; /* Brighter sidebar ring */
+    --sidebar-ring: 195 100% 45%; /* More vibrant sidebar ring */
     
     /* Font definitions */
     --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
@@ -336,5 +329,83 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
+    /* Smoother font rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Better line height for readability */
+    line-height: 1.6;
+  }
+  
+  /* Typography improvements */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold leading-tight;
+  }
+  
+  h1 {
+    @apply text-4xl md:text-5xl;
+  }
+  
+  h2 {
+    @apply text-3xl md:text-4xl;
+  }
+  
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+  
+  h4 {
+    @apply text-xl md:text-2xl;
+  }
+  
+  h5 {
+    @apply text-lg md:text-xl;
+  }
+  
+  h6 {
+    @apply text-base md:text-lg;
+  }
+  
+  p {
+    @apply mb-4 text-base;
+  }
+  
+  a {
+    @apply text-primary hover:text-primary/80 transition-colors;
+  }
+  
+  /* Improved spacing */
+  .container {
+    @apply mx-auto px-4;
+  }
+  
+  .section {
+    @apply py-16 md:py-24;
+  }
+  
+  .section-title {
+    @apply text-3xl md:text-4xl font-bold mb-6 relative;
+  }
+  
+  .section-subtitle {
+    @apply text-xl text-muted-foreground mb-12 max-w-2xl;
+  }
+  
+  /* Form elements */
+  input, textarea, select {
+    @apply border border-input rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary;
+  }
+  
+  /* Lists */
+  ul, ol {
+    @apply mb-4 pl-6;
+  }
+  
+  li {
+    @apply mb-2;
+  }
+  
+  /* Blockquotes */
+  blockquote {
+    @apply border-l-4 border-primary pl-6 italic text-muted-foreground;
   }
 }
