@@ -58,10 +58,7 @@ const styles = StyleSheet.create({
         borderLeftWidth: 4,
         borderWidth: 1,
         borderColor: Colors.light.border,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
         elevation: 2,
     },
     header: {
@@ -74,16 +71,14 @@ const styles = StyleSheet.create({
         marginRight: Spacing.xs,
     },
     title: {
-        ...Typography.bodySmall,
+        ...Typography.labelMedium,
         color: Colors.light.textSecondary,
-        fontWeight: '600',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     value: {
-        ...Typography.h1,
+        ...Typography.displayLarge,
         color: Colors.light.text,
-        fontWeight: '700',
         marginBottom: Spacing.xs,
     },
     subtitle: {
@@ -97,8 +92,7 @@ const styles = StyleSheet.create({
         marginTop: Spacing.xs,
     },
     trendText: {
-        ...Typography.caption,
-        fontWeight: '600',
+        ...Typography.labelMedium,
         marginRight: Spacing.xs,
     },
     trendLabel: {

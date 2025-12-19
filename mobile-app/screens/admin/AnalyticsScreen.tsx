@@ -8,6 +8,7 @@ import {
     ActivityIndicator,
     TouchableOpacity,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../services/supabase';
 import { dashboardService } from '../../services/dashboard';
 import { LineChart, PieChart, BarChart } from '../../components';
@@ -15,11 +16,12 @@ import { StatCard, SectionHeader } from '../../components';
 import { TicketVolumeAnalysis } from '../../components/analytics/TicketVolumeAnalysis';
 import { PeriodOverPeriodChart } from '../../components/charts/PeriodOverPeriodChart';
 import { ForecastChart } from '../../components/charts/ForecastChart';
-import { TopProductsChart } from '../../components/charts/TopProductsChart';
 import { AdvancedForecastingMethods } from '../../components/analytics/AdvancedForecastingMethods';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export default function AnalyticsScreen() {
+    const navigation = useNavigation<any>();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [timeRange, setTimeRange] = useState('daily'); // 'daily', 'weekly', 'monthly', 'quarterly', 'yearly'
@@ -64,8 +66,6 @@ export default function AnalyticsScreen() {
     const [periodOverPeriodData, setPeriodOverPeriodData] = useState<any[]>([]);
 
     const [forecastData, setForecastData] = useState<any[]>([]);
-
-    const [topProductsData, setTopProductsData] = useState<any[]>([]);
 
     useEffect(() => {
         fetchAnalyticsData();
@@ -141,12 +141,6 @@ export default function AnalyticsScreen() {
             
             setStatusData(pieData as any);
 
-            // Fetch top products from materialized view
-            const productsResult = await dashboardService.getTopProductsBySales(5);
-            if (!productsResult.success) throw productsResult.error;
-            
-            setTopProductsData(productsResult.data || []);
-
             // Calculate statistical analysis
             if (trendsData.length > 0) {
                 const ticketCounts = trendsData.map((item: any) => item.ticket_count || 0);
@@ -211,12 +205,16 @@ export default function AnalyticsScreen() {
     };
 
     const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'pending': return Colors.light.border;
-            case 'action_required': return Colors.light.error;
-            case 'in_progress': return Colors.light.info;
-            case 'near_completion': return Colors.light.warning;
-            case 'completed': return Colors.light.success;
+        const statusLower = status.toLowerCase();
+        switch (statusLower) {
+            case 'received': return Colors.light.warning;
+            case 'diagnosing': return '#FFA500'; // Orange
+            case 'awaiting_parts': return Colors.light.info;
+            case 'repairing': return '#FF6B6B'; // Red
+            case 'quality_check': return '#9B59B6'; // Purple
+            case 'ready': return Colors.light.success;
+            case 'completed': return '#27AE60'; // Dark Green
+            case 'cancelled': return Colors.light.textSecondary;
             default: return Colors.light.textSecondary;
         }
     };
@@ -495,16 +493,28 @@ export default function AnalyticsScreen() {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             showsVerticalScrollIndicator={false}
         >
+            {/* Enhanced Header */}
             <View style={styles.header}>
-                <Text style={styles.title}>Analytics Dashboard</Text>
-                <Text style={styles.subtitle}>Advanced insights and business intelligence</Text>
-                {lastRefreshed && (
-                    <Text style={styles.lastUpdated}>
-                        Last refreshed: {lastRefreshed.toLocaleTimeString()}
-                    </Text>
-                )}
+                <View style={styles.headerContent}>
+                    <View>
+                        <Text style={styles.title}>Analytics Dashboard</Text>
+                        <Text style={styles.subtitle}>Advanced insights and business intelligence</Text>
+                        {lastRefreshed && (
+                            <Text style={styles.lastUpdated}>
+                                Last refreshed: {lastRefreshed.toLocaleTimeString()}
+                            </Text>
+                        )}
+                    </View>
+                    <TouchableOpacity 
+                        style={styles.homeButton}
+                        onPress={() => navigation.navigate('AdminDashboard')}
+                    >
+                        <MaterialIcons name="home" size={24} color="#fff" />
+                    </TouchableOpacity>
+                </View>
             </View>
 
+            {/* Controls Section */}
             <View style={styles.controlsContainer}>
                 <View style={styles.controlsRow}>
                     <TouchableOpacity 
@@ -515,12 +525,20 @@ export default function AnalyticsScreen() {
                         {refreshing ? (
                             <ActivityIndicator size="small" color="#fff" />
                         ) : (
-                            <Text style={styles.refreshButtonText}>Refresh Data</Text>
+                            <Text style={styles.refreshButtonText}>Refresh</Text>
                         )}
                     </TouchableOpacity>
                     {renderRevenueToggle()}
                 </View>
                 {renderTimeFilter()}
+            </View>
+
+            {/* Ticket Status Distribution (moved up for quick visibility) */}
+            <View style={styles.section}>
+                <PieChart
+                    title="Ticket Status Distribution"
+                    data={statusData}
+                />
             </View>
 
             {/* Ticket Trends Section */}
@@ -547,25 +565,12 @@ export default function AnalyticsScreen() {
                 />
             </View>
 
-            {/* Ticket Status Distribution */}
-            <View style={styles.section}>
-                <PieChart
-                    title="Ticket Status Distribution"
-                    data={statusData}
-                />
-            </View>
+            {/* (status distribution moved higher) */}
 
             {/* Period-over-Period Comparison */}
             <View style={styles.section}>
                 <PeriodOverPeriodChart
                     data={periodOverPeriodData}
-                />
-            </View>
-
-            {/* Top Selling Products */}
-            <View style={styles.section}>
-                <TopProductsChart
-                    data={topProductsData}
                 />
             </View>
 
@@ -580,6 +585,15 @@ export default function AnalyticsScreen() {
             <View style={styles.section}>
                 <AdvancedForecastingMethods />
             </View>
+
+            {/* Floating Action Button for quick ticket creation (admin) */}
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={() => navigation.navigate('CreateTicket')}
+                activeOpacity={0.8}
+            >
+                <Text style={styles.fabIcon}>+</Text>
+            </TouchableOpacity>
 
             <View style={styles.bottomSpacing} />
         </ScrollView>
@@ -597,25 +611,44 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     header: {
+        backgroundColor: Colors.light.primary,
+    },
+    headerContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         padding: Spacing.lg,
-        backgroundColor: Colors.light.surface,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.border,
     },
     title: {
-        ...Typography.h2,
-        color: Colors.light.text,
+        fontSize: 28,
         fontWeight: '700',
+        lineHeight: 36,
+        letterSpacing: 0,
+        color: '#fff',
+        marginBottom: Spacing.xs,
     },
     subtitle: {
-        ...Typography.body,
-        color: Colors.light.textSecondary,
-        marginTop: Spacing.xs,
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: 'rgba(255, 255, 255, 0.9)',
+        marginBottom: Spacing.xs,
     },
     lastUpdated: {
-        ...Typography.caption,
-        color: Colors.light.textSecondary,
-        marginTop: Spacing.xs,
+        fontSize: 12,
+        fontWeight: '400',
+        lineHeight: 16,
+        letterSpacing: 0.4,
+        color: 'rgba(255, 255, 255, 0.7)',
+    },
+    homeButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     controlsContainer: {
         padding: Spacing.md,
@@ -627,25 +660,29 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.md,
     },
     refreshButton: {
-        backgroundColor: Colors.light.primary,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.xs,
         borderRadius: BorderRadius.md,
     },
     refreshButtonText: {
-        ...Typography.caption,
-        color: '#fff',
+        fontSize: 12,
         fontWeight: '600',
+        lineHeight: 16,
+        letterSpacing: 0.4,
+        color: '#fff',
     },
     revenueToggleContainer: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     revenueToggleLabel: {
-        ...Typography.body,
+        fontSize: 16,
+        fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
         color: Colors.light.textSecondary,
         marginRight: Spacing.sm,
-        fontWeight: '600',
     },
     revenueToggleButtonGroup: {
         flexDirection: 'row',
@@ -669,9 +706,11 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.light.primary,
     },
     revenueToggleText: {
-        ...Typography.caption,
-        color: Colors.light.textSecondary,
+        fontSize: 12,
         fontWeight: '600',
+        lineHeight: 16,
+        letterSpacing: 0.4,
+        color: Colors.light.textSecondary,
     },
     revenueToggleTextActive: {
         color: '#fff',
@@ -695,9 +734,11 @@ const styles = StyleSheet.create({
         borderColor: Colors.light.primary,
     },
     filterText: {
-        ...Typography.bodySmall,
-        color: Colors.light.textSecondary,
+        fontSize: 14,
         fontWeight: '600',
+        lineHeight: 20,
+        letterSpacing: 0.25,
+        color: Colors.light.textSecondary,
     },
     filterTextActive: {
         color: '#fff',
@@ -717,5 +758,27 @@ const styles = StyleSheet.create({
     },
     bottomSpacing: {
         height: Spacing.xl,
+    },
+    fab: {
+        position: 'absolute',
+        bottom: 24,
+        right: 24,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: Colors.light.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+    },
+    fabIcon: {
+        fontSize: 32,
+        color: '#fff',
+        fontWeight: 'bold',
+        marginTop: -2,
     },
 });

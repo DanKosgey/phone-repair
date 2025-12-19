@@ -13,6 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../services/supabase';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
 import { useAuth } from '../../hooks/useAuth';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface SecondHandProduct {
     id: string;
@@ -169,10 +170,20 @@ export default function SecondHandProductsScreen({ navigation }: any) {
             >
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.title}>Second-Hand Products</Text>
-                    <Text style={styles.subtitle}>
-                        Manage all second-hand product listings
-                    </Text>
+                    <View style={styles.headerContent}>
+                        <View>
+                            <Text style={styles.title}>Second-Hand Products</Text>
+                            <Text style={styles.subtitle}>
+                                Manage all second-hand product listings
+                            </Text>
+                        </View>
+                        <TouchableOpacity 
+                            style={styles.homeButton}
+                            onPress={() => navigation.navigate('AdminDashboard')}
+                        >
+                            <MaterialIcons name="home" size={24} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* Summary Cards */}
@@ -456,19 +467,38 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     header: {
-        padding: Spacing.lg,
-        backgroundColor: Colors.light.surface,
+        backgroundColor: Colors.light.primary,
         borderBottomWidth: 1,
         borderBottomColor: Colors.light.border,
     },
+    headerContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: Spacing.lg,
+    },
     title: {
-        ...Typography.h2,
-        color: Colors.light.text,
+        fontSize: 28,
+        fontWeight: '700',
+        lineHeight: 36,
+        letterSpacing: 0,
+        color: '#fff',
         marginBottom: Spacing.xs,
     },
     subtitle: {
-        ...Typography.body,
-        color: Colors.light.textSecondary,
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: 'rgba(255, 255, 255, 0.9)',
+    },
+    homeButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     summaryContainer: {
         flexDirection: 'row',
@@ -485,19 +515,26 @@ const styles = StyleSheet.create({
         borderColor: Colors.light.border,
     },
     summaryValue: {
-        ...Typography.h3,
-        color: Colors.light.text,
+        fontSize: 24,
         fontWeight: 'bold',
+        lineHeight: 32,
+        letterSpacing: 0,
+        color: Colors.light.text,
         marginBottom: Spacing.xs,
     },
     summaryLabel: {
-        ...Typography.body,
-        color: Colors.light.text,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.text,
         marginBottom: Spacing.xs,
     },
     summarySubtext: {
-        ...Typography.bodySmall,
+        fontSize: 12,
+        fontWeight: '400',
+        lineHeight: 16,
+        letterSpacing: 0.4,
         color: Colors.light.textSecondary,
     },
     searchContainer: {
@@ -513,7 +550,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.md,
         borderWidth: 1,
         borderColor: Colors.light.border,
-        ...Typography.body,
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
         marginBottom: Spacing.md,
     },
     filterRow: {
@@ -535,7 +575,10 @@ const styles = StyleSheet.create({
         borderColor: Colors.light.primary,
     },
     filterButtonText: {
-        ...Typography.bodySmall,
+        fontSize: 12,
+        fontWeight: '400',
+        lineHeight: 16,
+        letterSpacing: 0.4,
         color: Colors.light.textSecondary,
     },
     activeFilterText: {
@@ -559,12 +602,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     tableHeaderText: {
-        ...Typography.body,
-        color: Colors.light.text,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.text,
     },
     sortArrow: {
-        ...Typography.body,
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
         color: Colors.light.primary,
         marginLeft: Spacing.xs,
     },
@@ -581,23 +629,32 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.sm,
     },
     productId: {
-        ...Typography.bodySmall,
-        color: Colors.light.textSecondary,
+        fontSize: 12,
         fontWeight: '600',
+        lineHeight: 16,
+        letterSpacing: 0.4,
+        color: Colors.light.textSecondary,
     },
     sellerName: {
-        ...Typography.body,
-        color: Colors.light.text,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.text,
     },
     sellerEmail: {
-        ...Typography.bodySmall,
+        fontSize: 12,
+        fontWeight: '400',
+        lineHeight: 16,
+        letterSpacing: 0.4,
         color: Colors.light.textSecondary,
     },
     productPrice: {
-        ...Typography.body,
-        color: Colors.light.primary,
+        fontSize: 16,
         fontWeight: '700',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.primary,
     },
     conditionBadge: {
         alignSelf: 'flex-start',
@@ -606,8 +663,10 @@ const styles = StyleSheet.create({
         borderRadius: BorderRadius.sm,
     },
     conditionText: {
-        ...Typography.caption,
+        fontSize: 12,
         fontWeight: '600',
+        lineHeight: 16,
+        letterSpacing: 0.4,
     },
     statusBadge: {
         alignSelf: 'flex-start',
@@ -616,17 +675,21 @@ const styles = StyleSheet.create({
         borderRadius: BorderRadius.sm,
     },
     statusText: {
-        ...Typography.caption,
+        fontSize: 12,
         fontWeight: '600',
+        lineHeight: 16,
+        letterSpacing: 0.4,
     },
     emptyState: {
         padding: Spacing.xxl,
         alignItems: 'center',
     },
     emptyText: {
-        ...Typography.body,
-        color: Colors.light.text,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.text,
     },
     fab: {
         position: 'absolute',

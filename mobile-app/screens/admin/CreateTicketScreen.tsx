@@ -1,665 +1,343 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TextInput,
-    TouchableOpacity,
-    Alert,
-    ActivityIndicator,
-    Image,
-    Modal,
+    View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
+    Alert, ActivityIndicator, Image, Modal, KeyboardAvoidingView, Platform
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
-import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
+import { Colors } from '../../constants/theme';
 import { useAuth } from '../../hooks/useAuth';
 import { CameraCapture } from '../../components/CameraCapture';
+import { CustomerSearch } from '../../components/tickets/CustomerSearch';
+import { CustomerModal } from '../../components/tickets/CustomerModal';
+import { uploadPhoto, uploadMultiplePhotos } from '../../utils/photoUpload';
+import { getCustomerById } from '../../services/customers';
+
+const DEVICE_TYPES = ['Smartphone', 'Tablet', 'Laptop', 'Other'];
+const PRIORITIES = [
+    { label: 'Low', value: 'low', color: '#10B981' },
+    { label: 'Normal', value: 'normal', color: '#3B82F6' },
+    { label: 'Urgent', value: 'urgent', color: '#EF4444' }
+];
 
 export default function CreateTicketScreen({ navigation }: any) {
     const { user } = useAuth();
+    const [customer, setCustomer] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
+    const [devicePhotos, setDevicePhotos] = useState<string[]>([]);
+    const [showCamera, setShowCamera] = useState(false);
+    const [showCustomerModal, setShowCustomerModal] = useState(false);
+
     const [formData, setFormData] = useState({
-        customerName: '',
-        customerEmail: '',
-        customerPhone: '',
         deviceType: '',
         deviceBrand: '',
         deviceModel: '',
         issueDescription: '',
         priority: 'normal',
-        estimatedCompletion: '',
-        notes: '',
+        estimatedCost: '', // Add estimated cost field
     });
-    const [loading, setLoading] = useState(false);
-    const [devicePhotos, setDevicePhotos] = useState<string[]>([]);
-    const [showCamera, setShowCamera] = useState(false);
 
-    const deviceTypes = ['Smartphone', 'Tablet', 'Laptop', 'Smartwatch', 'Other'];
-    const priorities = [
-        { label: 'Low', value: 'low' },
-        { label: 'Normal', value: 'normal' },
-        { label: 'High', value: 'high' },
-        { label: 'Urgent', value: 'urgent' },
-    ];
+    // --- Validation Logic ---
+    const isFormValid = !!(customer && formData.deviceType && formData.deviceBrand && formData.deviceModel && formData.issueDescription);
+
+    const getButtonLabel = () => {
+        if (loading) return "Processing...";
+        if (!customer) return "Select Customer";
+        if (!formData.deviceType) return "Select Device Type";
+        if (!formData.deviceBrand || !formData.deviceModel) return "Enter Device Info";
+        if (!formData.issueDescription) return "Describe the Issue";
+        return "Create Ticket";
+    };
 
     const handleChange = (field: string, value: string) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: value
-        }));
-    };
-
-    const validateForm = () => {
-        if (!formData.customerName.trim()) {
-            Alert.alert('Error', 'Customer name is required');
-            return false;
-        }
-        if (!formData.deviceType) {
-            Alert.alert('Error', 'Device type is required');
-            return false;
-        }
-        if (!formData.deviceBrand.trim()) {
-            Alert.alert('Error', 'Device brand is required');
-            return false;
-        }
-        if (!formData.deviceModel.trim()) {
-            Alert.alert('Error', 'Device model is required');
-            return false;
-        }
-        if (!formData.issueDescription.trim()) {
-            Alert.alert('Error', 'Issue description is required');
-            return false;
-        }
-        if (formData.issueDescription.trim().length < 10) {
-            Alert.alert('Error', 'Issue description must be at least 10 characters');
-            return false;
-        }
-        return true;
-    };
-
-    const generateTicketNumber = () => {
-        const timestamp = Date.now().toString().slice(-6);
-        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-        return `TKT-${timestamp}${random}`;
-    };
-
-    const handleCameraCapture = (uri: string) => {
-        // Limit to 5 photos
-        if (devicePhotos.length >= 5) {
-            Alert.alert('Error', 'You can only upload up to 5 photos');
-            return;
-        }
-        
-        setDevicePhotos(prev => [...prev, uri]);
-        setShowCamera(false);
-    };
-
-    const removePhoto = (index: number) => {
-        setDevicePhotos(prev => prev.filter((_, i) => i !== index));
-    };
-
-    const uploadPhotosToSupabase = async (photoUris: string[]): Promise<string[]> => {
-        try {
-            const photoUrls: string[] = [];
-            
-            for (const uri of photoUris) {
-                // Convert URI to blob
-                const response = await fetch(uri);
-                const blob = await response.blob();
-                
-                // Generate unique filename
-                const fileName = `ticket_${Date.now()}_${Math.random().toString(36).substring(2, 15)}.jpg`;
-                
-                // Upload to Supabase storage
-                const { data, error } = await supabase.storage
-                    .from('ticket-photos')
-                    .upload(fileName, blob, {
-                        cacheControl: '3600',
-                        upsert: false
-                    });
-                
-                if (error) throw error;
-                
-                // Get public URL
-                const { data: { publicUrl } } = supabase.storage
-                    .from('ticket-photos')
-                    .getPublicUrl(fileName);
-                
-                photoUrls.push(publicUrl);
-            }
-            
-            return photoUrls;
-        } catch (error) {
-            console.error('Error uploading photos:', error);
-            throw error;
-        }
+        setFormData(prev => ({ ...prev, [field]: value }));
     };
 
     const handleSubmit = async () => {
-        if (!validateForm()) return;
+        if (!isFormValid) {
+            Alert.alert("Incomplete Form", "Please fill in all required fields marked with *");
+            return;
+        }
 
         setLoading(true);
         try {
-            // First, create or find the customer
-            let customerId = null;
-            let { data: customer, error: customerError } = await supabase
-                .from('customers')
-                .select('id')
-                .eq('email', formData.customerEmail)
-                .single();
-
-            if (customerError || !customer) {
-                // Create new customer
-                const { data: newCustomer, error: createError } = await supabase
-                    .from('customers')
-                    .insert([
-                        {
-                            name: formData.customerName,
-                            email: formData.customerEmail,
-                            phone: formData.customerPhone || null,
-                        }
-                    ])
-                    .select()
-                    .single();
-
-                if (createError) throw createError;
-                customerId = newCustomer.id;
-            } else {
-                customerId = customer.id;
-                // Update existing customer info if needed
-                await supabase
-                    .from('customers')
-                    .update({
-                        name: formData.customerName,
-                        phone: formData.customerPhone || null,
-                    })
-                    .eq('id', customerId);
+            console.log('[CREATE_TICKET] Starting ticket creation process');
+            console.log('[CREATE_TICKET] Customer data:', customer); // Add this line to log customer data
+            
+            // Fetch complete customer data to ensure we have all fields
+            console.log('[CREATE_TICKET] Fetching complete customer data');
+            const completeCustomer = await getCustomerById(customer.id);
+            console.log('[CREATE_TICKET] Complete customer data:', completeCustomer);
+            
+            if (!completeCustomer) {
+                throw new Error('Customer not found');
             }
-
-            // Upload device photos if any
+            
+            // 1. Upload Photos using the improved utility
             let photoUrls: string[] = [];
             if (devicePhotos.length > 0) {
-                photoUrls = await uploadPhotosToSupabase(devicePhotos);
+                console.log('[CREATE_TICKET] Uploading photos', { count: devicePhotos.length });
+                try {
+                    // Use sequential upload for better reliability on mobile networks
+                    const uploadResults = await uploadMultiplePhotos(devicePhotos);
+                    photoUrls = uploadResults.map(result => result.url);
+                    console.log('[CREATE_TICKET] Photos uploaded successfully', { count: photoUrls.length });
+                } catch (uploadError: any) {
+                    console.error('[CREATE_TICKET] Photo upload failed', { 
+                        error: uploadError.message || String(uploadError) 
+                    });
+                    throw new Error(`Photo upload failed: ${uploadError.message || String(uploadError)}`);
+                }
+            } else {
+                console.log('[CREATE_TICKET] No photos to upload');
             }
 
-            // Create the ticket
+            // 2. Insert Ticket Record
+            console.log('[CREATE_TICKET] Creating ticket record');
+            
+            // Format date as YYYYMMDD
+            const now = new Date();
+            const dateString = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
+            
+            // Generate random 4-digit number
+            const randomNumber = Math.floor(1000 + Math.random() * 9000);
+            
             const ticketData = {
-                ticket_number: generateTicketNumber(),
-                customer_id: customerId,
-                customer_name: formData.customerName,
-                customer_email: formData.customerEmail,
-                customer_phone: formData.customerPhone || '',
+                ticket_number: `TKT-${dateString}-${randomNumber}`, // Format: TKT-YYYYMMDD-XXXX
+                customer_id: completeCustomer.id,
+                customer_name: completeCustomer.name, // Add customer name to satisfy not-null constraint
+                customer_phone: completeCustomer.phone || '', // Add customer phone number
                 device_type: formData.deviceType,
                 device_brand: formData.deviceBrand,
                 device_model: formData.deviceModel,
                 issue_description: formData.issueDescription,
                 priority: formData.priority,
-                notes: formData.notes || null,
+                estimated_cost: formData.estimatedCost ? Number(formData.estimatedCost) : null, // Add estimated cost
+                device_photos: photoUrls,
                 status: 'received',
-                estimated_completion_date: formData.estimatedCompletion || null,
-                created_at: new Date().toISOString(),
-                user_id: user?.id,
-                device_photos: photoUrls.length > 0 ? photoUrls : null,
+                user_id: user?.id
             };
+            
+            console.log('[CREATE_TICKET] Ticket data prepared', { ticketData });
+            console.log('[CREATE_TICKET] Customer phone value:', completeCustomer.phone); // Add this line
 
-            const { data, error } = await supabase
-                .from('tickets')
-                .insert([ticketData])
-                .select()
-                .single();
+            const { error: dbError } = await supabase.from('tickets').insert([ticketData]);
 
-            if (error) throw error;
+            if (dbError) {
+                console.error('[CREATE_TICKET] Database insert failed', { error: dbError.message });
+                throw dbError;
+            }
 
-            Alert.alert(
-                'Success',
-                `Ticket #${data.ticket_number} created successfully!`,
-                [
-                    {
-                        text: 'View Ticket',
-                        onPress: () => navigation.replace('TicketDetail', { id: data.id }),
-                    },
-                    {
-                        text: 'Create Another',
-                        onPress: () => {
-                            // Reset form
-                            setFormData({
-                                customerName: '',
-                                customerEmail: '',
-                                customerPhone: '',
-                                deviceType: '',
-                                deviceBrand: '',
-                                deviceModel: '',
-                                issueDescription: '',
-                                priority: 'normal',
-                                estimatedCompletion: '',
-                                notes: '',
-                            });
-                            setDevicePhotos([]);
-                        },
-                    },
-                ]
-            );
+            console.log('[CREATE_TICKET] Ticket created successfully');
+            Alert.alert("Success", "Ticket created successfully!", [
+                { text: "OK", onPress: () => navigation.goBack() }
+            ]);
         } catch (error: any) {
-            console.error('Error creating ticket:', error);
-            Alert.alert('Error', 'Failed to create ticket: ' + (error.message || 'Unknown error'));
+            console.error('[CREATE_TICKET] Critical error', error);
+            Alert.alert("Error", error.message || "Failed to create ticket. Please check your connection.");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <ScrollView style={styles.container}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Create New Ticket</Text>
-                <Text style={styles.subtitle}>Fill in the details to create a new repair ticket</Text>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                    <MaterialIcons name="arrow-back" size={26} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>New Repair Ticket</Text>
+                <View style={{ width: 40 }} />
             </View>
 
-            <View style={styles.form}>
-                {/* Customer Information */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Customer Information</Text>
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+                {/* Step 1: Customer */}
+                <View style={styles.card}>
+                    <View style={styles.sectionHeader}>
+                        <MaterialIcons name="person-outline" size={22} color={Colors.light.primary} />
+                        <Text style={styles.sectionTitle}>Customer Info *</Text>
+                    </View>
+                    <CustomerSearch 
+                        onCustomerSelect={setCustomer}
+                        onAddNewCustomer={() => setShowCustomerModal(true)}
+                        initialCustomer={customer}
+                    />
+                </View>
+
+                {/* Step 2: Device Details */}
+                <View style={styles.card}>
+                    <View style={styles.sectionHeader}>
+                        <MaterialIcons name="devices" size={22} color={Colors.light.primary} />
+                        <Text style={styles.sectionTitle}>Device Details *</Text>
+                    </View>
                     
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Full Name *</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={formData.customerName}
-                            onChangeText={(value) => handleChange('customerName', value)}
-                            placeholder="Enter customer name"
-                        />
+                    <View style={styles.chipRow}>
+                        {DEVICE_TYPES.map(type => (
+                            <TouchableOpacity 
+                                key={type}
+                                onPress={() => handleChange('deviceType', type)}
+                                style={[styles.chip, formData.deviceType === type && styles.chipActive]}
+                            >
+                                <Text style={[styles.chipText, formData.deviceType === type && styles.chipTextActive]}>{type}</Text>
+                            </TouchableOpacity>
+                        ))}
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Email Address *</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={formData.customerEmail}
-                            onChangeText={(value) => handleChange('customerEmail', value)}
-                            placeholder="Enter customer email"
-                            keyboardType="email-address"
-                            autoCapitalize="none"
+                    <View style={styles.inputGrid}>
+                        <TextInput 
+                            style={[styles.input, { flex: 1 }]} 
+                            placeholder="Brand (e.g. Apple)" 
+                            value={formData.deviceBrand}
+                            onChangeText={(v) => handleChange('deviceBrand', v)}
                         />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Phone Number</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={formData.customerPhone}
-                            onChangeText={(value) => handleChange('customerPhone', value)}
-                            placeholder="Enter phone number"
-                            keyboardType="phone-pad"
+                        <TextInput 
+                            style={[styles.input, { flex: 1 }]} 
+                            placeholder="Model (e.g. iPhone 13)" 
+                            value={formData.deviceModel}
+                            onChangeText={(v) => handleChange('deviceModel', v)}
                         />
                     </View>
                 </View>
 
-                {/* Device Information */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Device Information</Text>
-                    
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Device Type *</Text>
-                        <View style={styles.pickerContainer}>
-                            <TextInput
-                                style={styles.picker}
-                                value={formData.deviceType}
-                                onChangeText={(value) => handleChange('deviceType', value)}
-                                placeholder="Select device type"
-                            />
-                        </View>
-                        <View style={styles.chipContainer}>
-                            {deviceTypes.map((type) => (
-                                <TouchableOpacity
-                                    key={type}
-                                    style={[
-                                        styles.chip,
-                                        formData.deviceType === type && styles.chipSelected
-                                    ]}
-                                    onPress={() => handleChange('deviceType', type)}
-                                >
-                                    <Text style={[
-                                        styles.chipText,
-                                        formData.deviceType === type && styles.chipTextSelected
-                                    ]}>
-                                        {type}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                {/* Step 3: Issue & Priority */}
+                <View style={styles.card}>
+                    <View style={styles.sectionHeader}>
+                        <MaterialIcons name="build" size={22} color={Colors.light.primary} />
+                        <Text style={styles.sectionTitle}>Repair Info *</Text>
                     </View>
 
-                    <View style={styles.row}>
-                        <View style={[styles.inputGroup, styles.flexOne]}>
-                            <Text style={styles.label}>Brand *</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={formData.deviceBrand}
-                                onChangeText={(value) => handleChange('deviceBrand', value)}
-                                placeholder="e.g., Apple, Samsung"
-                            />
-                        </View>
-
-                        <View style={[styles.inputGroup, styles.flexOne]}>
-                            <Text style={styles.label}>Model *</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={formData.deviceModel}
-                                onChangeText={(value) => handleChange('deviceModel', value)}
-                                placeholder="e.g., iPhone 13, Galaxy S21"
-                            />
-                        </View>
+                    <Text style={styles.label}>Priority Level</Text>
+                    <View style={styles.priorityRow}>
+                        {PRIORITIES.map(p => (
+                            <TouchableOpacity 
+                                key={p.value}
+                                onPress={() => handleChange('priority', p.value)}
+                                style={[
+                                    styles.priorityBtn, 
+                                    formData.priority === p.value && { backgroundColor: p.color, borderColor: p.color }
+                                ]}
+                            >
+                                <Text style={[styles.priorityText, formData.priority === p.value && { color: '#fff' }]}>{p.label}</Text>
+                            </TouchableOpacity>
+                        ))}
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Issue Description *</Text>
-                        <TextInput
-                            style={[styles.input, styles.textArea]}
-                            value={formData.issueDescription}
-                            onChangeText={(value) => handleChange('issueDescription', value)}
-                            placeholder="Describe the issue in detail..."
-                            multiline
-                            numberOfLines={4}
-                            textAlignVertical="top"
-                        />
-                    </View>
+                    <Text style={styles.label}>Estimated Cost (KSh)</Text>
+                    <TextInput 
+                        style={styles.input}
+                        placeholder="e.g., 5000"
+                        value={formData.estimatedCost}
+                        onChangeText={(v) => handleChange('estimatedCost', v)}
+                        keyboardType="numeric"
+                    />
+
+                    <TextInput 
+                        style={[styles.input, styles.textArea]} 
+                        placeholder="Describe the problem in detail..." 
+                        multiline
+                        value={formData.issueDescription}
+                        onChangeText={(v) => handleChange('issueDescription', v)}
+                    />
                 </View>
 
-                {/* Additional Information */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Additional Information</Text>
-                    
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Priority</Text>
-                        <View style={styles.pickerContainer}>
-                            <TextInput
-                                style={styles.picker}
-                                value={formData.priority}
-                                onChangeText={(value) => handleChange('priority', value)}
-                                placeholder="Select priority"
-                            />
-                        </View>
-                        <View style={styles.chipContainer}>
-                            {priorities.map((priority) => (
-                                <TouchableOpacity
-                                    key={priority.value}
-                                    style={[
-                                        styles.chip,
-                                        formData.priority === priority.value && styles.chipSelected
-                                    ]}
-                                    onPress={() => handleChange('priority', priority.value)}
-                                >
-                                    <Text style={[
-                                        styles.chipText,
-                                        formData.priority === priority.value && styles.chipTextSelected
-                                    ]}>
-                                        {priority.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Estimated Completion Date</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={formData.estimatedCompletion}
-                            onChangeText={(value) => handleChange('estimatedCompletion', value)}
-                            placeholder="YYYY-MM-DD"
-                        />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Notes</Text>
-                        <TextInput
-                            style={[styles.input, styles.textArea]}
-                            value={formData.notes}
-                            onChangeText={(value) => handleChange('notes', value)}
-                            placeholder="Any additional notes..."
-                            multiline
-                            numberOfLines={3}
-                            textAlignVertical="top"
-                        />
-                    </View>
-                </View>
-
-                {/* Device Photos */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Device Photos</Text>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Take photos of the device</Text>
-                        <Text style={styles.helperText}>You can take up to 5 photos of the device</Text>
-                        
-                        <TouchableOpacity 
-                            style={styles.photoButton}
-                            onPress={() => setShowCamera(true)}
-                            disabled={devicePhotos.length >= 5}
-                        >
-                            <Text style={styles.photoButtonText}>📷 Take Photo</Text>
+                {/* Step 4: Photos */}
+                <View style={styles.card}>
+                    <View style={styles.rowBetween}>
+                        <Text style={styles.sectionTitle}>Photos (Optional)</Text>
+                        <TouchableOpacity style={styles.addBtn} onPress={() => setShowCamera(true)}>
+                            <MaterialIcons name="add-a-photo" size={20} color={Colors.light.primary} />
+                            <Text style={styles.addBtnText}>Take Photo</Text>
                         </TouchableOpacity>
-                        
-                        {devicePhotos.length > 0 && (
-                            <View style={styles.photoPreviewContainer}>
-                                {devicePhotos.map((uri, index) => (
-                                    <View key={index} style={styles.photoPreviewWrapper}>
-                                        <Image source={{ uri }} style={styles.photoPreview} />
-                                        <TouchableOpacity 
-                                            style={styles.removePhotoButton}
-                                            onPress={() => removePhoto(index)}
-                                        >
-                                            <Text style={styles.removePhotoText}>✕</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-                        
-                        <Text style={styles.photoCounter}>
-                            {devicePhotos.length}/5 photos
-                        </Text>
                     </View>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoList}>
+                        {devicePhotos.map((uri, i) => (
+                            <View key={i} style={styles.photoContainer}>
+                                <Image source={{ uri }} style={styles.photo} />
+                                <TouchableOpacity 
+                                    style={styles.removePhoto}
+                                    onPress={() => setDevicePhotos(prev => prev.filter((_, idx) => idx !== i))}
+                                >
+                                    <MaterialIcons name="close" size={14} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                        ))}
+                    </ScrollView>
                 </View>
 
                 {/* Submit Button */}
                 <TouchableOpacity
-                    style={[styles.submitButton, loading && styles.buttonDisabled]}
+                    activeOpacity={0.8}
                     onPress={handleSubmit}
+                    style={[styles.submitButton, !isFormValid && styles.submitButtonDisabled]}
                     disabled={loading}
                 >
                     {loading ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
-                        <Text style={styles.submitButtonText}>Create Ticket</Text>
+                        <Text style={styles.submitButtonText}>{getButtonLabel()}</Text>
                     )}
                 </TouchableOpacity>
-            </View>
-            
-            {/* Camera Modal */}
-            <Modal
-                visible={showCamera}
-                animationType="slide"
-                onRequestClose={() => setShowCamera(false)}
-            >
+            </ScrollView>
+
+            {/* Modals */}
+            <Modal visible={showCamera} animationType="slide">
                 <CameraCapture 
-                    onCapture={handleCameraCapture} 
+                    onCapture={(uri) => { setDevicePhotos(p => [...p, uri]); setShowCamera(false); }} 
                     onCancel={() => setShowCamera(false)} 
                 />
             </Modal>
-        </ScrollView>
+            
+            <CustomerModal 
+                visible={showCustomerModal} 
+                onClose={() => setShowCustomerModal(false)}
+                onCustomerCreated={(c) => { setCustomer(c); setShowCustomerModal(false); }}
+            />
+        </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.light.background,
+    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    header: { 
+        backgroundColor: Colors.light.primary, 
+        height: 100, paddingTop: 40, paddingHorizontal: 15,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
     },
-    header: {
-        padding: Spacing.lg,
-        backgroundColor: Colors.light.surface,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.border,
+    backBtn: { padding: 5 },
+    headerTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+    scrollContent: { padding: 16, paddingBottom: 50 },
+    card: { 
+        backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16,
+        borderWidth: 1, borderColor: '#E2E8F0',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2
     },
-    title: {
-        ...Typography.h2,
-        color: Colors.light.text,
-        marginBottom: Spacing.xs,
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+    sectionTitle: { fontSize: 16, fontWeight: '700', marginLeft: 8, color: '#1E293B' },
+    label: { fontSize: 13, color: '#64748B', marginBottom: 8, fontWeight: '600' },
+    input: { 
+        backgroundColor: '#F1F5F9', borderRadius: 10, padding: 14, fontSize: 16, color: '#334155', marginBottom: 12 
     },
-    subtitle: {
-        ...Typography.body,
-        color: Colors.light.textSecondary,
+    inputGrid: { flexDirection: 'row', gap: 10 },
+    textArea: { height: 100, textAlignVertical: 'top' },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 15 },
+    chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F1F5F9' },
+    chipActive: { backgroundColor: Colors.light.primary },
+    chipText: { color: '#64748B', fontSize: 14, fontWeight: '500' },
+    chipTextActive: { color: '#fff' },
+    priorityRow: { flexDirection: 'row', gap: 8, marginBottom: 15 },
+    priorityBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#CBD5E1', alignItems: 'center' },
+    priorityText: { fontWeight: '600', color: '#64748B' },
+    rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    addBtn: { flexDirection: 'row', alignItems: 'center' },
+    addBtnText: { color: Colors.light.primary, fontWeight: '600', marginLeft: 5 },
+    photoList: { flexDirection: 'row' },
+    photoContainer: { position: 'relative', marginRight: 12 },
+    photo: { width: 70, height: 70, borderRadius: 12 },
+    removePhoto: { position: 'absolute', top: -5, right: -5, backgroundColor: '#EF4444', borderRadius: 10, padding: 2 },
+    submitButton: { 
+        backgroundColor: Colors.light.primary, padding: 18, borderRadius: 14, 
+        alignItems: 'center', marginTop: 10
     },
-    form: {
-        padding: Spacing.lg,
-    },
-    section: {
-        marginBottom: Spacing.xl,
-        backgroundColor: Colors.light.surface,
-        borderRadius: BorderRadius.lg,
-        borderWidth: 1,
-        borderColor: Colors.light.border,
-        overflow: 'hidden',
-    },
-    sectionTitle: {
-        ...Typography.h3,
-        color: Colors.light.text,
-        padding: Spacing.lg,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.border,
-    },
-    inputGroup: {
-        padding: Spacing.lg,
-        paddingTop: Spacing.md,
-    },
-    label: {
-        ...Typography.body,
-        color: Colors.light.text,
-        fontWeight: '600',
-        marginBottom: Spacing.sm,
-    },
-    input: {
-        backgroundColor: Colors.light.background,
-        borderWidth: 1,
-        borderColor: Colors.light.border,
-        borderRadius: BorderRadius.md,
-        padding: Spacing.md,
-        ...Typography.body,
-    },
-    textArea: {
-        minHeight: 100,
-        textAlignVertical: 'top',
-    },
-    pickerContainer: {
-        backgroundColor: Colors.light.background,
-        borderWidth: 1,
-        borderColor: Colors.light.border,
-        borderRadius: BorderRadius.md,
-        marginBottom: Spacing.md,
-    },
-    picker: {
-        ...Typography.body,
-        padding: Spacing.md,
-    },
-    chipContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: Spacing.sm,
-    },
-    chip: {
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        backgroundColor: Colors.light.background,
-        borderRadius: BorderRadius.md,
-        borderWidth: 1,
-        borderColor: Colors.light.border,
-    },
-    chipSelected: {
-        backgroundColor: Colors.light.primary,
-        borderColor: Colors.light.primary,
-    },
-    chipText: {
-        ...Typography.bodySmall,
-        color: Colors.light.text,
-    },
-    chipTextSelected: {
-        color: Colors.light.background,
-        fontWeight: '600',
-    },
-    row: {
-        flexDirection: 'row',
-        gap: Spacing.md,
-    },
-    flexOne: {
-        flex: 1,
-    },
-    buttonDisabled: {
-        opacity: 0.7,
-    },
-    submitButton: {
-        backgroundColor: Colors.light.primary,
-        padding: Spacing.md,
-        borderRadius: BorderRadius.md,
-        alignItems: 'center',
-        marginTop: Spacing.lg,
-    },
-    submitButtonText: {
-        ...Typography.body,
-        color: Colors.light.background,
-        fontWeight: '600',
-    },
-    helperText: {
-        ...Typography.bodySmall,
-        color: Colors.light.textSecondary,
-        marginTop: Spacing.xs,
-        fontStyle: 'italic',
-    },
-    photoButton: {
-        backgroundColor: Colors.light.primary,
-        padding: Spacing.md,
-        borderRadius: BorderRadius.md,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginVertical: Spacing.md,
-    },
-    photoButtonText: {
-        ...Typography.body,
-        color: Colors.light.background,
-        fontWeight: '600',
-    },
-    photoPreviewContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: Spacing.sm,
-        marginTop: Spacing.md,
-    },
-    photoPreviewWrapper: {
-        position: 'relative',
-    },
-    photoPreview: {
-        width: 80,
-        height: 80,
-        borderRadius: BorderRadius.md,
-    },
-    removePhotoButton: {
-        position: 'absolute',
-        top: -8,
-        right: -8,
-        backgroundColor: Colors.light.error,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    removePhotoText: {
-        color: Colors.light.background,
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    photoCounter: {
-        ...Typography.bodySmall,
-        color: Colors.light.textSecondary,
-        textAlign: 'right',
-        marginTop: Spacing.xs,
-    },
+    submitButtonDisabled: { backgroundColor: '#94A3B8' },
+    submitButtonText: { color: '#fff', fontWeight: '800', fontSize: 17 }
 });

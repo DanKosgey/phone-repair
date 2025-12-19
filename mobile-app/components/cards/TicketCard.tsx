@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, View, Image, Linking } from 'react-native';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
 
 interface Ticket {
@@ -10,6 +10,7 @@ interface Ticket {
     status: string;
     created_at: string;
     customer_name?: string;
+    device_photos?: string[]; // Add device photos to the interface
 }
 
 interface TicketCardProps {
@@ -20,22 +21,29 @@ interface TicketCardProps {
 export const TicketCard: React.FC<TicketCardProps> = ({ ticket, onPress }) => {
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
-            case 'pending':
-            case 'action_required':
-                return Colors.light.warning;
-            case 'in_progress':
+            case 'received':
                 return Colors.light.info;
-            case 'near_completion':
+            case 'diagnosing':
+                return Colors.light.warning;
+            case 'awaiting_parts':
+                return Colors.light.error;
+            case 'repairing':
                 return Colors.light.secondary;
+            case 'quality_check':
+                return Colors.light.primary;
+            case 'ready':
+                return Colors.light.success;
             case 'completed':
                 return Colors.light.success;
+            case 'cancelled':
+                return Colors.light.text;
             default:
                 return Colors.light.textSecondary;
         }
     };
 
     const formatStatus = (status: string) => {
-        return status.replace(/_/g, ' ').toUpperCase();
+        return status.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
     };
 
     const formatDate = (dateString: string) => {
@@ -45,6 +53,11 @@ export const TicketCard: React.FC<TicketCardProps> = ({ ticket, onPress }) => {
             day: 'numeric',
             year: 'numeric',
         });
+    };
+
+    const handlePhotoPress = (photoUrl: string) => {
+        // Open photo in browser for now (can be enhanced with a modal view)
+        Linking.openURL(photoUrl).catch(err => console.error('Error opening photo:', err));
     };
 
     return (
@@ -71,6 +84,25 @@ export const TicketCard: React.FC<TicketCardProps> = ({ ticket, onPress }) => {
             <Text style={styles.issueDescription} numberOfLines={2}>
                 {ticket.issue_description}
             </Text>
+
+            {/* Show photo thumbnail if available */}
+            {ticket.device_photos && ticket.device_photos.length > 0 && (
+                <TouchableOpacity 
+                    style={styles.photoThumbnailContainer}
+                    onPress={() => handlePhotoPress(ticket.device_photos![0])}
+                >
+                    <Image 
+                        source={{ uri: ticket.device_photos[0] }} 
+                        style={styles.photoThumbnail}
+                        resizeMode="cover"
+                    />
+                    {ticket.device_photos.length > 1 && (
+                        <View style={styles.photoCountBadge}>
+                            <Text style={styles.photoCountText}>+{ticket.device_photos.length - 1}</Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
+            )}
 
             <View style={styles.footer}>
                 <Text style={styles.date}>📅 {formatDate(ticket.created_at)}</Text>
@@ -103,7 +135,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     ticketNumber: {
-        ...Typography.body,
+        ...Typography.headlineSmall,
         color: Colors.light.primary,
         fontWeight: '700',
         marginBottom: Spacing.xs / 2,
@@ -123,16 +155,45 @@ const styles = StyleSheet.create({
         fontSize: 10,
     },
     deviceType: {
-        ...Typography.body,
+        ...Typography.bodyLarge,
         color: Colors.light.text,
         fontWeight: '600',
         marginBottom: Spacing.xs,
     },
     issueDescription: {
-        ...Typography.bodySmall,
+        ...Typography.bodyMedium,
         color: Colors.light.textSecondary,
         marginBottom: Spacing.sm,
         lineHeight: 20,
+    },
+    photoThumbnailContainer: {
+        position: 'relative',
+        alignSelf: 'flex-end',
+        marginBottom: Spacing.sm,
+    },
+    photoThumbnail: {
+        width: 50,
+        height: 50,
+        borderRadius: BorderRadius.sm,
+        borderWidth: 1,
+        borderColor: Colors.light.border,
+    },
+    photoCountBadge: {
+        position: 'absolute',
+        top: -5,
+        right: -5,
+        backgroundColor: Colors.light.primary,
+        borderRadius: 10,
+        width: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    photoCountText: {
+        ...Typography.caption,
+        color: Colors.light.background,
+        fontWeight: '600',
+        fontSize: 8,
     },
     footer: {
         flexDirection: 'row',

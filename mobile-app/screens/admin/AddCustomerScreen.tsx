@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { supabase } from '../../services/supabase';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export default function AddCustomerScreen({ navigation, route }: any) {
     const { customer } = route.params || {};
@@ -88,7 +89,7 @@ export default function AddCustomerScreen({ navigation, route }: any) {
                 [
                     {
                         text: 'OK',
-                        onPress: () => navigation.goBack(),
+                        onPress: () => navigation.navigate('AdminApp', { screen: 'AdminDrawer', params: { screen: 'Customers' }}),
                     }
                 ]
             );
@@ -134,7 +135,7 @@ export default function AddCustomerScreen({ navigation, route }: any) {
                                 [
                                     {
                                         text: 'OK',
-                                        onPress: () => navigation.goBack(),
+                                        onPress: () => navigation.navigate('AdminApp', { screen: 'AdminDrawer', params: { screen: 'Customers' }}),
                                     }
                                 ]
                             );
@@ -153,10 +154,20 @@ export default function AddCustomerScreen({ navigation, route }: any) {
     return (
         <ScrollView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>{isEditing ? 'Edit Customer' : 'Add New Customer'}</Text>
-                <Text style={styles.subtitle}>
-                    {isEditing ? 'Update customer information' : 'Enter customer details'}
-                </Text>
+                <View style={styles.headerContent}>
+                    <View>
+                        <Text style={styles.title}>{isEditing ? 'Edit Customer' : 'Add New Customer'}</Text>
+                        <Text style={styles.subtitle}>
+                            {isEditing ? 'Update customer information' : 'Enter customer details'}
+                        </Text>
+                    </View>
+                    <TouchableOpacity 
+                        style={styles.homeButton}
+                        onPress={() => navigation.navigate('AdminApp', { screen: 'AdminDrawer', params: { screen: 'AdminDashboard' }})}
+                    >
+                        <MaterialIcons name="home" size={24} color="#fff" />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <View style={styles.form}>
@@ -228,18 +239,37 @@ const styles = StyleSheet.create({
     },
     header: {
         padding: Spacing.lg,
-        backgroundColor: Colors.light.surface,
+        backgroundColor: Colors.light.primary,
         borderBottomWidth: 1,
         borderBottomColor: Colors.light.border,
     },
+    headerContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
     title: {
-        ...Typography.h2,
-        color: Colors.light.text,
+        fontSize: 28,
+        fontWeight: '700',
+        lineHeight: 36,
+        letterSpacing: 0,
+        color: '#fff',
         marginBottom: Spacing.xs,
     },
     subtitle: {
-        ...Typography.body,
-        color: Colors.light.textSecondary,
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: 'rgba(255, 255, 255, 0.9)',
+    },
+    homeButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     form: {
         padding: Spacing.lg,
@@ -248,9 +278,11 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.lg,
     },
     label: {
-        ...Typography.body,
-        color: Colors.light.text,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.text,
         marginBottom: Spacing.sm,
     },
     input: {
@@ -259,7 +291,10 @@ const styles = StyleSheet.create({
         borderColor: Colors.light.border,
         borderRadius: BorderRadius.md,
         padding: Spacing.md,
-        ...Typography.body,
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
     },
     buttonDisabled: {
         opacity: 0.7,
@@ -272,9 +307,11 @@ const styles = StyleSheet.create({
         marginTop: Spacing.lg,
     },
     submitButtonText: {
-        ...Typography.body,
-        color: Colors.light.background,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.background,
     },
     deleteButton: {
         backgroundColor: Colors.light.error,
@@ -284,8 +321,10 @@ const styles = StyleSheet.create({
         marginTop: Spacing.md,
     },
     deleteButtonText: {
-        ...Typography.body,
-        color: Colors.light.background,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.background,
     },
 });

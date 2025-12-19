@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from "react";
+import React, { useState, useEffect, useLayoutEffect, memo } from "react";
 import {
   View,
   Text,
@@ -16,29 +16,36 @@ import Animated, {
   FadeInRight,
   FadeInUp,
   ZoomIn,
+  SlideInUp,
+  SlideInDown,
+  SlideInLeft,
+  SlideInRight,
+  BounceIn,
+  BounceInUp,
+  BounceInDown,
+  BounceInLeft,
+  BounceInRight,
 } from "react-native-reanimated";
 import { supabase } from "../services/supabase";
-// Assuming these components can adapt to light mode or you might need to tweak them separately
-import {
-  ProductCard,
-  SectionHeader,
-  EmptyState,
-} from "../components";
+import { ProductCard, SectionHeader, EmptyState } from "../components";
 import { useAuth } from "../hooks/useAuth";
+import { Colors, Spacing, Typography } from "../constants/theme";
+import { Card } from "../components/common/Card";
 
 const { width } = Dimensions.get("window");
 
-// 🎨 NEW BRIGHT COLOR PALETTE
+// 🎨 BRIGHT COLOR PALETTE
 const Theme = {
-  background: "#F9FAFB",     // Very light grey (easier on eyes than pure white)
-  surface: "#FFFFFF",        // Pure white for cards
-  primary: "#4F46E5",        // Vibrant Indigo
-  primaryGradient: ["#4F46E5", "#7C3AED"], // Indigo to Violet
-  secondary: "#0EA5E9",      // Sky Blue
-  textMain: "#1F2937",       // Dark Grey (Almost Black)
-  textSub: "#6B7280",        // Medium Grey
-  border: "#E5E7EB",         // Light Grey border
-  success: "#10B981",        // Bright Green
+  background: "#F9FAFB",
+  surface: "#FFFFFF",
+  primary: "#4F46E5",
+  primaryGradientStart: "#4F46E5",
+  primaryGradientEnd: "#7C3AED",
+  secondary: "#0EA5E9",
+  textMain: "#1F2937",
+  textSub: "#6B7280",
+  border: "#E5E7EB",
+  success: "#10B981",
   shadow: "rgba(0, 0, 0, 0.05)",
 };
 
@@ -52,10 +59,45 @@ interface Product {
   stock_quantity?: number;
 }
 
+interface SecondHandProduct {
+  id: string;
+  description: string;
+  condition: string;
+  price: number;
+  is_available: boolean;
+  seller_name: string;
+  image_url?: string;
+  created_at: string;
+}
+
+// Memoized Service Card Component
+const ServiceCard = memo(({ icon, title, description }: { icon: string; title: string; description: string }) => (
+  <View style={styles.serviceCard}>
+    <View style={styles.serviceIconContainer}>
+      <Text style={styles.serviceIcon}>{icon}</Text>
+    </View>
+    <Text style={styles.serviceTitle}>{title}</Text>
+    <Text style={styles.serviceDescription}>{description}</Text>
+  </View>
+));
+
+// Memoized Why Choose Card Component
+const WhyChooseCard = memo(({ icon, title, description }: { icon: string; title: string; description: string }) => (
+  <View style={styles.whyChooseCard}>
+    <View style={styles.whyChooseIconBox}>
+      <Text style={styles.whyChooseIcon}>{icon}</Text>
+    </View>
+    <View style={{ flex: 1 }}>
+      <Text style={styles.whyChooseTitle}>{title}</Text>
+      <Text style={styles.whyChooseDescription}>{description}</Text>
+    </View>
+  </View>
+));
+
 export default function HomeScreen({ navigation }: any) {
   const { isAuthenticated } = useAuth();
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [marketplaceProducts, setMarketplaceProducts] = useState<Product[]>([]);
+  const [marketplaceProducts, setMarketplaceProducts] = useState<SecondHandProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   // 🔥 Header Styles
@@ -63,7 +105,7 @@ export default function HomeScreen({ navigation }: any) {
     navigation.setOptions({
       headerStyle: { backgroundColor: Theme.primary, shadowColor: 'transparent', elevation: 0 },
       headerTintColor: '#fff',
-      headerTitle: "", // Clean look
+      headerTitle: "",
       headerRight: () =>
         !isAuthenticated ? (
           <TouchableOpacity
@@ -103,60 +145,55 @@ export default function HomeScreen({ navigation }: any) {
     }
   };
 
-  // ✨ Clean Bright Service Card
-  const renderServiceCard = (icon: string, title: string, description: string, index: number) => (
-    <Animated.View entering={FadeInDown.delay(index * 120).springify()} style={styles.serviceCard} key={title}>
-      <View style={styles.serviceIconContainer}>
-        <Text style={styles.serviceIcon}>{icon}</Text>
-      </View>
-      <Text style={styles.serviceTitle}>{title}</Text>
-      <Text style={styles.serviceDescription}>{description}</Text>
-    </Animated.View>
-  );
-
-  // ✨ Clean List Card
-  const renderWhyChooseCard = (icon: string, title: string, description: string, index: number) => (
-    <Animated.View entering={FadeInRight.delay(index * 160).springify()} style={styles.whyChooseCard} key={title}>
-      <View style={styles.whyChooseIconBox}>
-        <Text style={styles.whyChooseIcon}>{icon}</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.whyChooseTitle}>{title}</Text>
-        <Text style={styles.whyChooseDescription}>{description}</Text>
-      </View>
-    </Animated.View>
-  );
-
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={Theme.primary} />
       
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingBottom: 50 }}
+        removeClippedSubviews={true}
+      >
         
         {/* ---------------------------------------------------- */}
         {/* BRIGHT HERO SECTION */}
         {/* ---------------------------------------------------- */}
-        <Animated.View entering={FadeInDown.duration(900)}>
+        <Animated.View entering={FadeInDown.duration(800)}>
           <LinearGradient
-            colors={Theme.primaryGradient}
+            colors={[Theme.primaryGradientStart, Theme.primaryGradientEnd]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.heroSection}
           >
             <View style={styles.heroContent}>
-              <Animated.View entering={ZoomIn.delay(200)} style={styles.heroBadge}>
+              <Animated.View entering={ZoomIn.delay(200).duration(600)} style={styles.heroBadge}>
                 <Text style={styles.badgeText}>✨ Elite Repair Hub</Text>
               </Animated.View>
 
-              <Animated.Text entering={FadeInDown.delay(300).springify()} style={styles.heroTitle}>
+              <Animated.Text entering={FadeInDown.delay(400).springify()} style={styles.heroTitle}>
                 Fix Your Phone{"\n"}
                 <Text style={styles.heroTitleAccent}>Faster & Better.</Text>
               </Animated.Text>
 
-              <Animated.Text entering={FadeInDown.delay(500)} style={styles.heroSubtitle}>
+              <Animated.Text entering={FadeInDown.delay(600).springify()} style={styles.heroSubtitle}>
                 Premium repairs and quality marketplace deals. 
                 Experience the new standard.
               </Animated.Text>
+              
+              <Animated.View entering={BounceInUp.delay(1000).duration(800)} style={styles.heroActions}>
+                <TouchableOpacity 
+                  style={styles.primaryButton}
+                  onPress={() => navigation.navigate("Track")}
+                >
+                  <Text style={styles.buttonText}>Track Repair</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.secondaryButton}
+                  onPress={() => navigation.navigate("Products")}
+                >
+                  <Text style={styles.secondaryButtonText}>Shop Now</Text>
+                </TouchableOpacity>
+              </Animated.View>
             </View>
 
             {/* Decorative Floating Circle */}
@@ -167,390 +204,410 @@ export default function HomeScreen({ navigation }: any) {
         {/* ---------------------------------------------------- */}
         {/* OVERLAPPING SERVICES (Float Effect) */}
         {/* ---------------------------------------------------- */}
-        <View style={styles.floatingServicesContainer}>
+        <Animated.View entering={SlideInDown.delay(800).duration(600)} style={styles.floatingServicesContainer}>
             <View style={styles.servicesGrid}>
-                {renderServiceCard("⚡", "1-Hour Fix", "Express Service", 0)}
-                {renderServiceCard("🛡️", "Warranty", "Genuine Parts", 1)}
-                {renderServiceCard("👨‍🔧", "Experts", "Certified Pros", 2)}
+                <Animated.View entering={SlideInUp.delay(0).springify().damping(12)}>
+                  <ServiceCard icon="⚡" title="1-Hour Fix" description="Express Service" />
+                </Animated.View>
+                <Animated.View entering={SlideInUp.delay(150).springify().damping(12)}>
+                  <ServiceCard icon="🛡️" title="Warranty" description="Genuine Parts" />
+                </Animated.View>
+                <Animated.View entering={SlideInUp.delay(300).springify().damping(12)}>
+                  <ServiceCard icon="👨‍🔧" title="Experts" description="Certified Pros" />
+                </Animated.View>
             </View>
-        </View>
+        </Animated.View>
 
         {/* ---------------------------------------------------- */}
         {/* QUICK ACTIONS */}
         {/* ---------------------------------------------------- */}
-        <Animated.View entering={FadeInUp.delay(400)} style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <Animated.View entering={FadeInUp.delay(1200).duration(600)} style={styles.section}>
+          <SectionHeader 
+            title="Quick Actions" 
+            icon="⚡" 
+          />
           
           <View style={styles.quickActionsGrid}>
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: "#EEF2FF" }]}
-              onPress={() => navigation.navigate("Marketplace")}
-            >
-              <Text style={styles.actionButtonIcon}>🛒</Text>
-              <Text style={[styles.actionButtonText, { color: Theme.primary }]}>Marketplace</Text>
-            </TouchableOpacity>
+            <Animated.View entering={SlideInLeft.delay(1400).duration(500)} style={{ width: '48%' }}>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: "#EEF2FF" }]}
+                onPress={() => navigation.navigate("Marketplace")}
+              >
+                <Text style={styles.actionButtonIcon}>🛒</Text>
+                <Text style={[styles.actionButtonText, { color: Theme.primary }]}>Marketplace</Text>
+              </TouchableOpacity>
+            </Animated.View>
 
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: "#ECFDF5" }]}
-              onPress={() => navigation.navigate("Products")}
-            >
-              <Text style={styles.actionButtonIcon}>🛍️</Text>
-              <Text style={[styles.actionButtonText, { color: Theme.success }]}>New Products</Text>
-            </TouchableOpacity>
+            <Animated.View entering={SlideInRight.delay(1500).duration(500)} style={{ width: '48%' }}>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: "#ECFDF5" }]}
+                onPress={() => navigation.navigate("Products")}
+              >
+                <Text style={styles.actionButtonIcon}>🛍️</Text>
+                <Text style={[styles.actionButtonText, { color: Theme.success }]}>New Products</Text>
+              </TouchableOpacity>
+            </Animated.View>
 
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: "#F3F4F6" }]}
-              onPress={() => navigation.navigate("Track")}
-            >
-              <Text style={styles.actionButtonIcon}>🔍</Text>
-              <Text style={[styles.actionButtonText, { color: Theme.textMain }]}>Track Repair</Text>
-            </TouchableOpacity>
+            <Animated.View entering={SlideInLeft.delay(1600).duration(500)} style={{ width: '48%' }}>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: "#FEF3C7" }]}
+                onPress={() => navigation.navigate("Track")}
+              >
+                <Text style={styles.actionButtonIcon}>🔍</Text>
+                <Text style={[styles.actionButtonText, { color: "#D97706" }]}>Track Repair</Text>
+              </TouchableOpacity>
+            </Animated.View>
           </View>
         </Animated.View>
 
         {/* ---------------------------------------------------- */}
         {/* FEATURED PRODUCTS */}
         {/* ---------------------------------------------------- */}
-        <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-                <View>
-                    <Text style={styles.sectionTitle}>Featured Products</Text>
-                    <Text style={styles.sectionSubtitle}>Curated for excellence</Text>
-                </View>
-                <TouchableOpacity onPress={() => navigation.navigate("Products")}>
-                    <Text style={styles.seeAllText}>See All</Text>
-                </TouchableOpacity>
-            </View>
-
-          {loading ? (
-            <Text style={styles.loadingText}>Loading...</Text>
-          ) : featuredProducts.length > 0 ? (
-            <Animated.View entering={FadeInRight.delay(800)}>
-              <FlatList
-                horizontal
-                data={featuredProducts}
-                renderItem={({ item }) => (
-                  <View style={styles.productCardContainer}>
-                    <ProductCard
-                      product={item}
-                      onPress={() => navigation.navigate("ProductDetail", { id: item.id })}
-                      showBadge
-                    />
-                  </View>
-                )}
-                keyExtractor={(item) => item.id}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.horizontalList}
-              />
-            </Animated.View>
+        <Animated.View entering={FadeInUp.delay(1800).duration(600)} style={styles.section}>
+          <SectionHeader 
+            title="Featured Products" 
+            icon="⭐" 
+            actionButton={{
+              label: "View All",
+              onPress: () => navigation.navigate("Products")
+            }}
+          />
+          
+          {featuredProducts.length > 0 ? (
+            <FlatList
+              data={featuredProducts}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+              renderItem={({ item, index }) => (
+                <Animated.View 
+                  entering={SlideInRight.delay(2000 + index * 100).duration(400)}
+                  style={styles.productCardWrapper}
+                >
+                  <ProductCard 
+                    product={item} 
+                    onPress={() => navigation.navigate("ProductDetail", { id: item.id })}
+                    showBadge={true}
+                  />
+                </Animated.View>
+              )}
+              keyExtractor={(item) => item.id}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={4}
+              windowSize={3}
+              initialNumToRender={6}
+            />
           ) : (
-            <EmptyState icon="📦" title="No items" subtitle="Check back soon" />
+            <EmptyState 
+              title="No Featured Products" 
+              subtitle="Check back later for our featured products" 
+              icon="🏷️"
+            />
           )}
-        </View>
+        </Animated.View>
 
         {/* ---------------------------------------------------- */}
-        {/* MARKETPLACE */}
+        {/* MARKETPLACE DEALS */}
         {/* ---------------------------------------------------- */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-                <View>
-                    <Text style={styles.sectionTitle}>Marketplace Deals</Text>
-                    <Text style={styles.sectionSubtitle}>Verified pre-owned devices</Text>
-                </View>
-                <TouchableOpacity onPress={() => navigation.navigate("Marketplace")}>
-                    <Text style={styles.seeAllText}>Browse</Text>
-                </TouchableOpacity>
-            </View>
-
-          {loading ? (
-            <Text style={styles.loadingText}>Loading...</Text>
-          ) : marketplaceProducts.length > 0 ? (
-            <Animated.View entering={FadeInRight.delay(1000)}>
-              <FlatList
-                horizontal
-                data={marketplaceProducts}
-                renderItem={({ item }) => (
-                  <View style={styles.productCardContainer}>
-                    <ProductCard
-                      product={item}
-                      onPress={() => navigation.navigate("MarketplaceDetail", { id: item.id })}
-                    />
-                  </View>
-                )}
-                keyExtractor={(item) => item.id}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.horizontalList}
-              />
-            </Animated.View>
+        <Animated.View entering={FadeInUp.delay(2200).duration(600)} style={styles.section}>
+          <SectionHeader 
+            title="Marketplace Deals" 
+            icon="📱" 
+            actionButton={{
+              label: "View All",
+              onPress: () => navigation.navigate("Marketplace")
+            }}
+          />
+          
+          {marketplaceProducts.length > 0 ? (
+            <FlatList
+              data={marketplaceProducts}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+              renderItem={({ item, index }) => (
+                <Animated.View 
+                  entering={SlideInLeft.delay(2400 + index * 100).duration(400)}
+                  style={styles.productCardWrapper}
+                >
+                  <ProductCard 
+                    product={{
+                      ...item,
+                      name: item.description,
+                      category: item.condition
+                    }} 
+                    onPress={() => navigation.navigate("MarketplaceDetail", { id: item.id })}
+                  />
+                </Animated.View>
+              )}
+              keyExtractor={(item) => item.id}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={4}
+              windowSize={3}
+              initialNumToRender={6}
+            />
           ) : (
-            <EmptyState icon="🛍️" title="Empty" subtitle="No deals today" />
+            <EmptyState 
+              title="No Marketplace Items" 
+              subtitle="Check back later for great deals" 
+              icon="📱"
+            />
           )}
-        </View>
+        </Animated.View>
 
         {/* ---------------------------------------------------- */}
         {/* WHY CHOOSE US */}
         {/* ---------------------------------------------------- */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Why Choose Us?</Text>
-          <View style={styles.whyChooseGrid}>
-            {renderWhyChooseCard("🚀", "Lightning Fast", "Repairs done in under 60 mins", 0)}
-            {renderWhyChooseCard("💎", "Original Parts", "100% authentic components", 1)}
-            {renderWhyChooseCard("🔒", "Data Secure", "Your privacy is our priority", 2)}
-          </View>
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>© 2025 Device Repair Hub</Text>
-        </View>
-
+        <Animated.View entering={FadeInUp.delay(2600).duration(600)} style={styles.section}>
+          <SectionHeader 
+            title="Why Choose Us" 
+            icon="🏆" 
+          />
+          
+          <Card padding="none">
+            <View style={styles.whyChooseList}>
+              <Animated.View entering={FadeInRight.delay(2800).springify()}>
+                <WhyChooseCard icon="⏱️" title="Fast Turnaround" description="Most repairs completed within 24 hours" />
+              </Animated.View>
+              <Animated.View entering={FadeInRight.delay(3000).springify()}>
+                <WhyChooseCard icon="💯" title="Quality Guarantee" description="90-day warranty on all repairs" />
+              </Animated.View>
+              <Animated.View entering={FadeInRight.delay(3200).springify()}>
+                <WhyChooseCard icon="💰" title="Best Prices" description="Competitive pricing with no hidden fees" />
+              </Animated.View>
+              <Animated.View entering={FadeInRight.delay(3400).springify()}>
+                <WhyChooseCard icon="📞" title="24/7 Support" description="Round-the-clock customer assistance" />
+              </Animated.View>
+            </View>
+          </Card>
+        </Animated.View>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // ROOT
   container: {
     flex: 1,
     backgroundColor: Theme.background,
   },
-  
-  // NAV BTN
   signInBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 10,
+    marginRight: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   signInText: {
+    ...Typography.bodyLarge,
     color: '#fff',
     fontWeight: '600',
-    fontSize: 14,
   },
-
-  // HERO
+  
+  // Hero Section
   heroSection: {
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 80,
+    paddingHorizontal: Spacing.lg,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  heroContent: {
+    alignItems: 'center',
     paddingTop: 20,
-    paddingBottom: 80, // Extra padding for the overlapping cards
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    position: 'relative',
-    overflow: 'hidden',
+  },
+  heroBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: 20,
+    marginBottom: Spacing.lg,
+  },
+  badgeText: {
+    ...Typography.caption,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  heroTitle: {
+    ...Typography.displaySmall,
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: Spacing.md,
+  },
+  heroTitleAccent: {
+    color: '#A5F3FC',
+  },
+  heroSubtitle: {
+    ...Typography.bodyLarge,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    marginBottom: Spacing.xl,
+    lineHeight: 24,
+  },
+  heroActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  primaryButton: {
+    backgroundColor: '#fff',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    borderRadius: 12,
+    minWidth: 140,
+    alignItems: 'center',
+  },
+  buttonText: {
+    ...Typography.bodyLarge,
+    color: Theme.primary,
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    minWidth: 140,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    ...Typography.bodyLarge,
+    color: '#fff',
+    fontWeight: '700',
   },
   decorativeCircle: {
     position: 'absolute',
-    top: -50,
-    right: -50,
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    top: -50,
+    right: -50,
   },
-  heroContent: {
-    alignItems: "flex-start",
-  },
-  heroBadge: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
-  },
-  badgeText: {
-    fontSize: 12,
-    color: "#fff",
-    fontWeight: "700",
-  },
-  heroTitle: {
-    fontSize: 34,
-    fontWeight: "800",
-    color: "#fff",
-    marginBottom: 10,
-    lineHeight: 40,
-  },
-  heroTitleAccent: {
-    color: "#C7D2FE", // Soft lighter Indigo
-  },
-  heroSubtitle: {
-    fontSize: 15,
-    color: "rgba(255,255,255,0.9)",
-    maxWidth: 280,
-    lineHeight: 22,
-  },
-
-  // FLOATING SERVICES
+  
+  // Services
   floatingServicesContainer: {
-    marginTop: -50, // Pull up to overlap hero
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    marginTop: -60,
+    paddingHorizontal: Spacing.lg,
+    zIndex: 10,
   },
   servicesGrid: {
-    flexDirection: "row",
-    gap: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   serviceCard: {
-    flex: 1,
-    backgroundColor: Theme.surface,
+    backgroundColor: '#fff',
     borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 8,
-    alignItems: "center",
-    // SHADOWS
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
+    padding: Spacing.md,
+    width: (width - Spacing.lg * 2 - Spacing.md * 2) / 3,
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   serviceIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#F3F4F6",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Theme.primary + '10',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
   },
   serviceIcon: {
-    fontSize: 22,
+    fontSize: 24,
   },
   serviceTitle: {
-    fontSize: 14,
-    fontWeight: "700",
+    ...Typography.bodyLarge,
+    fontWeight: '700',
     color: Theme.textMain,
-    marginBottom: 4,
+    marginBottom: Spacing.xs,
     textAlign: 'center',
   },
   serviceDescription: {
-    fontSize: 11,
+    ...Typography.bodySmall,
     color: Theme.textSub,
-    textAlign: "center",
+    textAlign: 'center',
   },
-
-  // COMMON SECTION STYLES
+  
+  // Sections
   section: {
-    paddingVertical: 16,
+    marginVertical: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
   },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: Theme.textMain,
-    paddingHorizontal: 20,
-    marginBottom: 4,
-  },
-  sectionSubtitle: {
-      fontSize: 13,
-      color: Theme.textSub,
-      fontWeight: '500',
-  },
-  seeAllText: {
-      color: Theme.primary,
-      fontWeight: '600',
-      fontSize: 14,
-  },
-
-  // QUICK ACTIONS
+  
+  // Quick Actions
   quickActionsGrid: {
-    flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 20,
-    marginTop: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: Spacing.sm,
   },
   actionButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: 12,
+    marginBottom: Spacing.md,
   },
   actionButtonIcon: {
     fontSize: 24,
-    marginBottom: 6,
+    marginRight: Spacing.sm,
   },
   actionButtonText: {
-    fontSize: 12,
-    fontWeight: "700",
+    ...Typography.bodyLarge,
+    fontWeight: '600',
   },
-
-  // PRODUCTS LIST
+  
+  // Products
   horizontalList: {
-    paddingHorizontal: 20,
-    paddingBottom: 20, // Space for shadows
+    paddingHorizontal: Spacing.sm,
   },
-  productCardContainer: {
-    width: width * 0.55,
-    marginRight: 16,
+  productCardWrapper: {
+    width: 200,
+    marginRight: Spacing.md,
   },
-  loadingText: {
-    marginLeft: 20,
-    color: Theme.textSub,
-  },
-
-  // WHY CHOOSE US
-  whyChooseGrid: {
-    gap: 12,
-    paddingHorizontal: 20,
-    marginTop: 8,
+  
+  // Why Choose Us
+  whyChooseList: {
+    padding: Spacing.md,
   },
   whyChooseCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Theme.surface,
-    borderRadius: 16,
-    padding: 16,
-    // Soft Shadow
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: Theme.border,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
   },
   whyChooseIconBox: {
-      width: 44, 
-      height: 44,
-      borderRadius: 12,
-      backgroundColor: '#EFF6FF',
-      justifyContent: 'center', 
-      alignItems: 'center',
-      marginRight: 16
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Theme.primary + '10',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
   },
   whyChooseIcon: {
-    fontSize: 22,
+    fontSize: 18,
   },
   whyChooseTitle: {
-    fontSize: 15,
+    ...Typography.bodyLarge,
+    fontWeight: '600',
     color: Theme.textMain,
-    fontWeight: "700",
-    marginBottom: 2,
+    marginBottom: Spacing.xs,
   },
   whyChooseDescription: {
-    fontSize: 13,
+    ...Typography.bodySmall,
     color: Theme.textSub,
-    lineHeight: 18,
-  },
-
-  // FOOTER
-  footer: {
-    alignItems: "center",
-    paddingVertical: 30,
-    marginTop: 10,
-  },
-  footerText: {
-    color: Theme.textSub,
-    fontSize: 12,
-    fontWeight: '500',
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -8,6 +8,8 @@ import {
     ActivityIndicator,
     TouchableOpacity,
     Dimensions,
+    Animated,
+    Platform,
 } from 'react-native';
 import { supabase } from '../services/supabase';
 import {
@@ -78,6 +80,11 @@ export default function AdminDashboard({ navigation }: any) {
     const [unreadNotifications, setUnreadNotifications] = useState(0);
     const [timeframe, setTimeframe] = useState<Timeframe>('daily');
 
+    // Animation values
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(50)).current;
+    const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
     // Responsive styles based on screen width
     const isSmallScreen = SCREEN_WIDTH < 350;
     const isLargeScreen = SCREEN_WIDTH > 768;
@@ -86,6 +93,26 @@ export default function AdminDashboard({ navigation }: any) {
         fetchDashboardData();
         fetchUnreadNotifications();
         fetchRecentNotifications();
+        
+        // Entrance animation
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                tension: 50,
+                friction: 7,
+                useNativeDriver: true,
+            }),
+        ]).start();
         
         // Set up interval to refresh notifications
         const interval = setInterval(() => {
@@ -105,7 +132,6 @@ export default function AdminDashboard({ navigation }: any) {
                 },
                 (payload) => {
                     console.log('New ticket created:', payload.new);
-                    // Refresh dashboard data when a new ticket is created
                     fetchDashboardData();
                 }
             )
@@ -118,7 +144,6 @@ export default function AdminDashboard({ navigation }: any) {
                 },
                 (payload) => {
                     console.log('Ticket updated:', payload.new);
-                    // Refresh dashboard data when a ticket is updated
                     fetchDashboardData();
                 }
             )
@@ -136,7 +161,6 @@ export default function AdminDashboard({ navigation }: any) {
                 },
                 (payload) => {
                     console.log('New notification created:', payload.new);
-                    // Refresh notifications when a new one is created
                     fetchUnreadNotifications();
                     fetchRecentNotifications();
                 }
@@ -150,7 +174,6 @@ export default function AdminDashboard({ navigation }: any) {
                 },
                 (payload) => {
                     console.log('Notification updated:', payload.new);
-                    // Refresh notifications when one is updated
                     fetchUnreadNotifications();
                     fetchRecentNotifications();
                 }
@@ -214,21 +237,20 @@ export default function AdminDashboard({ navigation }: any) {
             const totalTickets = tickets?.length || 0;
             const totalCustomers = customersCount || 0;
             
-            // Status counts
-            const actionRequired = tickets?.filter(t =>
-                t.status === 'pending' || t.status === 'action_required' || t.status === 'received'
-            ).length || 0;
+            // Status counts - using new 8-status schema
+            const received = tickets?.filter(t => t.status?.toLowerCase() === 'received').length || 0;
+            const diagnosing = tickets?.filter(t => t.status?.toLowerCase() === 'diagnosing').length || 0;
+            const awaitingParts = tickets?.filter(t => t.status?.toLowerCase() === 'awaiting_parts').length || 0;
+            const repairing = tickets?.filter(t => t.status?.toLowerCase() === 'repairing').length || 0;
+            const qualityCheck = tickets?.filter(t => t.status?.toLowerCase() === 'quality_check').length || 0;
+            const ready = tickets?.filter(t => t.status?.toLowerCase() === 'ready').length || 0;
+            const completed = tickets?.filter(t => t.status?.toLowerCase() === 'completed').length || 0;
+            const cancelled = tickets?.filter(t => t.status?.toLowerCase() === 'cancelled').length || 0;
             
-            const inProgress = tickets?.filter(t => 
-                t.status === 'in_progress' || t.status === 'repairing' || t.status === 'diagnosing'
-            ).length || 0;
-            
-            const nearCompletion = tickets?.filter(t => 
-                t.status === 'near_completion' || t.status === 'ready'
-            ).length || 0;
-            
-            const completed = tickets?.filter(t => t.status === 'completed').length || 0;
-            const pending = tickets?.filter(t => t.status === 'pending' || t.status === 'received').length || 0;
+            // Group statuses for stat cards
+            const actionRequired = received + diagnosing;
+            const inProgress = awaitingParts + repairing + qualityCheck;
+            const nearCompletion = ready + completed;
 
             setStats({
                 totalTickets,
@@ -240,17 +262,21 @@ export default function AdminDashboard({ navigation }: any) {
                 inProgress,
                 nearCompletion,
                 completed,
-                pending,
+                pending: received,
             });
 
             setRecentTickets(tickets?.slice(0, 5) || []);
             
-            // Prepare ticket status data for chart
+            // Prepare ticket status data for chart - using all 8 statuses
             const statusData = [
-                { status: 'Action Required', count: actionRequired, color: Colors.light.warning },
-                { status: 'In Progress', count: inProgress, color: Colors.light.info },
-                { status: 'Near Completion', count: nearCompletion, color: Colors.light.success },
-                { status: 'Pending', count: pending, color: Colors.light.primary },
+                { status: 'Received', count: received, color: Colors.light.warning },
+                { status: 'Diagnosing', count: diagnosing, color: '#FFA500' },
+                { status: 'Awaiting Parts', count: awaitingParts, color: Colors.light.info },
+                { status: 'Repairing', count: repairing, color: '#FF6B6B' },
+                { status: 'Quality Check', count: qualityCheck, color: '#9B59B6' },
+                { status: 'Ready', count: ready, color: Colors.light.success },
+                { status: 'Completed', count: completed, color: '#27AE60' },
+                { status: 'Cancelled', count: cancelled, color: Colors.light.textSecondary },
             ];
             setTicketStatusData(statusData);
             
@@ -281,213 +307,349 @@ export default function AdminDashboard({ navigation }: any) {
         setTimeframe(newTimeframe);
     };
 
-    const renderNotificationItem = (notification: Notification) => (
-        <View 
-            key={notification.id} 
-            style={[
-                styles.notificationItem, 
-                !notification.is_read && styles.unreadNotification
-            ]}
-        >
-            <View style={styles.notificationContent}>
-                <Text style={styles.notificationTitle}>{notification.title}</Text>
-                <Text style={styles.notificationMessage} numberOfLines={2}>
-                    {notification.message}
-                </Text>
-                <Text style={styles.notificationTime}>
-                    {new Date(notification.created_at).toLocaleDateString()}
-                </Text>
-            </View>
-            {!notification.is_read && <View style={styles.notificationDot} />}
-        </View>
-    );
+    const renderNotificationItem = (notification: Notification, index: number) => {
+        const itemFadeAnim = useRef(new Animated.Value(0)).current;
+        const itemSlideAnim = useRef(new Animated.Value(20)).current;
+
+        useEffect(() => {
+            Animated.parallel([
+                Animated.timing(itemFadeAnim, {
+                    toValue: 1,
+                    duration: 400,
+                    delay: index * 100,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(itemSlideAnim, {
+                    toValue: 0,
+                    duration: 400,
+                    delay: index * 100,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        }, []);
+
+        return (
+            <Animated.View
+                key={notification.id}
+                style={[
+                    styles.notificationItem,
+                    !notification.is_read && styles.unreadNotification,
+                    {
+                        opacity: itemFadeAnim,
+                        transform: [{ translateY: itemSlideAnim }],
+                    },
+                ]}
+            >
+                <View style={styles.notificationContent}>
+                    <Text style={styles.notificationTitle}>{notification.title}</Text>
+                    <Text style={styles.notificationMessage} numberOfLines={2}>
+                        {notification.message}
+                    </Text>
+                    <Text style={styles.notificationTime}>
+                        {new Date(notification.created_at).toLocaleDateString()}
+                    </Text>
+                </View>
+                {!notification.is_read && <View style={styles.notificationDot} />}
+            </Animated.View>
+        );
+    };
 
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={Colors.light.primary} />
+                <Text style={styles.loadingText}>Loading Dashboard...</Text>
             </View>
         );
     }
 
     return (
-        <ScrollView
-            style={styles.container}
-            refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-            showsVerticalScrollIndicator={false}
-        >
-            {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.title}>Admin Dashboard</Text>
-                <Text style={styles.subtitle}>Monitor and manage your shop operations</Text>
-                <View style={styles.headerControls}>
-                    <View style={styles.headerTopRow}>
-                        <Text style={styles.lastUpdated}>
-                            Last refreshed: {lastRefreshed?.toLocaleTimeString() || 'Never'}
-                        </Text>
-                        <TouchableOpacity 
-                            style={styles.refreshButton}
-                            onPress={handleManualRefresh}
-                            disabled={refreshing}
-                        >
-                            {refreshing ? (
-                                <ActivityIndicator size="small" color="#fff" />
-                            ) : (
-                                <Text style={styles.refreshButtonText}>Refresh Data</Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                    <View style={styles.timeframeSelector}>
-                        <Text style={styles.timeframeLabel}>Timeframe:</Text>
-                        <View style={styles.timeframeButtons}>
-                            {(['daily', 'weekly', 'monthly'] as Timeframe[]).map((tf) => (
-                                <Text
-                                    key={tf}
-                                    style={[
-                                        styles.timeframeButton,
-                                        timeframe === tf && styles.activeTimeframeButton
-                                    ]}
-                                    onPress={() => handleTimeframeChange(tf)}
+        <View style={styles.wrapper}>
+            <Animated.ScrollView
+                style={styles.container}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Enhanced Header with Gradient */}
+                <Animated.View
+                    style={[
+                        styles.header,
+                        {
+                            opacity: fadeAnim,
+                            transform: [{ translateY: slideAnim }],
+                        },
+                    ]}
+                >
+                    <View style={styles.headerGradient} />
+                    <View style={styles.headerContent}>
+                        <Text style={styles.welcomeText}>Welcome back! 👋</Text>
+                        <Text style={styles.title}>Admin Dashboard</Text>
+                        <Text style={styles.subtitle}>Monitor and manage your shop operations</Text>
+                        
+                        <View style={styles.headerControls}>
+                            <View style={styles.headerTopRow}>
+                                <View style={styles.lastUpdatedContainer}>
+                                    <Text style={styles.lastUpdatedLabel}>Last updated</Text>
+                                    <Text style={styles.lastUpdated}>
+                                        {lastRefreshed?.toLocaleTimeString() || 'Never'}
+                                    </Text>
+                                </View>
+                                <TouchableOpacity 
+                                    style={styles.refreshButton}
+                                    onPress={handleManualRefresh}
+                                    disabled={refreshing}
+                                    activeOpacity={0.8}
                                 >
-                                    {tf.charAt(0).toUpperCase() + tf.slice(1)}
-                                </Text>
-                            ))}
+                                    {refreshing ? (
+                                        <ActivityIndicator size="small" color="#fff" />
+                                    ) : (
+                                        <>
+                                            <Text style={styles.refreshIcon}>↻</Text>
+                                            <Text style={styles.refreshButtonText}>Refresh</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                            
+                            <View style={styles.timeframeSelector}>
+                                <Text style={styles.timeframeLabel}>Period:</Text>
+                                <View style={styles.timeframeButtons}>
+                                    {(['daily', 'weekly', 'monthly'] as Timeframe[]).map((tf) => (
+                                        <TouchableOpacity
+                                            key={tf}
+                                            style={[
+                                                styles.timeframeButton,
+                                                timeframe === tf && styles.activeTimeframeButton
+                                            ]}
+                                            onPress={() => handleTimeframeChange(tf)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={[
+                                                styles.timeframeButtonText,
+                                                timeframe === tf && styles.activeTimeframeButtonText
+                                            ]}>
+                                                {tf.charAt(0).toUpperCase() + tf.slice(1)}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
                         </View>
                     </View>
-                </View>
-            </View>
+                </Animated.View>
 
-            {/* Overview Metrics */}
-            <View style={styles.section}>
-                <SectionHeader title="Overview Metrics" icon="📊" />
-                <View style={[styles.metricsGrid, isLargeScreen && styles.metricsGridLarge]}>
-                    <View style={styles.metricItem}>
-                        <StatCard
-                            title="Tickets"
-                            value={stats.totalTickets}
-                            icon="🎫"
-                            color={Colors.light.primary}
-                            subtitle="+0% from last month"
+                {/* Key Metrics Overview Cards */}
+                <Animated.View
+                    style={[
+                        styles.section,
+                        {
+                            opacity: fadeAnim,
+                            transform: [{ scale: scaleAnim }],
+                        },
+                    ]}
+                >
+                    <SectionHeader
+                        title="Key Metrics"
+                        icon="📊"
+                        subtitle="Your business at a glance"
+                    />
+                    <View style={styles.metricsGrid}>
+                        <View style={styles.metricCard}>
+                            <View style={[styles.metricIconContainer, { backgroundColor: '#E3F2FD' }]}>
+                                <Text style={styles.metricIcon}>🎫</Text>
+                            </View>
+                            <View style={styles.metricInfo}>
+                                <Text style={styles.metricLabel}>Total Tickets</Text>
+                                <Text style={styles.metricValue}>{stats.totalTickets}</Text>
+                                <View style={styles.metricTrend}>
+                                    <Text style={styles.metricTrendText}>+0% this month</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        <View style={styles.metricCard}>
+                            <View style={[styles.metricIconContainer, { backgroundColor: '#F3E5F5' }]}>
+                                <Text style={styles.metricIcon}>👥</Text>
+                            </View>
+                            <View style={styles.metricInfo}>
+                                <Text style={styles.metricLabel}>Customers</Text>
+                                <Text style={styles.metricValue}>{stats.totalCustomers}</Text>
+                                <View style={styles.metricTrend}>
+                                    <Text style={styles.metricTrendText}>+0% this month</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        <View style={styles.metricCard}>
+                            <View style={[styles.metricIconContainer, { backgroundColor: '#FFF3E0' }]}>
+                                <Text style={styles.metricIcon}>📈</Text>
+                            </View>
+                            <View style={styles.metricInfo}>
+                                <Text style={styles.metricLabel}>Avg per Customer</Text>
+                                <Text style={styles.metricValue}>{stats.avgTicketsPerCustomer}</Text>
+                                <View style={styles.metricTrend}>
+                                    <Text style={styles.metricTrendText}>tickets/customer</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        <View style={styles.metricCard}>
+                            <View style={[styles.metricIconContainer, { backgroundColor: '#E8F5E9' }]}>
+                                <Text style={styles.metricIcon}>✅</Text>
+                            </View>
+                            <View style={styles.metricInfo}>
+                                <Text style={styles.metricLabel}>Completed</Text>
+                                <Text style={styles.metricValue}>{stats.completed}</Text>
+                                <View style={styles.metricTrend}>
+                                    <Text style={[styles.metricTrendText, { color: Colors.light.success }]}>
+                                        Success!
+                                    </Text>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+                </Animated.View>
+
+                {/* Ticket Status Overview with Enhanced Design */}
+                <View style={styles.section}>
+                    <SectionHeader
+                        title="Ticket Status Overview"
+                        icon="📊"
+                        subtitle="Real-time workflow insights"
+                    />
+                    
+                    <View style={styles.chartContainer}>
+                        <TicketStatusChart 
+                            data={ticketStatusData} 
+                            title="" 
                         />
                     </View>
-                    <View style={styles.metricItem}>
-                        <StatCard
-                            title="Customers"
-                            value={stats.totalCustomers}
-                            icon="👥"
-                            color={Colors.light.secondary}
-                            subtitle="+0% from last month"
-                        />
-                    </View>
-                    <View style={styles.metricItem}>
-                        <StatCard
-                            title="Avg Tickets/Customer"
-                            value={stats.avgTicketsPerCustomer}
-                            icon="📈"
-                            color={Colors.light.info}
-                        />
-                    </View>
-                    <View style={styles.metricItem}>
-                        <StatCard
-                            title="Completed"
-                            value={stats.completed}
-                            icon="✅"
-                            color={Colors.light.success}
-                        />
+                    
+                    {/* Enhanced Status Categories with Better Visual Hierarchy */}
+                    <View style={styles.statusCategoriesContainer}>
+                        <TouchableOpacity 
+                            style={[styles.statusCategoryCard, styles.statusActionRequired]}
+                            onPress={() => navigation.navigate('AdminApp', { screen: 'AdminDrawer', params: { screen: 'Tickets' }})}
+                            activeOpacity={0.8}
+                        >
+                            <View style={styles.statusCardHeader}>
+                                <View style={[styles.statusCardIcon, { backgroundColor: '#FFF3E0' }]}>
+                                    <Text style={styles.statusCardIconText}>⚠️</Text>
+                                </View>
+                                <View style={styles.statusCardBadge}>
+                                    <Text style={styles.statusCardBadgeText}>
+                                        {ticketStatusData.filter(t => ['Received', 'Diagnosing'].includes(t.status)).reduce((sum, t) => sum + t.count, 0)}
+                                    </Text>
+                                </View>
+                            </View>
+                            <Text style={styles.statusCardTitle}>Action Required</Text>
+                            <Text style={styles.statusCardSubtext}>Received • Diagnosing</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={[styles.statusCategoryCard, styles.statusInProgress]}
+                            onPress={() => navigation.navigate('AdminApp', { screen: 'AdminDrawer', params: { screen: 'Tickets' }})}
+                            activeOpacity={0.8}
+                        >
+                            <View style={styles.statusCardHeader}>
+                                <View style={[styles.statusCardIcon, { backgroundColor: '#E3F2FD' }]}>
+                                    <Text style={styles.statusCardIconText}>🔧</Text>
+                                </View>
+                                <View style={styles.statusCardBadge}>
+                                    <Text style={styles.statusCardBadgeText}>
+                                        {ticketStatusData.filter(t => ['Awaiting Parts', 'Repairing', 'Quality Check'].includes(t.status)).reduce((sum, t) => sum + t.count, 0)}
+                                    </Text>
+                                </View>
+                            </View>
+                            <Text style={styles.statusCardTitle}>In Progress</Text>
+                            <Text style={styles.statusCardSubtext}>Parts • Repair • QC</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={[styles.statusCategoryCard, styles.statusReady]}
+                            onPress={() => navigation.navigate('AdminApp', { screen: 'AdminDrawer', params: { screen: 'Tickets' }})}
+                            activeOpacity={0.8}
+                        >
+                            <View style={styles.statusCardHeader}>
+                                <View style={[styles.statusCardIcon, { backgroundColor: '#E8F5E9' }]}>
+                                    <Text style={styles.statusCardIconText}>✅</Text>
+                                </View>
+                                <View style={styles.statusCardBadge}>
+                                    <Text style={styles.statusCardBadgeText}>
+                                        {ticketStatusData.filter(t => ['Ready', 'Completed'].includes(t.status)).reduce((sum, t) => sum + t.count, 0)}
+                                    </Text>
+                                </View>
+                            </View>
+                            <Text style={styles.statusCardTitle}>Ready</Text>
+                            <Text style={styles.statusCardSubtext}>Ready • Completed</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
-            </View>
 
-            {/* Quick Actions */}
-            <View style={styles.section}>
-                <SectionHeader title="Quick Actions" icon="⚡" subtitle="Add new tickets, products, or customers quickly" />
-                <View style={[styles.quickActionsGrid, isLargeScreen && styles.quickActionsGridLarge]}>
-                    <View style={[styles.actionItem, isSmallScreen && styles.actionItemSmall]}>
+                {/* Quick Actions Grid with Enhanced Design */}
+                <View style={styles.section}>
+                    <SectionHeader 
+                        title="Quick Actions" 
+                        icon="⚡" 
+                        subtitle="Common tasks and shortcuts" 
+                    />
+                    <View style={styles.quickActionsGrid}>
                         <QuickActionCard
                             title="New Ticket"
                             icon="🎫"
                             color={Colors.light.primary}
-                            onPress={() => navigation.navigate('CreateTicket')}
+                            onPress={() => navigation.navigate('AdminApp', { screen: 'CreateTicket' })}
                         />
-                    </View>
-                    <View style={[styles.actionItem, isSmallScreen && styles.actionItemSmall]}>
+                        <QuickActionCard
+                            title="Add Customer"
+                            icon="👤"
+                            color={Colors.light.secondary}
+                            onPress={() => navigation.navigate('AdminApp', { screen: 'AddCustomer' })}
+                        />
                         <QuickActionCard
                             title="Add Product"
                             icon="📦"
-                            color={Colors.light.secondary}
-                            onPress={() => navigation.navigate('ManageProduct')}
-                        />
-                    </View>
-                    <View style={[styles.actionItem, isSmallScreen && styles.actionItemSmall]}>
-                        <QuickActionCard
-                            title="New Customer"
-                            icon="👤"
                             color={Colors.light.warning}
-                            onPress={() => navigation.navigate('AddCustomer')}
+                            onPress={() => navigation.navigate('AdminApp', { screen: 'ManageProduct' })}
                         />
-                    </View>
-                    <View style={[styles.actionItem, isSmallScreen && styles.actionItemSmall]}>
-                        <QuickActionCard
-                            title="View Analytics"
-                            icon="📊"
-                            color={Colors.light.info}
-                            onPress={() => navigation.navigate('Analytics')}
-                        />
-                    </View>
-                    <View style={[styles.actionItem, isSmallScreen && styles.actionItemSmall]}>
                         <QuickActionCard
                             title="Notifications"
                             icon="🔔"
                             color={Colors.light.error}
-                            onPress={() => navigation.navigate('Notifications')}
+                            onPress={() => navigation.navigate('AdminApp', { screen: 'Notifications' })}
                             badgeCount={unreadNotifications}
                         />
-                    </View>
-                    <View style={[styles.actionItem, isSmallScreen && styles.actionItemSmall]}>
                         <QuickActionCard
-                            title="View All Tickets"
-                            icon="📋"
-                            color={Colors.light.primary}
-                            onPress={() => navigation.navigate('Tickets')}
+                            title="Analytics"
+                            icon="📊"
+                            color={Colors.light.info}
+                            onPress={() => navigation.navigate('AdminApp', { screen: 'Analytics' })}
                         />
-                    </View>
-                    <View style={[styles.actionItem, isSmallScreen && styles.actionItemSmall]}>
-                        <QuickActionCard
-                            title="All Products"
-                            icon="🛍️"
-                            color={Colors.light.secondary}
-                            onPress={() => navigation.navigate('Products')}
-                        />
-                    </View>
-                    <View style={[styles.actionItem, isSmallScreen && styles.actionItemSmall]}>
                         <QuickActionCard
                             title="Settings"
                             icon="⚙️"
                             color={Colors.light.textSecondary}
-                            onPress={() => navigation.navigate('Settings')}
+                            onPress={() => navigation.navigate('AdminApp', { screen: 'AdminDrawer', params: { screen: 'Settings' }})}
                         />
                     </View>
                 </View>
-            </View>
 
-            {/* Notifications and Recent Tickets */}
-            <View style={[styles.doubleSection, isLargeScreen && styles.doubleSectionLarge]}>
-                {/* Recent Notifications */}
-                <View style={[styles.sectionHalf, isLargeScreen && styles.sectionHalfLarge]}>
+                {/* Recent Activity Section */}
+                <View style={styles.section}>
                     <SectionHeader
-                        title="Recent Notifications"
+                        title="Recent Activity"
                         icon="🔔"
-                        subtitle="Customer messages and alerts"
+                        subtitle="Latest updates and notifications"
                         actionButton={{
                             label: 'View All',
-                            onPress: () => navigation.navigate('Notifications'),
+                            onPress: () => navigation.navigate('AdminApp', { screen: 'AdminDrawer', params: { screen: 'Notifications' }}),
                         }}
                     />
                     {recentNotifications.length > 0 ? (
                         <View style={styles.notificationsContainer}>
-                            {recentNotifications.map(renderNotificationItem)}
+                            {recentNotifications.map((notification, index) => renderNotificationItem(notification, index))}
                         </View>
                     ) : (
                         <EmptyState
@@ -499,180 +661,124 @@ export default function AdminDashboard({ navigation }: any) {
                 </View>
 
                 {/* Recent Tickets */}
-                <View style={[styles.sectionHalf, isLargeScreen && styles.sectionHalfLarge]}>
+                <View style={styles.section}>
                     <SectionHeader
                         title="Recent Tickets"
                         icon="🎫"
-                        subtitle="Latest repair tickets and their status"
+                        subtitle="Latest repair requests"
                         actionButton={{
                             label: 'View All',
-                            onPress: () => navigation.navigate('Tickets'),
+                            onPress: () => navigation.navigate('AdminApp', { screen: 'AdminDrawer', params: { screen: 'Tickets' }}),
                         }}
                     />
                     {recentTickets.length > 0 ? (
-                        recentTickets.map((ticket) => (
-                            <TicketCard
-                                key={ticket.id}
-                                ticket={ticket}
-                                onPress={() => navigation.navigate('TicketDetail', { id: ticket.id })}
-                            />
-                        ))
+                        <View style={styles.ticketsContainer}>
+                            {recentTickets.map((ticket) => (
+                                <TicketCard
+                                    key={ticket.id}
+                                    ticket={ticket}
+                                    onPress={() => navigation.navigate('AdminApp', { 
+                                        screen: 'AdminDrawer', 
+                                        params: { screen: 'TicketDetail', params: { id: ticket.id } }
+                                    })}
+                                />
+                            ))}
+                        </View>
                     ) : (
                         <EmptyState
                             icon="🎫"
                             title="No tickets found"
-                            subtitle="Create your first repair ticket to get started"
+                            subtitle="Create your first repair ticket"
                             actionButton={{
                                 label: 'Create Ticket',
-                                onPress: () => navigation.navigate('CreateTicket'),
+                                onPress: () => navigation.navigate('AdminApp', { screen: 'CreateTicket' }),
                             }}
                         />
                     )}
                 </View>
-            </View>
 
-            {/* Ticket Status Overview */}
-            <View style={styles.section}>
-                <SectionHeader
-                    title="Ticket Status Overview"
-                    icon="📊"
-                    subtitle="Real-time insights into your service operations"
-                />
-                <TicketStatusChart 
-                    data={ticketStatusData} 
-                    title="" 
-                />
-            </View>
+                {/* Bottom Spacing */}
+                <View style={styles.bottomSpacing} />
+            </Animated.ScrollView>
 
-            {/* Additional Management */}
-            <View style={styles.section}>
-                <SectionHeader
-                    title="Additional Management"
-                    icon="📋"
-                    subtitle="Manage your customers and products"
-                />
-                <View style={[styles.managementGrid, isLargeScreen && styles.managementGridLarge]}>
-                    <View style={[styles.managementItem, isSmallScreen && styles.managementItemSmall]}>
-                        <QuickActionCard
-                            title="Add New Customer"
-                            icon="👤"
-                            color={Colors.light.warning}
-                            onPress={() => navigation.navigate('AddCustomer')}
-                            subtitle="Create a new customer profile"
-                        />
-                    </View>
-                    <View style={[styles.managementItem, isSmallScreen && styles.managementItemSmall]}>
-                        <QuickActionCard
-                            title="Add New Product"
-                            icon="📦"
-                            color={Colors.light.secondary}
-                            onPress={() => navigation.navigate('ManageProduct')}
-                            subtitle="Add a new product to inventory"
-                        />
-                    </View>
-                    <View style={[styles.managementItem, isSmallScreen && styles.managementItemSmall]}>
-                        <QuickActionCard
-                            title="View All Customers"
-                            icon="👥"
-                            color={Colors.light.primary}
-                            onPress={() => navigation.navigate('Customers')}
-                            subtitle="Manage existing customer profiles"
-                        />
-                    </View>
-                    <View style={[styles.managementItem, isSmallScreen && styles.managementItemSmall]}>
-                        <QuickActionCard
-                            title="View All Products"
-                            icon="🛍️"
-                            color={Colors.light.info}
-                            onPress={() => navigation.navigate('Products')}
-                            subtitle="Manage product inventory"
-                        />
-                    </View>
-                    <View style={[styles.managementItem, isSmallScreen && styles.managementItemSmall]}>
-                        <QuickActionCard
-                            title="Second-Hand Products"
-                            icon="📱"
-                            color={Colors.light.success}
-                            onPress={() => navigation.navigate('SecondHand')}
-                            subtitle="Manage second-hand product listings"
-                        />
-                    </View>
-                </View>
-            </View>
-
-            {/* Business Analytics */}
-            <View style={styles.section}>
-                <SectionHeader
-                    title="Business Analytics"
-                    icon="📈"
-                    subtitle="View detailed insights and performance metrics"
-                />
-                <View style={[styles.analyticsGrid, isLargeScreen && styles.analyticsGridLarge]}>
-                    <View style={[styles.analyticsItem, isSmallScreen && styles.analyticsItemSmall]}>
-                        <QuickActionCard
-                            title="View Analytics Dashboard"
-                            icon="📊"
-                            color={Colors.light.info}
-                            onPress={() => navigation.navigate('Analytics')}
-                            subtitle="Comprehensive business insights"
-                        />
-                    </View>
-                    <View style={[styles.analyticsItem, isSmallScreen && styles.analyticsItemSmall]}>
-                        <QuickActionCard
-                            title="Ticket Trends"
-                            icon="📈"
-                            color={Colors.light.primary}
-                            onPress={() => navigation.navigate('Analytics')}
-                            subtitle="Track ticket volume over time"
-                        />
-                    </View>
-                    <View style={[styles.analyticsItem, isSmallScreen && styles.analyticsItemSmall]}>
-                        <QuickActionCard
-                            title="Revenue Analysis"
-                            icon="💰"
-                            color={Colors.light.success}
-                            onPress={() => navigation.navigate('Analytics')}
-                            subtitle="Product performance and revenue"
-                        />
-                    </View>
-                </View>
-                <View style={styles.analyticsDescription}>
-                    <Text style={styles.analyticsText}>
-                        Get detailed insights into your business performance and trends
-                    </Text>
-                </View>
-            </View>
-
-            {/* Bottom Spacing */}
-            <View style={styles.bottomSpacing} />
-        </ScrollView>
+            {/* Enhanced Floating Action Button */}
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={() => navigation.navigate('AdminApp', { screen: 'CreateTicket' })}
+                activeOpacity={0.85}
+            >
+                <View style={styles.fabGradient} />
+                <Text style={styles.fabIcon}>+</Text>
+            </TouchableOpacity>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
+    wrapper: {
+        flex: 1,
+        backgroundColor: '#F8FAFC',
+    },
     container: {
         flex: 1,
-        backgroundColor: Colors.light.background,
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: Colors.light.background,
+        backgroundColor: '#F8FAFC',
     },
+    loadingText: {
+        marginTop: Spacing.md,
+        ...Typography.bodyMedium,
+        color: Colors.light.textSecondary,
+    },
+
+    // Enhanced Header Styles
     header: {
-        padding: Spacing.lg,
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingBottom: Spacing.xl,
+        paddingHorizontal: Spacing.lg,
         backgroundColor: Colors.light.primary,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+        overflow: 'hidden',
+        elevation: 8,
+        shadowColor: Colors.light.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+    },
+    headerGradient: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    },
+    headerContent: {
+        position: 'relative',
+        zIndex: 1,
+    },
+    welcomeText: {
+        ...Typography.bodyMedium,
+        color: 'rgba(255, 255, 255, 0.9)',
+        marginBottom: Spacing.xs,
+        fontWeight: '500',
     },
     title: {
-        ...Typography.h2,
+        ...Typography.headlineMedium,
         color: '#fff',
-        fontWeight: '700',
+        fontWeight: '800',
+        fontSize: 32,
+        marginBottom: Spacing.xs,
     },
     subtitle: {
-        ...Typography.body,
-        color: 'rgba(255, 255, 255, 0.9)',
-        marginTop: Spacing.xs,
+        ...Typography.bodyMedium,
+        color: 'rgba(255, 255, 255, 0.85)',
+        marginBottom: Spacing.lg,
+        fontWeight: '400',
     },
     headerControls: {
         marginTop: Spacing.md,
@@ -681,184 +787,331 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: Spacing.sm,
-        flexWrap: 'wrap',
+        marginBottom: Spacing.md,
     },
-    lastUpdated: {
+    lastUpdatedContainer: {
+        flex: 1,
+    },
+    lastUpdatedLabel: {
         ...Typography.caption,
         color: 'rgba(255, 255, 255, 0.7)',
-        marginBottom: Spacing.xs,
+        fontSize: 11,
+        marginBottom: 2,
+    },
+    lastUpdated: {
+        ...Typography.bodyMedium,
+        color: '#fff',
+        fontWeight: '600',
     },
     refreshButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.xs,
-        borderRadius: BorderRadius.md,
-        marginBottom: Spacing.xs,
+        paddingVertical: Spacing.sm,
+        borderRadius: BorderRadius.lg,
+        gap: Spacing.xs,
+    },
+    refreshIcon: {
+        fontSize: 18,
+        color: '#fff',
+        fontWeight: '700',
     },
     refreshButtonText: {
-        ...Typography.caption,
+        ...Typography.bodyMedium,
         color: '#fff',
         fontWeight: '600',
     },
     timeframeSelector: {
         flexDirection: 'row',
         alignItems: 'center',
-        flexWrap: 'wrap',
     },
     timeframeLabel: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: 'rgba(255, 255, 255, 0.9)',
         marginRight: Spacing.sm,
         fontWeight: '600',
     },
     timeframeButtons: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
+        gap: Spacing.xs,
     },
     timeframeButton: {
-        ...Typography.caption,
-        color: 'rgba(255, 255, 255, 0.7)',
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: Spacing.xs,
-        borderRadius: BorderRadius.md,
-        marginRight: Spacing.xs,
-        marginBottom: Spacing.xs,
-        overflow: 'hidden',
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        borderRadius: BorderRadius.lg,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
-    activeTimeframeButton: {
-        color: Colors.light.primary,
-        backgroundColor: '#fff',
+    timeframeButtonText: {
+        ...Typography.caption,
+        color: 'rgba(255, 255, 255, 0.8)',
         fontWeight: '600',
     },
+    activeTimeframeButton: {
+        backgroundColor: '#fff',
+        borderColor: '#fff',
+    },
+    activeTimeframeButtonText: {
+        color: Colors.light.primary,
+        fontWeight: '700',
+    },
+
+    // Section Styles
     section: {
         padding: Spacing.lg,
     },
-    doubleSection: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        padding: Spacing.lg,
-        gap: Spacing.md,
-    },
-    doubleSectionLarge: {
-        flexDirection: 'row',
-    },
-    sectionHalf: {
-        flex: 1,
-        minWidth: 300,
-    },
-    sectionHalfLarge: {
-        flex: 1,
-    },
+
+    // Enhanced Metrics Grid
     metricsGrid: {
-        gap: Spacing.md,
-    },
-    metricsGridLarge: {
         flexDirection: 'row',
         flexWrap: 'wrap',
+        gap: Spacing.md,
+        marginTop: Spacing.md,
     },
-    metricItem: {
+    metricCard: {
+        flex: 1,
+        minWidth: 150,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        padding: Spacing.md,
+        borderRadius: BorderRadius.xl,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(0, 0, 0, 0.05)',
+    },
+    metricIconContainer: {
+        width: 56,
+        height: 56,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: Spacing.md,
+    },
+    metricIcon: {
+        fontSize: 28,
+    },
+    metricInfo: {
+        flex: 1,
+    },
+    metricLabel: {
+        ...Typography.caption,
+        color: Colors.light.textSecondary,
+        marginBottom: 4,
+        fontWeight: '600',
+        fontSize: 11,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    metricValue: {
+        ...Typography.headlineMedium,
+        fontWeight: '800',
+        fontSize: 28,
+        color: Colors.light.text,
+        marginBottom: 2,
+    },
+    metricTrend: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    metricTrendText: {
+        ...Typography.caption,
+        color: Colors.light.textSecondary,
+        fontSize: 11,
+    },
+
+    // Chart Container
+    chartContainer: {
+        backgroundColor: '#fff',
+        borderRadius: BorderRadius.xl,
+        padding: Spacing.md,
+        marginTop: Spacing.md,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(0, 0, 0, 0.05)',
+    },
+
+    // Enhanced Status Categories
+    statusCategoriesContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: Spacing.md,
+        marginTop: Spacing.md,
+    },
+    statusCategoryCard: {
+        flex: 1,
+        minWidth: 150,
+        backgroundColor: '#fff',
+        borderRadius: BorderRadius.xl,
+        padding: Spacing.md,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        borderLeftWidth: 4,
+    },
+    statusActionRequired: {
+        borderLeftColor: Colors.light.warning,
+    },
+    statusInProgress: {
+        borderLeftColor: Colors.light.info,
+    },
+    statusReady: {
+        borderLeftColor: Colors.light.success,
+    },
+    statusCardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: Spacing.sm,
     },
+    statusCardIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    statusCardIconText: {
+        fontSize: 20,
+    },
+    statusCardBadge: {
+        backgroundColor: Colors.light.primary,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 4,
+        borderRadius: BorderRadius.lg,
+        minWidth: 32,
+        alignItems: 'center',
+    },
+    statusCardBadgeText: {
+        ...Typography.bodyMedium,
+        color: '#fff',
+        fontWeight: '700',
+    },
+    statusCardTitle: {
+        ...Typography.bodyLarge,
+        fontWeight: '700',
+        color: Colors.light.text,
+        marginBottom: 4,
+    },
+    statusCardSubtext: {
+        ...Typography.caption,
+        color: Colors.light.textSecondary,
+        fontSize: 11,
+    },
+
+    // Quick Actions Grid
     quickActionsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: Spacing.md,
-    },
-    quickActionsGridLarge: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    actionItem: {
-        width: '47%',
-    },
-    actionItemSmall: {
-        width: '100%',
-    },
-    managementGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: Spacing.md,
-    },
-    managementGridLarge: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    managementItem: {
-        width: '47%',
-    },
-    managementItemSmall: {
-        width: '100%',
-    },
-    analyticsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: Spacing.md,
-    },
-    analyticsGridLarge: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    analyticsItem: {
-        width: '30%',
-        minWidth: 100,
-    },
-    analyticsItemSmall: {
-        width: '100%',
-    },
-    analyticsDescription: {
         marginTop: Spacing.md,
-        alignItems: 'center',
     },
-    analyticsText: {
-        ...Typography.body,
-        color: Colors.light.textSecondary,
-        textAlign: 'center',
-    },
+
+    // Notifications Container
     notificationsContainer: {
-        backgroundColor: Colors.light.surface,
-        borderRadius: BorderRadius.lg,
+        backgroundColor: '#fff',
+        borderRadius: BorderRadius.xl,
+        marginTop: Spacing.md,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
         borderWidth: 1,
-        borderColor: Colors.light.border,
-        padding: Spacing.sm,
+        borderColor: 'rgba(0, 0, 0, 0.05)',
+        overflow: 'hidden',
     },
     notificationItem: {
         flexDirection: 'row',
-        padding: Spacing.sm,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.border,
+        padding: Spacing.md,
         alignItems: 'center',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(0, 0, 0, 0.05)',
     },
     unreadNotification: {
-        backgroundColor: '#f0f9ff',
+        backgroundColor: '#F0F9FF',
     },
     notificationContent: {
         flex: 1,
     },
     notificationTitle: {
-        ...Typography.body,
-        fontWeight: '600',
-        marginBottom: 2,
+        ...Typography.bodyMedium,
+        fontWeight: '700',
+        marginBottom: 4,
+        color: Colors.light.text,
     },
     notificationMessage: {
-        ...Typography.caption,
+        ...Typography.bodySmall,
         color: Colors.light.textSecondary,
-        marginBottom: 2,
+        marginBottom: 4,
+        lineHeight: 18,
     },
     notificationTime: {
         ...Typography.caption,
         color: Colors.light.textSecondary,
-        fontSize: 10,
+        fontSize: 11,
     },
     notificationDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
         backgroundColor: Colors.light.primary,
         marginLeft: Spacing.sm,
     },
+
+    // Tickets Container
+    ticketsContainer: {
+        marginTop: Spacing.md,
+        gap: Spacing.md,
+    },
+
+    // Bottom Spacing
     bottomSpacing: {
-        height: Spacing.xl,
+        height: 100,
+    },
+
+    // Enhanced FAB
+    fab: {
+        position: 'absolute',
+        bottom: 24,
+        right: 24,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: Colors.light.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 8,
+        shadowColor: Colors.light.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+        overflow: 'hidden',
+    },
+    fabGradient: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    fabIcon: {
+        fontSize: 36,
+        color: '#fff',
+        fontWeight: '300',
+        marginTop: -4,
     },
 });

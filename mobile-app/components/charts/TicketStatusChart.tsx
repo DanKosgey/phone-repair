@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
-import { Colors, Spacing, Typography } from '../../constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Elevation } from '../../constants/theme';
 
 interface TicketStatusData {
     status: string;
@@ -15,6 +15,34 @@ interface TicketStatusChartProps {
 }
 
 const screenWidth = Dimensions.get('window').width;
+
+// Calculate responsive dimensions based on screen width
+const getResponsiveDimensions = (width: number) => {
+    if (width < 360) {
+        return {
+            chartWidth: width - 40,
+            chartHeight: 180,
+            paddingLeft: "10",
+            fontSize: 10,
+        };
+    } else if (width < 500) {
+        return {
+            chartWidth: width - 40,
+            chartHeight: 200,
+            paddingLeft: "15",
+            fontSize: 12,
+        };
+    } else {
+        return {
+            chartWidth: width - 40,
+            chartHeight: 240,
+            paddingLeft: "20",
+            fontSize: 13,
+        };
+    }
+};
+
+const responsiveDims = getResponsiveDimensions(screenWidth);
 
 const chartConfig = {
     backgroundColor: Colors.light.surface,
@@ -45,24 +73,28 @@ export const TicketStatusChart: React.FC<TicketStatusChartProps> = ({ data, titl
             <Text style={styles.total}>Total Active Tickets: {totalTickets}</Text>
             
             {totalTickets > 0 ? (
-                <PieChart
-                    data={chartData.datasets[0].data.map((value, index) => ({
-                        name: chartData.labels[index],
-                        population: value,
-                        color: data[index].color,
-                        legendFontColor: Colors.light.text,
-                        legendFontSize: 12,
-                    }))}
-                    width={screenWidth - 40}
-                    height={220}
-                    chartConfig={chartConfig}
-                    accessor="population"
-                    backgroundColor="transparent"
-                    paddingLeft="15"
-                    center={[10, 10]}
-                    absolute
-                    hasLegend={true}
-                />
+                <View style={styles.chartWrapper}>
+                    <View style={styles.chartContainer}>
+                        <PieChart
+                            data={chartData.datasets[0].data.map((value, index) => ({
+                                name: chartData.labels[index],
+                                population: value,
+                                color: data[index].color,
+                                legendFontColor: Colors.light.text,
+                                legendFontSize: Math.max(10, responsiveDims.fontSize - 2),
+                            }))}
+                            width={responsiveDims.chartWidth}
+                            height={responsiveDims.chartHeight}
+                            chartConfig={chartConfig}
+                            accessor="population"
+                            backgroundColor="transparent"
+                            paddingLeft={responsiveDims.paddingLeft}
+                            center={[10, 10]}
+                            absolute
+                            hasLegend={true}
+                        />
+                    </View>
+                </View>
             ) : (
                 <View style={styles.emptyState}>
                     <Text style={styles.emptyText}>No ticket data available</Text>
@@ -87,24 +119,35 @@ export const TicketStatusChart: React.FC<TicketStatusChartProps> = ({ data, titl
 const styles = StyleSheet.create({
     container: {
         backgroundColor: Colors.light.surface,
-        borderRadius: 8,
+        borderRadius: BorderRadius.lg,
         padding: Spacing.md,
         borderWidth: 1,
         borderColor: Colors.light.border,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        ...Elevation.level2,
+    },
+    chartWrapper: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginVertical: Spacing.md,
+        overflow: 'hidden',
+    },
+    chartContainer: {
+        borderWidth: 1,
+        borderColor: Colors.light.border,
+        borderRadius: BorderRadius.md,
+        padding: Spacing.sm,
+        backgroundColor: Colors.light.background,
+        ...Elevation.level1,
     },
     title: {
-        ...Typography.h3,
+        ...Typography.headlineSmall,
         fontWeight: '700',
         marginBottom: Spacing.sm,
         textAlign: 'center',
+        color: Colors.light.text,
     },
     total: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         textAlign: 'center',
         marginBottom: Spacing.md,
         color: Colors.light.textSecondary,
@@ -114,7 +157,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     emptyText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.textSecondary,
     },
     legendContainer: {
@@ -122,12 +165,20 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'center',
+        gap: Spacing.sm,
     },
     legendItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginHorizontal: Spacing.sm,
+        marginHorizontal: Spacing.xs,
         marginVertical: Spacing.xs,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: Spacing.xs,
+        backgroundColor: Colors.light.background,
+        borderRadius: BorderRadius.sm,
+        borderWidth: 1,
+        borderColor: Colors.light.border,
+        ...Elevation.level1,
     },
     legendColor: {
         width: 12,
@@ -138,5 +189,6 @@ const styles = StyleSheet.create({
     legendText: {
         ...Typography.caption,
         color: Colors.light.text,
+        fontSize: 11,
     },
 });

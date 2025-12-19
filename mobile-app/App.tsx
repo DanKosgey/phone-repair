@@ -16,7 +16,6 @@ import RegisterScreen from './screens/RegisterScreen';
 import ResetPasswordScreen from './screens/ResetPasswordScreen';
 import UpdatePasswordScreen from './screens/UpdatePasswordScreen';
 import HomeScreen from './screens/HomeScreen';
-import CustomerDashboard from './screens/CustomerDashboard';
 import AdminDashboard from './screens/AdminDashboard';
 import TrackRepairScreen from './screens/TrackRepairScreen';
 import ProductsScreen from './screens/ProductsScreen';
@@ -28,12 +27,15 @@ import ProductDetailScreen from './screens/ProductDetailScreen';
 import TicketsScreen from './screens/admin/TicketsScreen';
 import CreateTicketScreen from './screens/admin/CreateTicketScreen';
 import TicketDetailScreen from './screens/admin/TicketDetailScreen';
+import EditTicketScreen from './screens/admin/EditTicketScreen';
 import AnalyticsScreen from './screens/admin/AnalyticsScreen';
+import AdminProductsScreen from './screens/admin/AdminProductsScreen';
 import ManageProductScreen from './screens/admin/ManageProductScreen';
 import CustomersScreen from './screens/admin/CustomersScreen';
 import AddCustomerScreen from './screens/admin/AddCustomerScreen';
 import NotificationsScreen from './screens/admin/NotificationsScreen';
 import SettingsScreen from './screens/admin/SettingsScreen';
+import UIComponentShowcaseScreen from './screens/admin/UIComponentShowcaseScreen';
 
 // Second-Hand Product Screens
 import SecondHandProductsScreen from './screens/admin/SecondHandProductsScreen';
@@ -89,15 +91,6 @@ function CustomerDrawer() {
         }}
       />
       <Drawer.Screen
-        name="Dashboard"
-        component={CustomerDashboard}
-        options={{
-          drawerLabel: 'My Dashboard',
-          headerTitle: 'My Dashboard',
-          drawerIcon: () => <Text style={{ fontSize: 20 }}>📊</Text>,
-        }}
-      />
-      <Drawer.Screen
         name="Marketplace"
         component={MarketplaceScreen}
         options={{
@@ -146,21 +139,21 @@ function AdminDrawer() {
       }}
     >
       <Drawer.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          drawerLabel: 'Home',
-          headerTitle: "Jay's Phone Repair",
-          drawerIcon: () => <Text style={{ fontSize: 20 }}>🏠</Text>,
-        }}
-      />
-      <Drawer.Screen
         name="AdminDashboard"
         component={AdminDashboard}
         options={{
           drawerLabel: 'Dashboard',
           headerTitle: 'Admin Dashboard',
           drawerIcon: () => <Text style={{ fontSize: 20 }}>📊</Text>,
+        }}
+      />
+      <Drawer.Screen
+        name="Analytics"
+        component={AnalyticsScreen}
+        options={{
+          drawerLabel: 'Analytics',
+          headerTitle: 'Analytics',
+          drawerIcon: () => <Text style={{ fontSize: 20 }}>📈</Text>,
         }}
       />
       <Drawer.Screen
@@ -182,8 +175,8 @@ function AdminDrawer() {
         }}
       />
       <Drawer.Screen
-        name="Products"
-        component={ProductsScreen}
+        name="AdminProducts"
+        component={AdminProductsScreen}
         options={{
           drawerLabel: 'Products',
           headerTitle: 'Products',
@@ -194,18 +187,9 @@ function AdminDrawer() {
         name="SecondHand"
         component={SecondHandProductsScreen}
         options={{
-          drawerLabel: 'Second-Hand',
+          drawerLabel: 'Second-Hand Products', // Renamed for consistency
           headerTitle: 'Second-Hand Products',
           drawerIcon: () => <Text style={{ fontSize: 20 }}>📱</Text>,
-        }}
-      />
-      <Drawer.Screen
-        name="Analytics"
-        component={AnalyticsScreen}
-        options={{
-          drawerLabel: 'Analytics',
-          headerTitle: 'Analytics',
-          drawerIcon: () => <Text style={{ fontSize: 20 }}>📈</Text>,
         }}
       />
       <Drawer.Screen
@@ -215,15 +199,6 @@ function AdminDrawer() {
           drawerLabel: 'Notifications',
           headerTitle: 'Notifications',
           drawerIcon: () => <Text style={{ fontSize: 20 }}>🔔</Text>,
-        }}
-      />
-      <Drawer.Screen
-        name="Marketplace"
-        component={MarketplaceScreen}
-        options={{
-          drawerLabel: 'Marketplace',
-          headerTitle: 'Marketplace',
-          drawerIcon: () => <Text style={{ fontSize: 20 }}>🛒</Text>,
         }}
       />
       <Drawer.Screen
@@ -310,82 +285,128 @@ function AdminStack() {
         name="AdminDrawer"
         component={AdminDrawer}
         options={{ headerShown: false }}
+        initialParams={{ initialRoute: 'AdminDashboard' }}
       />
       <Stack.Screen
         name="CreateTicket"
         component={CreateTicketScreen}
-        options={{ headerTitle: 'Create Ticket' }}
+        options={{ 
+          headerTitle: 'Create Ticket',
+          headerBackTitle: 'Back',
+        }}
       />
       <Stack.Screen
         name="TicketDetail"
         component={TicketDetailScreen}
-        options={{ headerTitle: 'Ticket Details' }}
+        options={{ 
+          headerTitle: 'Ticket Details',
+          headerBackTitle: 'Back',
+        }}
+      />
+      <Stack.Screen
+        name="EditTicket"
+        component={EditTicketScreen}
+        options={{ 
+          headerTitle: 'Edit Ticket',
+          headerBackTitle: 'Back',
+        }}
       />
       <Stack.Screen
         name="Analytics"
         component={AnalyticsScreen}
-        options={{ headerTitle: 'Analytics' }}
+        options={{ 
+          headerTitle: 'Analytics',
+          headerBackTitle: 'Back',
+        }}
       />
       <Stack.Screen
         name="Track"
         component={TrackRepairScreen}
-        options={{ headerTitle: 'Track Repair' }}
+        options={{ 
+          headerTitle: 'Track Repair',
+          headerBackTitle: 'Back',
+        }}
       />
       <Stack.Screen
-        name="Marketplace"
-        component={MarketplaceScreen}
-        options={{ headerTitle: 'Marketplace' }}
-      />
-      <Stack.Screen
-        name="ProductDetail"
-        component={ProductDetailScreen}
-        options={{ headerTitle: 'Product Details' }}
-      />
-      <Stack.Screen
-        name="MarketplaceDetail"
-        component={ProductDetailScreen}
-        options={{ headerTitle: 'Item Details' }}
+        name="AdminProducts"
+        component={AdminProductsScreen}
+        options={{ 
+          headerTitle: 'Products',
+          headerBackTitle: 'Back',
+        }}
       />
       <Stack.Screen
         name="ManageProduct"
         component={ManageProductScreen}
-        options={{ headerTitle: 'Manage Product' }}
+        options={{ 
+          headerTitle: 'Manage Product',
+          headerBackTitle: 'Back',
+        }}
       />
       <Stack.Screen
         name="Customers"
         component={CustomersScreen}
-        options={{ headerTitle: 'Customers' }}
+        options={{ 
+          headerTitle: 'Customers',
+          headerBackTitle: 'Back',
+        }}
       />
       <Stack.Screen
         name="AddCustomer"
         component={AddCustomerScreen}
-        options={{ headerTitle: 'Customer Details' }}
+        options={{ 
+          headerTitle: 'Customer Details',
+          headerBackTitle: 'Back',
+        }}
       />
       <Stack.Screen
         name="Notifications"
         component={NotificationsScreen}
-        options={{ headerTitle: 'Notifications' }}
+        options={{ 
+          headerTitle: 'Notifications',
+          headerBackTitle: 'Back',
+        }}
       />
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ headerTitle: 'Settings' }}
+        options={{ 
+          headerTitle: 'Settings',
+          headerBackTitle: 'Back',
+        }}
       />
       {/* Second-Hand Product Screens */}
       <Stack.Screen
         name="SecondHandProducts"
         component={SecondHandProductsScreen}
-        options={{ headerTitle: 'Second-Hand Products' }}
+        options={{ 
+          headerTitle: 'Second-Hand Products',
+          headerBackTitle: 'Back',
+        }}
       />
       <Stack.Screen
         name="ManageSecondHandProduct"
         component={ManageSecondHandProductScreen}
-        options={{ headerTitle: 'Manage Second-Hand Product' }}
+        options={{ 
+          headerTitle: 'Manage Second-Hand Product',
+          headerBackTitle: 'Back',
+        }}
       />
       <Stack.Screen
         name="SecondHandProductDetail"
         component={SecondHandProductDetailScreen}
-        options={{ headerTitle: 'Second-Hand Product Details' }}
+        options={{ 
+          headerTitle: 'Second-Hand Product Details',
+          headerBackTitle: 'Back',
+        }}
+      />
+      <Stack.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ 
+          headerTitle: 'My Profile',
+          headerBackTitle: 'Back',
+        }}
       />
     </Stack.Navigator>
   );

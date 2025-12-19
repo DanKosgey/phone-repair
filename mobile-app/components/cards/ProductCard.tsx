@@ -17,12 +17,14 @@ interface ProductCardProps {
     product: Product;
     onPress: () => void;
     showBadge?: boolean;
+    accessibilityLabel?: string;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
     product,
     onPress,
     showBadge = false,
+    accessibilityLabel,
 }) => {
     // Handle both stock (legacy) and stock_quantity (DB)
     const stockCount = product.stock_quantity ?? product.stock;
@@ -32,6 +34,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             style={styles.container}
             onPress={onPress}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={accessibilityLabel || `${product.name}, KES ${product.price}`}
+            accessibilityHint="Double tap to view product details"
         >
             <View style={styles.imageContainer}>
                 {product.image_url ? (
@@ -39,6 +44,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                         source={{ uri: product.image_url }}
                         style={styles.image}
                         resizeMode="cover"
+                        accessibilityIgnoresInvertColors
                     />
                 ) : (
                     <View style={styles.placeholderImage}>
@@ -68,7 +74,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
                 <View style={styles.footer}>
                     <Text style={styles.price}>
-                        ${typeof product.price === 'number' ? product.price.toFixed(2) : product.price}
+                        KES {typeof product.price === 'number' ? product.price.toLocaleString() : product.price}
                     </Text>
                     {stockCount !== undefined && stockCount > 0 && (
                         <Text style={styles.stock}>
@@ -135,7 +141,7 @@ const styles = StyleSheet.create({
         padding: Spacing.md,
     },
     name: {
-        ...Typography.body,
+        ...Typography.bodyLarge,
         color: Colors.light.text,
         fontWeight: '600',
         marginBottom: Spacing.xs,
@@ -153,7 +159,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     price: {
-        ...Typography.h3,
+        ...Typography.headlineSmall,
         color: Colors.light.primary,
         fontWeight: '700',
     },

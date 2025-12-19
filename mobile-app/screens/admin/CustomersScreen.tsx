@@ -13,6 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../services/supabase';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
 import { SectionHeader, EmptyState } from '../../components';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface Customer {
     id: string;
@@ -89,7 +90,7 @@ export default function CustomersScreen({ navigation }: any) {
     };
 
     const handleAddCustomer = () => {
-        navigation.navigate('AddCustomer');
+        navigation.navigate('AdminApp', { screen: 'AddCustomer' });
     };
 
     if (loading) {
@@ -102,13 +103,43 @@ export default function CustomersScreen({ navigation }: any) {
 
     return (
         <View style={styles.container}>
+            {/* Header with enhanced styling */}
+            <View style={styles.header}>
+                <View style={styles.headerContent}>
+                    <View>
+                        <Text style={styles.title}>Customers</Text>
+                        <Text style={styles.subtitle}>Manage your customer profiles</Text>
+                    </View>
+                    <TouchableOpacity 
+                        style={styles.homeButton}
+                        onPress={() => navigation.navigate('AdminApp', { screen: 'AdminDrawer', params: { screen: 'AdminDashboard' }})}
+                    >
+                        <MaterialIcons name="home" size={24} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+                <TouchableOpacity 
+                    style={styles.addCustomerButton}
+                    onPress={handleAddCustomer}
+                >
+                    <Text style={styles.addCustomerText}>+ Add Customer</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* Search Bar */}
             <View style={styles.searchContainer}>
+                <Text style={styles.searchIcon}>🔍</Text>
                 <TextInput
                     style={styles.searchInput}
                     placeholder="Search customers..."
                     value={searchQuery}
                     onChangeText={setSearchQuery}
+                    placeholderTextColor={Colors.light.textSecondary}
                 />
+                {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchQuery('')}>
+                        <Text style={styles.clearButton}>✕</Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
             <ScrollView
@@ -117,12 +148,6 @@ export default function CustomersScreen({ navigation }: any) {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
             >
-                <View style={styles.header}>
-                    <SectionHeader
-                        title="Customers"
-                        subtitle={`Showing ${filteredCustomers.length} of ${customers.length} customers`}
-                    />
-                </View>
 
                 {filteredCustomers.length === 0 ? (
                     <EmptyState
@@ -191,20 +216,76 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: Colors.light.background,
     },
-    searchContainer: {
+    header: {
+        backgroundColor: Colors.light.primary,
         padding: Spacing.lg,
-        backgroundColor: Colors.light.surface,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.border,
     },
-    searchInput: {
-        height: 48,
-        backgroundColor: Colors.light.background,
-        borderRadius: 24,
-        paddingHorizontal: Spacing.lg,
+    headerContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    title: {
+        fontSize: 32,
+        fontWeight: '700',
+        lineHeight: 40,
+        letterSpacing: 0,
+        color: '#fff',
+        marginBottom: Spacing.xs,
+    },
+    subtitle: {
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: 'rgba(255, 255, 255, 0.9)',
+        marginBottom: Spacing.md,
+    },
+    addCustomerButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.md,
+        borderRadius: BorderRadius.md,
+        alignSelf: 'flex-start',
+    },
+    addCustomerText: {
+        fontSize: 16,
+        fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: '#fff',
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Colors.light.surface,
+        borderRadius: BorderRadius.md,
+        paddingHorizontal: Spacing.md,
+        marginHorizontal: Spacing.lg,
+        marginVertical: Spacing.md,
         borderWidth: 1,
         borderColor: Colors.light.border,
-        ...Typography.body,
+    },
+    searchIcon: {
+        fontSize: 18,
+        marginRight: Spacing.sm,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.text,
+        paddingVertical: Spacing.sm,
+    },
+    clearButton: {
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.textSecondary,
+        padding: Spacing.xs,
     },
     scrollView: {
         flex: 1,
@@ -213,9 +294,6 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    header: {
-        padding: Spacing.lg,
     },
     customersList: {
         padding: Spacing.md,
@@ -243,27 +321,36 @@ const styles = StyleSheet.create({
         marginRight: Spacing.md,
     },
     avatarText: {
-        ...Typography.body,
-        color: Colors.light.background,
-        fontWeight: '600',
         fontSize: 20,
+        fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0,
+        color: Colors.light.background,
     },
     customerDetails: {
         flex: 1,
     },
     customerName: {
-        ...Typography.body,
-        color: Colors.light.text,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.text,
         marginBottom: Spacing.xs,
     },
     customerEmail: {
-        ...Typography.bodySmall,
+        fontSize: 12,
+        fontWeight: '400',
+        lineHeight: 16,
+        letterSpacing: 0.4,
         color: Colors.light.textSecondary,
         marginBottom: Spacing.xs,
     },
     customerPhone: {
-        ...Typography.bodySmall,
+        fontSize: 12,
+        fontWeight: '400',
+        lineHeight: 16,
+        letterSpacing: 0.4,
         color: Colors.light.textSecondary,
     },
     customerStats: {
@@ -272,13 +359,18 @@ const styles = StyleSheet.create({
         paddingTop: Spacing.md,
     },
     ticketCount: {
-        ...Typography.bodySmall,
-        color: Colors.light.text,
+        fontSize: 12,
         fontWeight: '600',
+        lineHeight: 16,
+        letterSpacing: 0.4,
+        color: Colors.light.text,
         marginBottom: Spacing.xs,
     },
     lastVisit: {
-        ...Typography.caption,
+        fontSize: 12,
+        fontWeight: '400',
+        lineHeight: 16,
+        letterSpacing: 0.4,
         color: Colors.light.textSecondary,
     },
     fab: {
@@ -302,5 +394,13 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontWeight: 'bold',
         marginTop: -2,
+    },
+    homeButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });

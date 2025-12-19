@@ -343,10 +343,17 @@ export default function AdminDashboard() {
         console.error('Error calculating direct status distribution:', calcError)
       }
       
-      const transformed = statusData.map(item => ({
-        status: item.status,
-        count: item.count
-      }))
+      // Normalize status labels and ensure percentage is present
+      const total = statusData.reduce((sum: any, it: any) => sum + (it.count || 0), 0) || 1
+      const transformed = statusData.map((item: any) => {
+        const formatted = item.status.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
+        const percentage = typeof item.percentage === 'number' ? item.percentage : parseFloat(((item.count / total) * 100).toFixed(2))
+        return {
+          status: formatted,
+          count: item.count,
+          percentage
+        }
+      })
       console.log('Transformed ticket status data:', transformed)
       setTicketStatusData(transformed)
     } catch (error) {
@@ -568,6 +575,28 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
+        {/* Ticket Status Overview moved to top for quicker visibility */}
+        <div>
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-primary" />
+                Ticket Status Overview
+              </CardTitle>
+              <CardDescription>
+                Snapshot of ticket statuses across the system
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ImprovedTicketStatusChart
+                data={ticketStatusData.map(item => ({ status: item.status, count: item.count }))}
+                title="Ticket Status Overview"
+                height={300}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Stats Cards - Reduced from 4 to 3 cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {stats.map((stat, index) => (
@@ -684,16 +713,7 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Simple Data Insight: Ticket Status Distribution */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-3">
-            <ImprovedTicketStatusChart 
-              data={ticketStatusData} 
-              title="Ticket Status Overview"
-              height={350}
-            />
-          </div>
-        </div>
+        {/* (Ticket status overview moved higher) */}
 
         {/* Additional Quick Links Section */}
         <div className="lg:col-span-1">
@@ -808,6 +828,16 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
+      {/* Floating New Ticket button for quick access */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button
+          className="rounded-full p-4 shadow-lg bg-primary text-primary-foreground hover:scale-105 transition-transform"
+          onClick={handleNewTicket}
+          aria-label="Add new ticket"
+        >
+          <Plus className="h-5 w-5" />
+        </Button>
       </div>
     </div>
   )

@@ -8,11 +8,17 @@ import {
     Alert,
     ActivityIndicator,
     TextInput,
+    Image,
+    Modal,
+    Dimensions,
 } from 'react-native';
 import { supabase } from '../../services/supabase';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
 import { useAuth } from '../../hooks/useAuth';
 import { format } from 'date-fns';
+
+// Get screen dimensions for responsive sizing
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface Ticket {
     id: string;
@@ -31,6 +37,9 @@ interface Ticket {
     estimated_completion_date: string;
     created_at: string;
     updated_at: string;
+    device_photos?: string[];
+    estimated_cost?: number;
+    actual_cost?: number; // Add actual cost to the interface
 }
 
 export default function TicketDetailScreen({ route, navigation }: any) {
@@ -41,11 +50,17 @@ export default function TicketDetailScreen({ route, navigation }: any) {
     const [updating, setUpdating] = useState(false);
     const [newStatus, setNewStatus] = useState('');
     const [statusNote, setStatusNote] = useState('');
+    const [finalCost, setFinalCost] = useState(''); // Add final cost state
+    const [photoModalVisible, setPhotoModalVisible] = useState(false);
+    const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
     const statusOptions = [
         'received',
-        'in_progress',
-        'near_completion',
+        'diagnosing',
+        'awaiting_parts',
+        'repairing',
+        'quality_check',
+        'ready',
         'completed',
         'cancelled'
     ];
@@ -59,8 +74,11 @@ export default function TicketDetailScreen({ route, navigation }: any) {
 
     const statusLabels: Record<string, string> = {
         received: 'Received',
-        in_progress: 'In Progress',
-        near_completion: 'Near Completion',
+        diagnosing: 'Diagnosing',
+        awaiting_parts: 'Awaiting Parts',
+        repairing: 'Repairing',
+        quality_check: 'Quality Check',
+        ready: 'Ready',
         completed: 'Completed',
         cancelled: 'Cancelled'
     };
@@ -90,12 +108,24 @@ export default function TicketDetailScreen({ route, navigation }: any) {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'received': return Colors.light.info;
-            case 'in_progress': return Colors.light.warning;
-            case 'near_completion': return Colors.light.primary;
-            case 'completed': return Colors.light.success;
-            case 'cancelled': return Colors.light.error;
-            default: return Colors.light.textSecondary;
+            case 'received':
+                return Colors.light.info;
+            case 'diagnosing':
+                return Colors.light.warning;
+            case 'awaiting_parts':
+                return Colors.light.error;
+            case 'repairing':
+                return Colors.light.secondary;
+            case 'quality_check':
+                return Colors.light.primary;
+            case 'ready':
+                return Colors.light.success;
+            case 'completed':
+                return Colors.light.success;
+            case 'cancelled':
+                return Colors.light.text;
+            default:
+                return Colors.light.textSecondary;
         }
     };
 
@@ -123,12 +153,23 @@ export default function TicketDetailScreen({ route, navigation }: any) {
             return;
         }
 
+        // Validate final cost if provided and status is completed or ready
+        if ((newStatus === 'completed' || newStatus === 'ready') && finalCost && isNaN(Number(finalCost))) {
+            Alert.alert('Invalid Input', 'Please enter a valid number for the final cost');
+            return;
+        }
+
         setUpdating(true);
         try {
             const updateData: any = {
                 status: newStatus,
                 updated_at: new Date().toISOString()
             };
+
+            // Add final cost if provided and status is completed or ready
+            if ((newStatus === 'completed' || newStatus === 'ready') && finalCost && !isNaN(Number(finalCost))) {
+                updateData.actual_cost = Number(finalCost);
+            }
 
             if (statusNote.trim()) {
                 updateData.notes = ticket?.notes 
@@ -144,6 +185,10 @@ export default function TicketDetailScreen({ route, navigation }: any) {
             if (error) throw error;
 
             Alert.alert('Success', 'Ticket status updated successfully');
+            // Reset final cost field only if we just updated to completed or ready
+            if (newStatus === 'completed' || newStatus === 'ready') {
+                setFinalCost('');
+            }
             fetchTicket(); // Refresh ticket data
         } catch (error: any) {
             console.error('Error updating ticket:', error);
@@ -153,8 +198,27 @@ export default function TicketDetailScreen({ route, navigation }: any) {
         }
     };
 
+    // Reset final cost when status changes away from completed/ready
+    useEffect(() => {
+        if (newStatus !== 'completed' && newStatus !== 'ready') {
+            setFinalCost('');
+        }
+    }, [newStatus]);
+
     const handleEdit = () => {
-        navigation.navigate('CreateTicket', { ticket });
+        if (ticket) {
+            navigation.navigate('AdminApp', { screen: 'EditTicket', params: { ticketId: ticket.id } });
+        }
+    };
+
+    const openPhotoModal = (photoUrl: string) => {
+        setSelectedPhoto(photoUrl);
+        setPhotoModalVisible(true);
+    };
+
+    const closePhotoModal = () => {
+        setPhotoModalVisible(false);
+        setSelectedPhoto(null);
     };
 
     if (loading) {
@@ -180,167 +244,242 @@ export default function TicketDetailScreen({ route, navigation }: any) {
     }
 
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <View style={styles.headerTop}>
-                    <Text style={styles.ticketNumber}>#{ticket.ticket_number}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(ticket.status) + '20' }]}>
-                        <Text style={[styles.statusText, { color: getStatusColor(ticket.status) }]}>
-                            {statusLabels[ticket.status]}
-                        </Text>
-                    </View>
-                </View>
-                <Text style={styles.deviceTitle}>
-                    {ticket.device_brand} {ticket.device_model}
-                </Text>
-                <Text style={styles.issueDescription} numberOfLines={2}>
-                    {ticket.issue_description}
-                </Text>
-            </View>
-
-            <View style={styles.content}>
-                {/* Customer Information */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Customer Information</Text>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Name</Text>
-                        <Text style={styles.infoValue}>{ticket.customer_name}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Email</Text>
-                        <Text style={styles.infoValue}>{ticket.customer_email}</Text>
-                    </View>
-                    {ticket.customer_phone && (
-                        <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>Phone</Text>
-                            <Text style={styles.infoValue}>{ticket.customer_phone}</Text>
-                        </View>
-                    )}
-                </View>
-
-                {/* Device Information */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Device Information</Text>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Type</Text>
-                        <Text style={styles.infoValue}>{ticket.device_type}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Brand</Text>
-                        <Text style={styles.infoValue}>{ticket.device_brand}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Model</Text>
-                        <Text style={styles.infoValue}>{ticket.device_model}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Priority</Text>
-                        <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(ticket.priority) + '20' }]}>
-                            <Text style={[styles.priorityText, { color: getPriorityColor(ticket.priority) }]}>
-                                {priorityLabels[ticket.priority]}
+        <View style={styles.container}>
+            <ScrollView style={styles.scrollView}>
+                <View style={styles.header}>
+                    <View style={styles.headerTop}>
+                        <Text style={styles.ticketNumber}>#{ticket.ticket_number}</Text>
+                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(ticket.status) + '20' }]}>
+                            <Text style={[styles.statusText, { color: getStatusColor(ticket.status) }]}>
+                                {statusLabels[ticket.status]}
                             </Text>
                         </View>
                     </View>
+                    <Text style={styles.deviceTitle}>
+                        {ticket.device_brand} {ticket.device_model}
+                    </Text>
+                    <Text style={styles.issueDescription} numberOfLines={2}>
+                        {ticket.issue_description}
+                    </Text>
                 </View>
 
-                {/* Timeline Information */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Timeline</Text>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Created</Text>
-                        <Text style={styles.infoValue}>{formatDate(ticket.created_at)}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Last Updated</Text>
-                        <Text style={styles.infoValue}>{formatDate(ticket.updated_at)}</Text>
-                    </View>
-                    {ticket.estimated_completion_date && (
+                <View style={styles.content}>
+                    {/* Customer Information */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Customer Information</Text>
                         <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>Est. Completion</Text>
-                            <Text style={styles.infoValue}>{formatDate(ticket.estimated_completion_date)}</Text>
+                            <Text style={styles.infoLabel}>Name</Text>
+                            <Text style={styles.infoValue}>{ticket.customer_name}</Text>
+                        </View>
+                        <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Email</Text>
+                            <Text style={styles.infoValue}>{ticket.customer_email}</Text>
+                        </View>
+                        {ticket.customer_phone && (
+                            <View style={styles.infoRow}>
+                                <Text style={styles.infoLabel}>Phone</Text>
+                                <Text style={styles.infoValue}>{ticket.customer_phone}</Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Device Information */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Device Information</Text>
+                        <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Type</Text>
+                            <Text style={styles.infoValue}>{ticket.device_type}</Text>
+                        </View>
+                        <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Brand</Text>
+                            <Text style={styles.infoValue}>{ticket.device_brand}</Text>
+                        </View>
+                        <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Model</Text>
+                            <Text style={styles.infoValue}>{ticket.device_model}</Text>
+                        </View>
+                        <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Priority</Text>
+                            <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(ticket.priority) + '20' }]}>
+                                <Text style={[styles.priorityText, { color: getPriorityColor(ticket.priority) }]}>
+                                    {priorityLabels[ticket.priority]}
+                                </Text>
+                            </View>
+                        </View>
+                        {ticket.estimated_cost && (
+                            <View style={styles.infoRow}>
+                                <Text style={styles.infoLabel}>Estimated Cost</Text>
+                                <Text style={styles.infoValue}>KSh {ticket.estimated_cost.toLocaleString()}</Text>
+                            </View>
+                        )}
+                        {ticket.actual_cost && (
+                            <View style={styles.infoRow}>
+                                <Text style={styles.infoLabel}>Final Cost</Text>
+                                <Text style={styles.infoValue}>KSh {ticket.actual_cost.toLocaleString()}</Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Timeline Information */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Timeline</Text>
+                        <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Created</Text>
+                            <Text style={styles.infoValue}>{formatDate(ticket.created_at)}</Text>
+                        </View>
+                        <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Last Updated</Text>
+                            <Text style={styles.infoValue}>{formatDate(ticket.updated_at)}</Text>
+                        </View>
+                        {ticket.estimated_completion_date && (
+                            <View style={styles.infoRow}>
+                                <Text style={styles.infoLabel}>Est. Completion</Text>
+                                <Text style={styles.infoValue}>{formatDate(ticket.estimated_completion_date)}</Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Issue Description */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Issue Description</Text>
+                        <Text style={styles.descriptionText}>{ticket.issue_description}</Text>
+                    </View>
+
+                    {/* Device Photos */}
+                    {ticket.device_photos && ticket.device_photos.length > 0 && (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Device Photos</Text>
+                            <View style={styles.photoGrid}>
+                                {ticket.device_photos.map((photoUrl, index) => (
+                                    <TouchableOpacity 
+                                        key={index} 
+                                        style={styles.photoContainer}
+                                        onPress={() => openPhotoModal(photoUrl)}
+                                    >
+                                        <Image 
+                                            source={{ uri: photoUrl }} 
+                                            style={styles.photo} 
+                                            resizeMode="cover"
+                                        />
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                         </View>
                     )}
-                </View>
 
-                {/* Issue Description */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Issue Description</Text>
-                    <Text style={styles.descriptionText}>{ticket.issue_description}</Text>
-                </View>
-
-                {/* Notes */}
-                {ticket.notes && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Notes</Text>
-                        <Text style={styles.descriptionText}>{ticket.notes}</Text>
-                    </View>
-                )}
-
-                {/* Status Update (Admin Only) */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Update Status</Text>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>New Status</Text>
-                        <View style={styles.chipContainer}>
-                            {statusOptions.map((status) => (
-                                <TouchableOpacity
-                                    key={status}
-                                    style={[
-                                        styles.chip,
-                                        newStatus === status && styles.chipSelected,
-                                        { borderColor: getStatusColor(status) }
-                                    ]}
-                                    onPress={() => setNewStatus(status)}
-                                >
-                                    <Text style={[
-                                        styles.chipText,
-                                        newStatus === status && styles.chipTextSelected,
-                                        { color: newStatus === status ? Colors.light.background : getStatusColor(status) }
-                                    ]}>
-                                        {statusLabels[status]}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                    {/* Notes */}
+                    {ticket.notes && (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Notes</Text>
+                            <Text style={styles.descriptionText}>{ticket.notes}</Text>
                         </View>
-                    </View>
+                    )}
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Status Note (Optional)</Text>
-                        <TextInput
-                            style={[styles.textInput, styles.textArea]}
-                            value={statusNote}
-                            onChangeText={setStatusNote}
-                            placeholder="Add a note about this status change..."
-                            multiline
-                            numberOfLines={3}
-                            textAlignVertical="top"
-                        />
-                    </View>
+                    {/* Status Update (Admin Only) */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Update Status</Text>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>New Status</Text>
+                            <View style={styles.chipContainer}>
+                                {statusOptions.map((status) => (
+                                    <TouchableOpacity
+                                        key={status}
+                                        style={[
+                                            styles.chip,
+                                            newStatus === status && styles.chipSelected,
+                                            { borderColor: getStatusColor(status) }
+                                        ]}
+                                        onPress={() => setNewStatus(status)}
+                                    >
+                                        <Text style={[
+                                            styles.chipText,
+                                            newStatus === status && styles.chipTextSelected,
+                                            { color: newStatus === status ? Colors.light.background : getStatusColor(status) }
+                                        ]}>
+                                            {statusLabels[status]}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
 
-                    <TouchableOpacity
-                        style={[styles.updateButton, updating && styles.buttonDisabled]}
-                        onPress={handleUpdateStatus}
-                        disabled={updating}
-                    >
-                        {updating ? (
-                            <ActivityIndicator color="#fff" size="small" />
-                        ) : (
-                            <Text style={styles.updateButtonText}>Update Status</Text>
+                        {/* Final Cost Input - only show when completed or ready status is selected */}
+                        {(newStatus === 'completed' || newStatus === 'ready') && (
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Final Cost (KSh)</Text>
+                                <TextInput
+                                    style={styles.textInput}
+                                    value={finalCost}
+                                    onChangeText={setFinalCost}
+                                    placeholder="Enter final cost"
+                                    keyboardType="numeric"
+                                />
+                            </View>
                         )}
-                    </TouchableOpacity>
-                </View>
 
-                {/* Action Buttons */}
-                <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                        style={[styles.actionButton, styles.editButton]}
-                        onPress={handleEdit}
-                    >
-                        <Text style={styles.actionButtonText}>Edit Ticket</Text>
-                    </TouchableOpacity>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Status Note (Optional)</Text>
+                            <TextInput
+                                style={[styles.textInput, styles.textArea]}
+                                value={statusNote}
+                                onChangeText={setStatusNote}
+                                placeholder="Add a note about this status change..."
+                                multiline
+                                numberOfLines={3}
+                                textAlignVertical="top"
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.updateButton, updating && styles.buttonDisabled]}
+                            onPress={handleUpdateStatus}
+                            disabled={updating}
+                        >
+                            {updating ? (
+                                <ActivityIndicator color="#fff" size="small" />
+                            ) : (
+                                <Text style={styles.updateButtonText}>Update Status</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Action Buttons */}
+                    <View style={styles.actionButtons}>
+                        <TouchableOpacity
+                            style={[styles.actionButton, styles.editButton]}
+                            onPress={handleEdit}
+                        >
+                            <Text style={styles.actionButtonText}>Edit Ticket</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
-        </ScrollView>
+            </ScrollView>
+
+            {/* Photo Modal */}
+            <Modal
+                visible={photoModalVisible}
+                transparent={true}
+                onRequestClose={closePhotoModal}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <TouchableOpacity 
+                            style={styles.closeButton}
+                            onPress={closePhotoModal}
+                        >
+                            <Text style={styles.closeButtonText}>×</Text>
+                        </TouchableOpacity>
+                        {selectedPhoto && (
+                            <Image 
+                                source={{ uri: selectedPhoto }} 
+                                style={styles.fullscreenPhoto}
+                                resizeMode="contain"
+                            />
+                        )}
+                    </View>
+                </View>
+            </Modal>
+        </View>
     );
 }
 
@@ -349,6 +488,9 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: Colors.light.background,
     },
+    scrollView: {
+        flex: 1,
+    },
     centerContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -356,7 +498,7 @@ const styles = StyleSheet.create({
         padding: Spacing.xxl,
     },
     errorText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.text,
         marginBottom: Spacing.lg,
     },
@@ -367,7 +509,7 @@ const styles = StyleSheet.create({
         borderRadius: BorderRadius.md,
     },
     retryButtonText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.background,
         fontWeight: '600',
     },
@@ -384,7 +526,7 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.md,
     },
     ticketNumber: {
-        ...Typography.h2,
+        ...Typography.headlineSmall,
         color: Colors.light.text,
         fontWeight: '700',
     },
@@ -398,12 +540,12 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     deviceTitle: {
-        ...Typography.h3,
+        ...Typography.headlineMedium,
         color: Colors.light.text,
         marginBottom: Spacing.xs,
     },
     issueDescription: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.textSecondary,
     },
     content: {
@@ -418,11 +560,29 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     sectionTitle: {
-        ...Typography.h3,
+        ...Typography.headlineMedium,
         color: Colors.light.text,
         padding: Spacing.lg,
         borderBottomWidth: 1,
         borderBottomColor: Colors.light.border,
+    },
+    photoGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        padding: Spacing.md,
+        gap: Spacing.md,
+    },
+    photoContainer: {
+        width: 100,
+        height: 100,
+        borderRadius: BorderRadius.md,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: Colors.light.border,
+    },
+    photo: {
+        width: '100%',
+        height: '100%',
     },
     infoRow: {
         flexDirection: 'row',
@@ -432,29 +592,28 @@ const styles = StyleSheet.create({
         borderBottomColor: Colors.light.border,
     },
     infoLabel: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.textSecondary,
-        flex: 1,
+        fontWeight: '600',
     },
     infoValue: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.text,
-        fontWeight: '600',
-        flex: 2,
         textAlign: 'right',
+        flex: 1,
+        marginLeft: Spacing.lg,
     },
     priorityBadge: {
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        borderRadius: BorderRadius.md,
-        alignSelf: 'flex-end',
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: Spacing.xs,
+        borderRadius: BorderRadius.sm,
     },
     priorityText: {
-        ...Typography.bodySmall,
+        ...Typography.caption,
         fontWeight: '600',
     },
     descriptionText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.text,
         padding: Spacing.lg,
         lineHeight: 24,
@@ -464,7 +623,7 @@ const styles = StyleSheet.create({
         paddingTop: Spacing.md,
     },
     label: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.text,
         fontWeight: '600',
         marginBottom: Spacing.sm,
@@ -496,7 +655,7 @@ const styles = StyleSheet.create({
         borderColor: Colors.light.border,
         borderRadius: BorderRadius.md,
         padding: Spacing.md,
-        ...Typography.body,
+        ...Typography.bodyMedium,
     },
     textArea: {
         minHeight: 100,
@@ -514,7 +673,7 @@ const styles = StyleSheet.create({
         opacity: 0.7,
     },
     updateButtonText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.background,
         fontWeight: '600',
     },
@@ -533,8 +692,42 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.light.primary,
     },
     actionButtonText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.background,
         fontWeight: '600',
+    },
+    // Photo Modal Styles
+    modalContainer: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    fullscreenPhoto: {
+        width: SCREEN_WIDTH * 0.9,
+        height: SCREEN_HEIGHT * 0.7,
+    },
+    closeButton: {
+        position: 'absolute',
+        top: 60,
+        right: 20,
+        zIndex: 10,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    closeButtonText: {
+        color: 'white',
+        fontSize: 24,
+        fontWeight: 'bold',
     },
 });

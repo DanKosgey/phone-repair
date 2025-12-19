@@ -148,7 +148,15 @@ export default function SecondHandProductDetailScreen({ route, navigation }: any
             <ScrollView style={styles.scrollView}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.title}>Second-Hand Product Details</Text>
+                    <View style={styles.headerContent}>
+                        <Text style={styles.title}>Second-Hand Product Details</Text>
+                        <TouchableOpacity 
+                            style={styles.homeButton}
+                            onPress={() => navigation.navigate('AdminDashboard')}
+                        >
+                            <MaterialIcons name="home" size={24} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* Product Info */}
@@ -254,9 +262,22 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: Colors.light.border,
     },
+    headerContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
     title: {
-        ...Typography.h2,
+        ...Typography.headlineMedium,
         color: Colors.light.text,
+    },
+    homeButton: {
+        backgroundColor: Colors.light.primary,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     card: {
         backgroundColor: Colors.light.surface,
@@ -280,7 +301,7 @@ const styles = StyleSheet.create({
         borderColor: Colors.light.border,
     },
     statusText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         fontWeight: '600',
     },
     conditionBadge: {
@@ -289,11 +310,11 @@ const styles = StyleSheet.create({
         borderRadius: BorderRadius.md,
     },
     conditionText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         fontWeight: '600',
     },
     description: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.text,
         marginBottom: Spacing.lg,
         lineHeight: 24,
@@ -308,12 +329,12 @@ const styles = StyleSheet.create({
         borderBottomColor: Colors.light.border,
     },
     priceLabel: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.text,
         fontWeight: '600',
     },
     price: {
-        ...Typography.h2,
+        ...Typography.headlineMedium,
         color: Colors.light.primary,
         fontWeight: '700',
     },
@@ -323,11 +344,11 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.md,
     },
     detailLabel: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.textSecondary,
     },
     detailValue: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.text,
         fontWeight: '600',
         textAlign: 'right',
@@ -335,7 +356,7 @@ const styles = StyleSheet.create({
         marginLeft: Spacing.md,
     },
     sectionTitle: {
-        ...Typography.h3,
+        ...Typography.headlineSmall,
         color: Colors.light.text,
         marginBottom: Spacing.lg,
     },
@@ -346,7 +367,7 @@ const styles = StyleSheet.create({
         padding: Spacing.xxl,
     },
     emptyText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.text,
         fontWeight: '600',
         marginTop: Spacing.md,
@@ -359,7 +380,7 @@ const styles = StyleSheet.create({
         borderRadius: BorderRadius.md,
     },
     retryButtonText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.background,
         fontWeight: '600',
     },

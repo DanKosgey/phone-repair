@@ -15,6 +15,7 @@ import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../services/supabase';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface BusinessSettings {
     businessName: string;
@@ -40,7 +41,7 @@ interface ContactInfo {
     hours: string;
 }
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ navigation }: any) {
     const { signOut } = useAuth();
     const [activeTab, setActiveTab] = useState<'contact' | 'features' | 'appearance'>('contact');
     const [businessSettings, setBusinessSettings] = useState<BusinessSettings>({
@@ -332,30 +333,49 @@ export default function SettingsScreen() {
 
     return (
         <View style={styles.container}>
+            {/* Header */}
+            <View style={styles.header}>
+                <View style={styles.headerContent}>
+                    <View>
+                        <Text style={styles.title}>Settings</Text>
+                        <Text style={styles.subtitle}>Manage your business settings and preferences</Text>
+                    </View>
+                    <TouchableOpacity 
+                        style={styles.homeButton}
+                        onPress={() => navigation.navigate('AdminDashboard')}
+                    >
+                        <MaterialIcons name="home" size={24} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
             {/* Tab Selector */}
             <View style={styles.tabSelector}>
                 <TouchableOpacity 
                     style={[styles.tabButton, activeTab === 'contact' && styles.activeTab]}
                     onPress={() => setActiveTab('contact')}
                 >
-                    <Ionicons name="call" size={16} color={activeTab === 'contact' ? Colors.light.background : Colors.light.text} />
-                    <Text style={[styles.tabText, activeTab === 'contact' && styles.activeTabText]}>Contact</Text>
+                    <Text style={[styles.tabText, activeTab === 'contact' && styles.activeTabText]}>
+                        📞 Contact
+                    </Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
                     style={[styles.tabButton, activeTab === 'features' && styles.activeTab]}
                     onPress={() => setActiveTab('features')}
                 >
-                    <Ionicons name="cube" size={16} color={activeTab === 'features' ? Colors.light.background : Colors.light.text} />
-                    <Text style={[styles.tabText, activeTab === 'features' && styles.activeTabText]}>Features</Text>
+                    <Text style={[styles.tabText, activeTab === 'features' && styles.activeTabText]}>
+                        ⚙️ Features
+                    </Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
                     style={[styles.tabButton, activeTab === 'appearance' && styles.activeTab]}
                     onPress={() => setActiveTab('appearance')}
                 >
-                    <Ionicons name="color-palette" size={16} color={activeTab === 'appearance' ? Colors.light.background : Colors.light.text} />
-                    <Text style={[styles.tabText, activeTab === 'appearance' && styles.activeTabText]}>Appearance</Text>
+                    <Text style={[styles.tabText, activeTab === 'appearance' && styles.activeTabText]}>
+                        🎨 Appearance
+                    </Text>
                 </TouchableOpacity>
             </View>
 
@@ -422,6 +442,38 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: Colors.light.background,
     },
+    header: {
+        backgroundColor: Colors.light.primary,
+    },
+    headerContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: Spacing.lg,
+    },
+    title: {
+        fontSize: 28,
+        fontWeight: '700',
+        lineHeight: 36,
+        letterSpacing: 0,
+        color: '#fff',
+        marginBottom: Spacing.xs,
+    },
+    subtitle: {
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: 'rgba(255, 255, 255, 0.9)',
+    },
+    homeButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     tabSelector: {
         flexDirection: 'row',
         backgroundColor: Colors.light.surface,
@@ -431,19 +483,22 @@ const styles = StyleSheet.create({
     },
     tabButton: {
         flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
         paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.sm,
         borderRadius: BorderRadius.md,
         backgroundColor: Colors.light.background,
         marginHorizontal: Spacing.xs,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     activeTab: {
         backgroundColor: Colors.light.primary,
     },
     tabText: {
-        ...Typography.body,
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
         color: Colors.light.text,
         marginLeft: Spacing.xs,
     },
@@ -473,16 +528,21 @@ const styles = StyleSheet.create({
         borderBottomColor: Colors.light.border,
     },
     cardTitle: {
-        ...Typography.body,
-        color: Colors.light.text,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.text,
         marginLeft: Spacing.sm,
     },
     cardContent: {
         padding: Spacing.md,
     },
     sectionSubtitle: {
-        ...Typography.bodySmall,
+        fontSize: 12,
+        fontWeight: '400',
+        lineHeight: 16,
+        letterSpacing: 0.4,
         color: Colors.light.textSecondary,
         marginBottom: Spacing.md,
     },
@@ -495,8 +555,10 @@ const styles = StyleSheet.create({
         margin: Spacing.md,
     },
     previewTitle: {
-        ...Typography.body,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
         marginBottom: Spacing.sm,
     },
     previewItem: {
@@ -505,7 +567,10 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.xs,
     },
     previewText: {
-        ...Typography.bodySmall,
+        fontSize: 12,
+        fontWeight: '400',
+        lineHeight: 16,
+        letterSpacing: 0.4,
         color: Colors.light.textSecondary,
         marginLeft: Spacing.sm,
     },
@@ -513,9 +578,11 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.lg,
     },
     inputLabel: {
-        ...Typography.body,
-        color: Colors.light.text,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.text,
         marginBottom: Spacing.sm,
     },
     textInput: {
@@ -525,7 +592,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.md,
         borderWidth: 1,
         borderColor: Colors.light.border,
-        ...Typography.body,
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
     },
     featureItem: {
         flexDirection: 'row',
@@ -540,13 +610,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     featureTitle: {
-        ...Typography.body,
-        color: Colors.light.text,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.text,
         marginLeft: Spacing.sm,
     },
     featureDescription: {
-        ...Typography.bodySmall,
+        fontSize: 12,
+        fontWeight: '400',
+        lineHeight: 16,
+        letterSpacing: 0.4,
         color: Colors.light.textSecondary,
         marginLeft: Spacing.sm,
         marginTop: Spacing.xs,
@@ -558,9 +633,11 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.md,
     },
     settingLabel: {
-        ...Typography.body,
-        color: Colors.light.text,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.text,
     },
     colorSetting: {
         flexDirection: 'row',
@@ -578,7 +655,10 @@ const styles = StyleSheet.create({
         borderColor: Colors.light.border,
     },
     colorValue: {
-        ...Typography.body,
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
         color: Colors.light.text,
     },
     saveButtonContainer: {
@@ -593,9 +673,11 @@ const styles = StyleSheet.create({
         borderRadius: BorderRadius.md,
     },
     saveButtonText: {
-        ...Typography.body,
-        color: Colors.light.background,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.background,
         marginLeft: Spacing.sm,
     },
     section: {
@@ -640,11 +722,17 @@ const styles = StyleSheet.create({
     },
     itemTitle: {
         fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
         color: Colors.light.text,
     },
     versionText: {
-        color: Colors.light.textSecondary,
         fontSize: 14,
+        fontWeight: '400',
+        lineHeight: 20,
+        letterSpacing: 0.25,
+        color: Colors.light.textSecondary,
     },
     logoutItem: {
         borderBottomWidth: 0,

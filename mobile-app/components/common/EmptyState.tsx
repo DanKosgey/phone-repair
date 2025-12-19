@@ -10,6 +10,7 @@ interface EmptyStateProps {
         label: string;
         onPress: () => void;
     };
+    accessibilityLabel?: string;
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
@@ -17,6 +18,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     title,
     subtitle,
     actionButton,
+    accessibilityLabel,
 }) => {
     return (
         <View style={styles.container}>
@@ -29,6 +31,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
                     style={styles.actionButton}
                     onPress={actionButton.onPress}
                     activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={accessibilityLabel || actionButton.label}
+                    accessibilityHint="Double tap to perform action"
                 >
                     <Text style={styles.actionButtonText}>{actionButton.label}</Text>
                 </TouchableOpacity>
@@ -54,14 +59,14 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.md,
     },
     title: {
-        ...Typography.h3,
+        ...Typography.headlineSmall,
         color: Colors.light.text,
         fontWeight: '600',
         textAlign: 'center',
         marginBottom: Spacing.xs,
     },
     subtitle: {
-        ...Typography.body,
+        ...Typography.bodySmall,
         color: Colors.light.textSecondary,
         textAlign: 'center',
         marginBottom: Spacing.lg,
@@ -75,7 +80,7 @@ const styles = StyleSheet.create({
         marginTop: Spacing.sm,
     },
     actionButtonText: {
-        ...Typography.body,
+        ...Typography.bodyLarge,
         color: '#fff',
         fontWeight: '600',
     },

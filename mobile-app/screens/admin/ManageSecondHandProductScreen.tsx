@@ -1,3 +1,20 @@
+/* SECOND-HAND PRODUCT FORM COMPARISON SUMMARY
+ *
+ * WEB APP vs MOBILE APP SECOND-HAND PRODUCT FORM COMPARISON:
+ * 
+ * IMPLEMENTED FEATURES TO MATCH WEB APP:
+ * 1. Condition selection dropdown added to match web form ✓
+ * 2. Availability selection dropdown added to match web form ✓
+ * 3. Image preview now shows actual image instead of placeholder ✓
+ * 4. Helper text added for better UX guidance ✓
+ * 5. Comprehensive form validation similar to web app ✓
+ * 
+ * FEATURES NOT IMPLEMENTED (MOBILE-SPECIFIC REASONS):
+ * 1. CSRF protection - Not typically used in mobile apps
+ * 2. Camera component - Using expo-image-picker instead
+ * 3. Exact styling - Adapted for mobile touch interface
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
@@ -8,6 +25,8 @@ import {
     ActivityIndicator,
     TextInput,
     Alert,
+    Modal,
+    Image,
 } from 'react-native';
 import { supabase } from '../../services/supabase';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
@@ -34,6 +53,9 @@ export default function ManageSecondHandProductScreen({ route, navigation }: any
     const [uploading, setUploading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [imageFile, setImageFile] = useState<File | null>(null);
+
+    const [conditionModalVisible, setConditionModalVisible] = useState(false);
+    const [availabilityModalVisible, setAvailabilityModalVisible] = useState(false);
 
     useEffect(() => {
         // Request camera roll permissions
@@ -168,19 +190,32 @@ export default function ManageSecondHandProductScreen({ route, navigation }: any
         }
     };
 
+    const validateForm = () => {
+        const errors: string[] = [];
+
+        // Validate description
+        if (!description || description.trim().length < 5) {
+            errors.push('Description must be at least 5 characters long');
+        }
+
+        // Validate price
+        const priceNum = parseFloat(price);
+        if (!price || isNaN(priceNum) || priceNum <= 0) {
+            errors.push('Price must be a positive number');
+        }
+
+        return errors;
+    };
+
     const handleSubmit = async () => {
         if (!isAdmin) {
             Alert.alert('Error', 'Only admins can manage second-hand products');
             return;
         }
 
-        if (!description || description.trim().length < 5) {
-            Alert.alert('Error', 'Description must be at least 5 characters long');
-            return;
-        }
-
-        if (!price || isNaN(Number(price)) || Number(price) <= 0) {
-            Alert.alert('Error', 'Price must be a positive number');
+        const errors = validateForm();
+        if (errors.length > 0) {
+            Alert.alert('Validation Error', errors.join('\n'));
             return;
         }
 
@@ -262,10 +297,20 @@ export default function ManageSecondHandProductScreen({ route, navigation }: any
         <View style={styles.container}>
             <ScrollView style={styles.scrollView}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>{product ? 'Edit Second-Hand Product' : 'Add New Second-Hand Product'}</Text>
-                    <Text style={styles.subtitle}>
-                        {product ? 'Update second-hand product details' : 'Create a new second-hand product listing'}
-                    </Text>
+                    <View style={styles.headerContent}>
+                        <View>
+                            <Text style={styles.title}>{product ? 'Edit Second-Hand Product' : 'Add New Second-Hand Product'}</Text>
+                            <Text style={styles.subtitle}>
+                                {product ? 'Update second-hand product details' : 'Create a new second-hand product listing'}
+                            </Text>
+                        </View>
+                        <TouchableOpacity 
+                            style={styles.homeButton}
+                            onPress={() => navigation.navigate('AdminDashboard')}
+                        >
+                            <MaterialIcons name="home" size={24} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 <View style={styles.formContainer}>
@@ -285,46 +330,46 @@ export default function ManageSecondHandProductScreen({ route, navigation }: any
                     {/* Condition */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Condition *</Text>
-                        <View style={styles.radioGroup}>
+                        <TouchableOpacity 
+                            style={styles.selectInput}
+                            onPress={() => setConditionModalVisible(true)}
+                        >
+                            <Text style={styles.selectText}>{condition}</Text>
+                            <MaterialIcons name="arrow-drop-down" size={24} color={Colors.light.textSecondary} />
+                        </TouchableOpacity>
+                        
+                        {/* Condition Selection Modal */}
+                        <Modal
+                            visible={conditionModalVisible}
+                            transparent={true}
+                            animationType="fade"
+                        >
                             <TouchableOpacity 
-                                style={[
-                                    styles.radioButton, 
-                                    condition === 'Like New' && styles.radioButtonSelected
-                                ]}
-                                onPress={() => setCondition('Like New')}
+                                style={styles.modalOverlay}
+                                onPress={() => setConditionModalVisible(false)}
                             >
-                                <Text style={[
-                                    styles.radioText,
-                                    condition === 'Like New' && styles.radioTextSelected
-                                ]}>Like New</Text>
+                                <View style={styles.modalContent}>
+                                    <Text style={styles.modalTitle}>Select Condition</Text>
+                                    {(['Like New', 'Good', 'Fair'] as const).map((cond) => (
+                                        <TouchableOpacity
+                                            key={cond}
+                                            style={styles.modalOption}
+                                            onPress={() => {
+                                                setCondition(cond as 'Like New' | 'Good' | 'Fair');
+                                                setConditionModalVisible(false);
+                                            }}
+                                        >
+                                            <Text style={[
+                                                styles.modalOptionText,
+                                                condition === cond && styles.modalOptionTextSelected
+                                            ]}>
+                                                {cond}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
                             </TouchableOpacity>
-                            
-                            <TouchableOpacity 
-                                style={[
-                                    styles.radioButton, 
-                                    condition === 'Good' && styles.radioButtonSelected
-                                ]}
-                                onPress={() => setCondition('Good')}
-                            >
-                                <Text style={[
-                                    styles.radioText,
-                                    condition === 'Good' && styles.radioTextSelected
-                                ]}>Good</Text>
-                            </TouchableOpacity>
-                            
-                            <TouchableOpacity 
-                                style={[
-                                    styles.radioButton, 
-                                    condition === 'Fair' && styles.radioButtonSelected
-                                ]}
-                                onPress={() => setCondition('Fair')}
-                            >
-                                <Text style={[
-                                    styles.radioText,
-                                    condition === 'Fair' && styles.radioTextSelected
-                                ]}>Fair</Text>
-                            </TouchableOpacity>
-                        </View>
+                        </Modal>
                     </View>
 
                     {/* Price */}
@@ -342,44 +387,78 @@ export default function ManageSecondHandProductScreen({ route, navigation }: any
                     {/* Availability */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Availability *</Text>
-                        <View style={styles.radioGroup}>
+                        <TouchableOpacity 
+                            style={styles.selectInput}
+                            onPress={() => setAvailabilityModalVisible(true)}
+                        >
+                            <Text style={styles.selectText}>{isAvailable ? 'Available' : 'Sold'}</Text>
+                            <MaterialIcons name="arrow-drop-down" size={24} color={Colors.light.textSecondary} />
+                        </TouchableOpacity>
+                        
+                        {/* Availability Selection Modal */}
+                        <Modal
+                            visible={availabilityModalVisible}
+                            transparent={true}
+                            animationType="fade"
+                        >
                             <TouchableOpacity 
-                                style={[
-                                    styles.radioButton, 
-                                    isAvailable && styles.radioButtonSelected
-                                ]}
-                                onPress={() => setIsAvailable(true)}
+                                style={styles.modalOverlay}
+                                onPress={() => setAvailabilityModalVisible(false)}
                             >
-                                <Text style={[
-                                    styles.radioText,
-                                    isAvailable && styles.radioTextSelected
-                                ]}>Available</Text>
+                                <View style={styles.modalContent}>
+                                    <Text style={styles.modalTitle}>Select Availability</Text>
+                                    <TouchableOpacity
+                                        style={styles.modalOption}
+                                        onPress={() => {
+                                            setIsAvailable(true);
+                                            setAvailabilityModalVisible(false);
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.modalOptionText,
+                                            isAvailable && styles.modalOptionTextSelected
+                                        ]}>
+                                            Available
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.modalOption}
+                                        onPress={() => {
+                                            setIsAvailable(false);
+                                            setAvailabilityModalVisible(false);
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.modalOptionText,
+                                            !isAvailable && styles.modalOptionTextSelected
+                                        ]}>
+                                            Sold
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
                             </TouchableOpacity>
-                            
-                            <TouchableOpacity 
-                                style={[
-                                    styles.radioButton, 
-                                    !isAvailable && styles.radioButtonSelected
-                                ]}
-                                onPress={() => setIsAvailable(false)}
-                            >
-                                <Text style={[
-                                    styles.radioText,
-                                    !isAvailable && styles.radioTextSelected
-                                ]}>Sold</Text>
-                            </TouchableOpacity>
-                        </View>
+                        </Modal>
                     </View>
 
                     {/* Image Upload */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Product Image</Text>
+                        <Text style={styles.helperText}>Upload an image for this second-hand product (optional but recommended)</Text>
                         {imageUri ? (
                             <View style={styles.imagePreviewContainer}>
                                 <View style={styles.imagePreview}>
-                                    <View style={styles.imageWrapper}>
-                                        <MaterialIcons name="photo" size={48} color={Colors.light.textSecondary} />
-                                    </View>
+                                    {/* Show actual image if available */}
+                                    {imageUri ? (
+                                        <Image 
+                                            source={{ uri: imageUri }} 
+                                            style={styles.actualImage}
+                                            resizeMode="cover"
+                                        />
+                                    ) : (
+                                        <View style={styles.imageWrapper}>
+                                            <MaterialIcons name="photo" size={48} color={Colors.light.textSecondary} />
+                                        </View>
+                                    )}
                                     <TouchableOpacity 
                                         style={styles.removeImageButton}
                                         onPress={removeImage}
@@ -458,14 +537,28 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: Colors.light.border,
     },
+    headerContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+    },
     title: {
-        ...Typography.h2,
+        ...Typography.headlineSmall,
         color: Colors.light.text,
         marginBottom: Spacing.xs,
     },
     subtitle: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.textSecondary,
+    },
+    homeButton: {
+        backgroundColor: Colors.light.primary,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 5,
     },
     formContainer: {
         padding: Spacing.lg,
@@ -474,7 +567,7 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.lg,
     },
     label: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.text,
         fontWeight: '600',
         marginBottom: Spacing.sm,
@@ -486,7 +579,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.md,
         borderWidth: 1,
         borderColor: Colors.light.border,
-        ...Typography.body,
+        ...Typography.bodyMedium,
     },
     textArea: {
         height: 100,
@@ -512,11 +605,13 @@ const styles = StyleSheet.create({
         borderColor: Colors.light.primary,
     },
     radioText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.text,
+        fontWeight: '600',
     },
     radioTextSelected: {
         color: Colors.light.background,
+        fontWeight: '600',
     },
     imageUploadContainer: {
         flexDirection: 'row',
@@ -535,7 +630,7 @@ const styles = StyleSheet.create({
         gap: Spacing.sm,
     },
     imageUploadText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.primary,
         fontWeight: '600',
     },
@@ -583,7 +678,7 @@ const styles = StyleSheet.create({
         gap: Spacing.sm,
     },
     imageButtonText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.background,
         fontWeight: '600',
     },
@@ -605,7 +700,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     cancelButtonText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.text,
         fontWeight: '600',
     },
@@ -617,11 +712,73 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     saveButtonText: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.background,
         fontWeight: '600',
     },
     disabledButton: {
         opacity: 0.5,
     },
+    selectInput: {
+        height: 48,
+        backgroundColor: Colors.light.surface,
+        borderRadius: BorderRadius.md,
+        paddingHorizontal: Spacing.md,
+        borderWidth: 1,
+        borderColor: Colors.light.border,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    selectText: {
+        ...Typography.bodyMedium,
+        color: Colors.light.text,
+        fontWeight: '600',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        backgroundColor: Colors.light.surface,
+        borderRadius: BorderRadius.md,
+        padding: Spacing.lg,
+        width: '80%',
+        maxHeight: '50%',
+    },
+    modalTitle: {
+        ...Typography.titleLarge,
+        color: Colors.light.text,
+        marginBottom: Spacing.md,
+        textAlign: 'center',
+    },
+    modalOption: {
+        paddingVertical: Spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.light.border,
+    },
+    modalOptionText: {
+        ...Typography.bodyMedium,
+        color: Colors.light.text,
+        textAlign: 'center',
+        fontWeight: '600',
+    },
+    modalOptionTextSelected: {
+        color: Colors.light.primary,
+        fontWeight: '600',
+    },
+    helperText: {
+        ...Typography.caption,
+        color: Colors.light.textSecondary,
+        marginBottom: Spacing.sm,
+    },
+    
+    actualImage: {
+        width: 120,
+        height: 120,
+        borderRadius: BorderRadius.md,
+    },
+    
 });

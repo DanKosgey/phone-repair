@@ -10,6 +10,7 @@ interface SectionHeaderProps {
         label: string;
         onPress: () => void;
     };
+    accessibilityLabel?: string;
 }
 
 export const SectionHeader: React.FC<SectionHeaderProps> = ({
@@ -17,6 +18,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
     subtitle,
     icon,
     actionButton,
+    accessibilityLabel,
 }) => {
     return (
         <View style={styles.container}>
@@ -33,6 +35,9 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
                     style={styles.actionButton}
                     onPress={actionButton.onPress}
                     activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={accessibilityLabel || actionButton.label}
+                    accessibilityHint="Double tap to perform action"
                 >
                     <Text style={styles.actionButtonText}>{actionButton.label}</Text>
                     <Text style={styles.arrow}>→</Text>
@@ -62,7 +67,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     title: {
-        ...Typography.h3,
+        ...Typography.headlineSmall,
         color: Colors.light.text,
         fontWeight: '700',
     },
@@ -84,7 +89,7 @@ const styles = StyleSheet.create({
         marginRight: Spacing.xs / 2,
     },
     arrow: {
-        ...Typography.body,
+        ...Typography.bodyLarge,
         color: Colors.light.primary,
     },
 });

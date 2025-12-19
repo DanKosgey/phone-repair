@@ -11,10 +11,12 @@ import {
     ScrollView,
 } from 'react-native';
 import { supabase } from '../../services/supabase';
+import { dashboardService } from '../../services/dashboard';
 import { TicketCard, EmptyState, SectionHeader } from '../../components';
 import { StatusSummaryCards } from '../../components/tickets/StatusSummaryCards';
 import { TicketsTable } from '../../components/tickets/TicketsTable';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface Ticket {
     id: string;
@@ -27,6 +29,7 @@ interface Ticket {
     customer_name: string;
     device_brand: string;
     device_model: string;
+    device_photos?: string[]; // Add device photos to the interface
 }
 
 export default function TicketsScreen({ navigation }: any) {
@@ -42,10 +45,14 @@ export default function TicketsScreen({ navigation }: any) {
 
     const filters = [
         { id: 'all', label: 'All', count: 0 },
-        { id: 'action_required', label: 'Action Required', count: 0 },
-        { id: 'in_progress', label: 'In Progress', count: 0 },
-        { id: 'near_completion', label: 'Near Completion', count: 0 },
+        { id: 'received', label: 'Received', count: 0 },
+        { id: 'diagnosing', label: 'Diagnosing', count: 0 },
+        { id: 'awaiting_parts', label: 'Awaiting Parts', count: 0 },
+        { id: 'repairing', label: 'Repairing', count: 0 },
+        { id: 'quality_check', label: 'Quality Check', count: 0 },
+        { id: 'ready', label: 'Ready', count: 0 },
         { id: 'completed', label: 'Completed', count: 0 },
+        { id: 'cancelled', label: 'Cancelled', count: 0 },
     ];
 
     useEffect(() => {
@@ -54,6 +61,7 @@ export default function TicketsScreen({ navigation }: any) {
 
     useEffect(() => {
         filterTickets();
+        // keep local calc in case materialized view isn't available
         calculateStatusDistribution();
     }, [tickets, searchQuery, selectedFilter]);
 
@@ -61,11 +69,30 @@ export default function TicketsScreen({ navigation }: any) {
         try {
             const { data, error } = await supabase
                 .from('tickets')
-                .select('*')
+                .select(`
+                    *,
+                    device_photos
+                `)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
             setTickets(data || []);
+            // Try fetching status distribution from materialized view for efficiency
+            try {
+                const res = await dashboardService.getTicketStatusDistribution();
+                if (res.success && res.data) {
+                    // transform to expected format
+                    const transformed = (res.data as any[]).map(d => ({
+                        status: d.status,
+                        count: d.count,
+                        percentage: d.percentage ?? (d.count / (data?.length || 1)) * 100
+                    }));
+                    setStatusDistribution(transformed);
+                }
+            } catch (err) {
+                // ignore - fallback to client calc
+                console.warn('Failed to fetch status distribution from materialized view, falling back to client calc', err);
+            }
         } catch (error) {
             console.error('Error fetching tickets:', error);
         } finally {
@@ -216,57 +243,38 @@ export default function TicketsScreen({ navigation }: any) {
         );
     };
 
-    if (loading) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={Colors.light.primary} />
-            </View>
-        );
-    }
-
-    return (
-        <View style={styles.container}>
-            {/* Header */}
+    // Render header content for FlatList
+    const renderHeader = () => (
+        <View>
+            {/* Header with enhanced styling */}
             <View style={styles.header}>
                 <View style={styles.headerTop}>
-                    <SectionHeader
-                        title="Repair Tickets"
-                        subtitle={`${filteredTickets.length} ticket${filteredTickets.length !== 1 ? 's' : ''}`}
-                        icon="🎫"
-                    />
-                    <View style={styles.headerActions}>
-                        <TouchableOpacity 
-                            style={styles.viewModeButton}
-                            onPress={() => setViewMode(viewMode === 'card' ? 'table' : 'card')}
-                        >
-                            <Text style={styles.viewModeText}>
-                                {viewMode === 'card' ? 'Table View' : 'Card View'}
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                            style={styles.newTicketButton}
-                            onPress={() => navigation.navigate('CreateTicket')}
-                        >
-                            <Text style={styles.newTicketText}>New Ticket</Text>
-                        </TouchableOpacity>
+                    <View style={styles.headerTextContainer}>
+                        <Text style={styles.title}>Repair Tickets</Text>
+                        <Text style={styles.subtitle}>{filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''}</Text>
                     </View>
+                    <TouchableOpacity 
+                        style={styles.homeButton}
+                        onPress={() => navigation.navigate('AdminApp', { screen: 'AdminDrawer', params: { screen: 'AdminDashboard' } })}
+                    >
+                        <MaterialIcons name="home" size={24} color="#fff" />
+                    </TouchableOpacity>
                 </View>
-
-                {/* Search Bar */}
-                <View style={styles.searchContainer}>
-                    <Text style={styles.searchIcon}>🔍</Text>
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search tickets..."
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        placeholderTextColor={Colors.light.textSecondary}
-                    />
-                    {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <Text style={styles.clearButton}>✕</Text>
-                        </TouchableOpacity>
-                    )}
+                <View style={styles.headerControls}>
+                    <TouchableOpacity 
+                        style={styles.newTicketButton}
+                        onPress={() => navigation.navigate('AdminApp', { screen: 'CreateTicket' })}
+                    >
+                        <Text style={styles.newTicketButtonText}>+ New Ticket</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={styles.viewModeButton}
+                        onPress={() => setViewMode(viewMode === 'card' ? 'table' : 'card')}
+                    >
+                        <Text style={styles.viewModeText}>
+                            {viewMode === 'card' ? '📋 Table' : '🃏 Card'}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -280,6 +288,23 @@ export default function TicketsScreen({ navigation }: any) {
                 </View>
             )}
 
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+                <Text style={styles.searchIcon}>🔍</Text>
+                <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search tickets..."
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholderTextColor={Colors.light.textSecondary}
+                />
+                {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchQuery('')}>
+                        <Text style={styles.clearButton}>✕</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+
             {/* Filter Tabs */}
             <View style={styles.filtersContainer}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -288,8 +313,19 @@ export default function TicketsScreen({ navigation }: any) {
                     </View>
                 </ScrollView>
             </View>
+        </View>
+    );
 
-            {/* Tickets List */}
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.light.primary} />
+            </View>
+        );
+    }
+
+    return (
+        <View style={styles.container}>
             {viewMode === 'card' ? (
                 <FlatList
                     data={filteredTickets}
@@ -304,6 +340,7 @@ export default function TicketsScreen({ navigation }: any) {
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                     }
+                    ListHeaderComponent={renderHeader}
                     ListEmptyComponent={
                         <EmptyState
                             icon="🎫"
@@ -319,7 +356,7 @@ export default function TicketsScreen({ navigation }: any) {
                                 !searchQuery && selectedFilter === 'all'
                                     ? {
                                         label: 'Create Ticket',
-                                        onPress: () => navigation.navigate('CreateTicket'),
+                                        onPress: () => navigation.navigate('AdminApp', { screen: 'CreateTicket' }),
                                     }
                                     : undefined
                             }
@@ -342,6 +379,7 @@ export default function TicketsScreen({ navigation }: any) {
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                     }
+                    ListHeaderComponent={renderHeader}
                     ListEmptyComponent={
                         <EmptyState
                             icon="🎫"
@@ -357,7 +395,7 @@ export default function TicketsScreen({ navigation }: any) {
                                 !searchQuery && selectedFilter === 'all'
                                     ? {
                                         label: 'Create Ticket',
-                                        onPress: () => navigation.navigate('CreateTicket'),
+                                        onPress: () => navigation.navigate('AdminApp', { screen: 'CreateTicket' }),
                                     }
                                     : undefined
                             }
@@ -369,7 +407,7 @@ export default function TicketsScreen({ navigation }: any) {
             {/* Floating Action Button */}
             <TouchableOpacity
                 style={styles.fab}
-                onPress={() => navigation.navigate('CreateTicket')}
+                onPress={() => navigation.navigate('AdminApp', { screen: 'CreateTicket' })}
                 activeOpacity={0.8}
             >
                 <Text style={styles.fabIcon}>+</Text>
@@ -390,39 +428,61 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.light.background,
     },
     header: {
-        backgroundColor: Colors.light.surface,
+        backgroundColor: Colors.light.primary,
         padding: Spacing.lg,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.border,
+        paddingTop: Spacing.md,
     },
     headerTop: {
-        marginBottom: Spacing.md,
-    },
-    headerActions: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: Spacing.sm,
+        alignItems: 'flex-start',
+        marginBottom: Spacing.md,
     },
+    headerTextContainer: {
+        flex: 1,
+    },
+    title: {
+        ...Typography.headlineSmall,
+        color: '#fff',
+        marginBottom: Spacing.xs,
+    },
+    subtitle: {
+        ...Typography.bodyMedium,
+        color: 'rgba(255, 255, 255, 0.9)',
+    },
+    homeButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 5,
+    },
+    headerControls: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: Spacing.md,
+    },
+
     viewModeButton: {
-        backgroundColor: Colors.light.background,
-        borderWidth: 1,
-        borderColor: Colors.light.border,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
         borderRadius: BorderRadius.md,
         paddingVertical: Spacing.xs,
         paddingHorizontal: Spacing.md,
     },
     viewModeText: {
         ...Typography.caption,
-        color: Colors.light.text,
+        color: '#fff',
         fontWeight: '600',
     },
     newTicketButton: {
-        backgroundColor: Colors.light.primary,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
         borderRadius: BorderRadius.md,
         paddingVertical: Spacing.xs,
         paddingHorizontal: Spacing.md,
     },
-    newTicketText: {
+    newTicketButtonText: {
         ...Typography.caption,
         color: '#fff',
         fontWeight: '600',
@@ -443,12 +503,12 @@ const styles = StyleSheet.create({
     },
     searchInput: {
         flex: 1,
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.text,
         paddingVertical: Spacing.sm,
     },
     clearButton: {
-        ...Typography.body,
+        ...Typography.bodyMedium,
         color: Colors.light.textSecondary,
         padding: Spacing.xs,
     },

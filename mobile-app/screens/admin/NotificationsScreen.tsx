@@ -12,6 +12,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../services/supabase';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
 import { SectionHeader, EmptyState } from '../../components';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface Notification {
     id: string;
@@ -136,23 +137,39 @@ export default function NotificationsScreen({ navigation }: any) {
 
     return (
         <View style={styles.container}>
+            {/* Header */}
+            <View style={styles.header}>
+                <View style={styles.headerContent}>
+                    <View>
+                        <Text style={styles.title}>Notifications</Text>
+                        <Text style={styles.subtitle}>
+                            Showing {filteredNotifications.length} of {notifications.length} notifications
+                        </Text>
+                    </View>
+                    <TouchableOpacity 
+                        style={styles.homeButton}
+                        onPress={() => navigation.navigate('AdminDashboard')}
+                    >
+                        <MaterialIcons name="home" size={24} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+                {notifications.some(n => !n.is_read) && (
+                    <TouchableOpacity 
+                        style={styles.markAllButton}
+                        onPress={markAllAsRead}
+                    >
+                        <Text style={styles.markAllText}>Mark All Read</Text>
+                    </TouchableOpacity>
+                )
+            }
+            </View>
+
             <ScrollView
                 style={styles.scrollView}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
             >
-                <View style={styles.header}>
-                    <SectionHeader
-                        title="Notifications"
-                        subtitle={`Showing ${filteredNotifications.length} of ${notifications.length} notifications`}
-                        actionButton={
-                            notifications.some(n => !n.is_read)
-                                ? { label: 'Mark All Read', onPress: markAllAsRead }
-                                : undefined
-                        }
-                    />
-                </View>
 
                 {/* Filter Tabs */}
                 <View style={styles.filterContainer}>
@@ -266,7 +283,49 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     header: {
+        backgroundColor: Colors.light.primary,
+    },
+    headerContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         padding: Spacing.lg,
+    },
+    title: {
+        fontSize: 28,
+        fontWeight: '700',
+        lineHeight: 36,
+        letterSpacing: 0,
+        color: '#fff',
+        marginBottom: Spacing.xs,
+    },
+    subtitle: {
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: 'rgba(255, 255, 255, 0.9)',
+        marginBottom: Spacing.md,
+    },
+    homeButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    markAllButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        paddingVertical: Spacing.xs,
+        paddingHorizontal: Spacing.md,
+        borderRadius: BorderRadius.md,
+        alignSelf: 'flex-start',
+    },
+    markAllText: {
+        ...Typography.caption,
+        color: '#fff',
+        fontWeight: '600',
     },
     filterContainer: {
         flexDirection: 'row',
@@ -287,7 +346,10 @@ const styles = StyleSheet.create({
         borderColor: Colors.light.primary,
     },
     filterText: {
-        ...Typography.bodySmall,
+        fontSize: 14,
+        fontWeight: '600',
+        lineHeight: 20,
+        letterSpacing: 0.25,
         color: Colors.light.textSecondary,
     },
     activeFilterText: {
@@ -328,18 +390,26 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     notificationTitle: {
-        ...Typography.body,
-        color: Colors.light.text,
+        fontSize: 16,
         fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0.5,
+        color: Colors.light.text,
         marginBottom: Spacing.xs,
     },
     notificationMessage: {
-        ...Typography.bodySmall,
+        fontSize: 12,
+        fontWeight: '400',
+        lineHeight: 16,
+        letterSpacing: 0.4,
         color: Colors.light.textSecondary,
         marginBottom: Spacing.sm,
     },
     notificationTime: {
-        ...Typography.caption,
+        fontSize: 12,
+        fontWeight: '400',
+        lineHeight: 16,
+        letterSpacing: 0.4,
         color: Colors.light.textSecondary,
     },
 });
